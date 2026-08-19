@@ -80,7 +80,7 @@ public class ImageLocatorResolver {
         // Anchor-relative locating (FR-SR-07): find a stable anchor, act at a fixed offset.
         if (locator.anchorTemplateRef() != null) {
             BufferedImage anchor = require(locator.anchorTemplateRef(), "anchorTemplateRef");
-            Scored a = bestAcrossScales(screen, anchor, threshold, uiScale);
+            Scored a = bestAcrossScales(screen, anchor, uiScale);
             boolean ambiguous = a.result() != null && a.result().isAmbiguous(ambiguityMargin);
             if (a.result() == null || a.result().score() < threshold || ambiguous) {
                 return miss(locator.anchorTemplateRef(), a, anchor, screen, ambiguous, threshold, uiScale);
@@ -99,18 +99,20 @@ public class ImageLocatorResolver {
                 h = Math.max(1, (int) Math.round(t.getHeight() * a.factor()));
             }
             Rectangle target = new Rectangle(a.result().x() + ox, a.result().y() + oy, w, h);
+            logRescale(a);
             return new Resolution(target, a.result().rectangle(), locator.anchorTemplateRef(),
                     a.result(), a.factor(), false, null);
         }
 
         BufferedImage template = require(locator.templateRef(), "templateRef");
-        Scored m = bestAcrossScales(screen, template, threshold, uiScale);
+        Scored m = bestAcrossScales(screen, template, uiScale);
         if (m.result() == null || m.result().score() < threshold) {
             return miss(locator.templateRef(), m, template, screen, false, threshold, uiScale);
         }
         if (m.result().isAmbiguous(ambiguityMargin)) {
             return miss(locator.templateRef(), m, template, screen, true, threshold, uiScale);
         }
+        logRescale(m);
         return new Resolution(m.result().rectangle(), m.result().rectangle(), locator.templateRef(),
                 m.result(), m.factor(), false, null);
     }
@@ -123,9 +125,7 @@ public class ImageLocatorResolver {
      */
     public Resolution locate(String templateRef, BufferedImage screen, double uiScale) {
         BufferedImage template = require(templateRef, "templateRef");
-        // A threshold no NCC score can reach forces every scale candidate to be tried, so the
-        // overlay shows the best available match rather than the first adequate one.
-        Scored m = bestAcrossScales(screen, template, 2.0, uiScale);
+        Scored m = bestAcrossScales(screen, template, uiScale);
         if (m.result() == null) {
             return miss(templateRef, m, template, screen, false, DEFAULT_THRESHOLD, uiScale);
         }
@@ -137,12 +137,14 @@ public class ImageLocatorResolver {
     private record Scored(MatchResult result, double factor) {}
 
     /**
-     * Try the template as stored, then — on a scaled desktop — shrunk into the capture's
-     * pixel space, stopping at the first confident hit and otherwise keeping the best
-     * score seen so the failure can say how close it got.
+     * Try the template as stored and — on a scaled desktop — shrunk into the capture's pixel
+     * space, and keep whichever scores best.
+     *
+     * <p>Every candidate is tried, deliberately. Stopping at the first one to clear the
+     * threshold let a coincidental 1:1 match at 0.91 win outright over the correctly scaled
+     * match at 0.99, which is the wrong element resolved with a confident-looking score.</p>
      */
-    private Scored bestAcrossScales(BufferedImage screen, BufferedImage template, double threshold,
-                                    double uiScale) {
+    private Scored bestAcrossScales(BufferedImage screen, BufferedImage template, double uiScale) {
         Scored best = new Scored(null, 1.0);
         for (double factor : scaleCandidates(uiScale)) {
             BufferedImage candidate = factor == 1.0 ? template : resize(template, factor);
@@ -152,15 +154,16 @@ public class ImageLocatorResolver {
             if (best.result() == null || r.score() > best.result().score()) {
                 best = new Scored(r, factor);
             }
-            if (r.score() >= threshold && !r.isAmbiguous(ambiguityMargin)) {
-                if (factor != 1.0) {
-                    log.info("Template matched at x{} — it was cropped at a different desktop "
-                            + "scale than this worker captures", String.format("%.2f", factor));
-                }
-                break;
-            }
         }
         return best;
+    }
+
+    /** Said once per resolved match, and only for one that needed the DPI correction. */
+    private static void logRescale(Scored scored) {
+        if (scored.factor() != 1.0) {
+            log.info("Template matched at x{} — it was cropped at a different desktop "
+                    + "scale than this worker captures", String.format("%.2f", scored.factor()));
+        }
     }
 
     /** 1:1 first — the common case and the historical behaviour — then DPI-corrected. */

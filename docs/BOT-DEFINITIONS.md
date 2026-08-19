@@ -120,6 +120,26 @@ Threshold defaults to 0.90. A match whose runner-up scores within 0.03 of it is 
 ambiguous and resolves to *empty* — the engine tries the next locator rather than clicking
 a guess (NFR-REL-04, FR-SR-03).
 
+### Choosing what to crop
+
+The matcher searches the whole capture and reports the best location together with the best
+*competing* location elsewhere. Both numbers decide the step, so a template is only as good
+as its margin over the rest of the screen:
+
+- **Crop distinguishing context, not the control alone.** SystmOne's toolbar buttons and
+  grid rows share their chrome; a crop that is mostly border and background correlates
+  nearly as well with every sibling. Include the label, icon or neighbouring edge that makes
+  this one different.
+- **A repeated control cannot be found by its own picture.** Rows in a list are identical by
+  design, and the correct outcome is the ambiguity refusal, not a lucky pick. Use
+  `anchorTemplateRef` with an offset from something unique — a column header, a field label —
+  or fall back to a JAB locator.
+- **Raising the threshold does not fix a wrong match, and lowering it makes one likelier.**
+  If the step resolves to the wrong element, the score is not the problem; the crop is.
+  Check the runner-up score in the failure log before touching `threshold`.
+- **Bigger, plainer crops are weaker than smaller, busier ones.** What matters is detail per
+  pixel, not area: a flat expanse contributes nothing to the score but drags the runner-up up.
+
 ### Capturing templates on a scaled display
 
 This is the single most common reason a template never matches, and it looks nothing like
@@ -132,9 +152,9 @@ On a display at 200% scaling those differ by 2x: a 2880x1800 panel is captured a
 capture. Normalised cross-correlation has no scale invariance, so the score collapses to
 near zero and no threshold will rescue it.
 
-The worker handles this: a template is matched as stored, and if that misses on a scaled
-desktop it is retried shrunk into the capture's pixel space. It logs the display geometry
-at startup and logs `Template matched at x0.50` when the correction fires. Re-cropping
+The worker handles this: on a scaled desktop the template is matched both as stored and
+shrunk into the capture's pixel space, and the better score wins. It logs the display
+geometry at startup and logs `Template matched at x0.50` when the correction fires. Re-cropping
 from a worker failure screenshot is still sharper, because rescaling costs a little
 accuracy — budget a lower threshold (~0.85) for templates that rely on the correction.
 
