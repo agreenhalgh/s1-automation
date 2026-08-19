@@ -25,6 +25,6 @@ systmone:
     token: ${SYSTMONE_WORKER_TOKEN:changeit}
     worker-id: ${WORKER_ID:}
     capability-tag: ${WORKER_CAPABILITY:}
-    window-title: ${S1_WINDOW_TITLE:SystmOne}
-    s1-version: ${S1_VERSION:unknown}
+    window-title: ${S1_WINDOW_TITLE:SystmOne A&E}
+    s1-version: ${S1_VERSION:DEMO}
     screenshot-dir: ${WORKER_SCREENSHOT_DIR:./worker-screenshots}
