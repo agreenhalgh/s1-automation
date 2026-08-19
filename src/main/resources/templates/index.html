@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>SystmOne RPA — Control Plane</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<header>
+    <h1>SystmOne RPA — Control Plane</h1>
+    <form th:action="@{/logout}" method="post" class="inline">
+        <span sec:authorize="isAuthenticated()" th:text="'Signed in'">Signed in</span>
+        <button type="submit">Sign out</button>
+    </form>
+</header>
+
+<section>
+    <h2>Dispatch a run</h2>
+    <form th:action="@{/ui/dispatch}" method="post" class="row">
+        <label>Bot
+            <select name="botId">
+                <option th:each="b : ${bots}" th:value="${b.id}" th:text="${b.name} + ' (v' + ${b.version} + ')'"></option>
+            </select>
+        </label>
+        <label>Capability tag <input type="text" name="capabilityTag" placeholder="(optional)"/></label>
+        <button type="submit">Dispatch</button>
+    </form>
+    <p th:if="${#lists.isEmpty(bots)}" class="muted">No bots registered. POST a BotDefinition to <code>/api/bots</code>.</p>
+</section>
+
+<section>
+    <h2>Workers <span class="muted" th:text="'(' + ${#lists.size(workers)} + ')'"></span></h2>
+    <table>
+        <thead><tr><th>Worker</th><th>Host</th><th>S1 version</th><th>Status</th><th>Current run</th><th>Last seen</th></tr></thead>
+        <tbody>
+        <tr th:each="w : ${workers}">
+            <td th:text="${w.id}"></td>
+            <td th:text="${w.host}"></td>
+            <td th:text="${w.s1Version}"></td>
+            <td th:text="${w.status}"></td>
+            <td><a th:if="${w.currentRunId}" th:href="@{'/runs/' + ${w.currentRunId}}" th:text="${w.currentRunId}"></a></td>
+            <td th:text="${w.lastSeenAt}"></td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(workers)}" class="muted">No workers registered.</p>
+</section>
+
+<section>
+    <h2>Recent runs</h2>
+    <table>
+        <thead><tr><th>Run</th><th>Bot</th><th>Status</th><th>Worker</th><th>Created</th><th>Finished</th></tr></thead>
+        <tbody>
+        <tr th:each="r : ${runs}">
+            <td><a th:href="@{'/runs/' + ${r.id}}" th:text="${#strings.abbreviate(r.id, 12)}"></a></td>
+            <td th:text="${r.botName}"></td>
+            <td><span th:class="'status status-' + ${r.status}" th:text="${r.status}"></span></td>
+            <td th:text="${r.workerId}"></td>
+            <td th:text="${r.createdAt}"></td>
+            <td th:text="${r.finishedAt}"></td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(runs)}" class="muted">No runs yet.</p>
+</section>
+</body>
+</html>

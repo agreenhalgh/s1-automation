@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Run detail</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<header><h1>Run detail</h1><a th:href="@{/}">&larr; Dashboard</a></header>
+
+<section th:if="${run}">
+    <table class="kv">
+        <tr><th>Run id</th><td th:text="${run.id}"></td></tr>
+        <tr><th>Bot</th><td th:text="${run.botName} + ' (' + ${run.botId} + ')'"></td></tr>
+        <tr><th>Status</th><td><span th:class="'status status-' + ${run.status}" th:text="${run.status}"></span></td></tr>
+        <tr><th>Worker</th><td th:text="${run.workerId}"></td></tr>
+        <tr><th>Created</th><td th:text="${run.createdAt}"></td></tr>
+        <tr><th>Started</th><td th:text="${run.startedAt}"></td></tr>
+        <tr><th>Finished</th><td th:text="${run.finishedAt}"></td></tr>
+        <tr th:if="${run.errorType}"><th>Error</th><td th:text="${run.errorType} + ': ' + ${run.errorMessage}"></td></tr>
+    </table>
+
+    <h2>Steps</h2>
+    <table>
+        <thead><tr><th>#</th><th>Name</th><th>Status</th><th>Resolved locator</th><th>ms</th><th>Output / Error</th><th>Screenshot</th></tr></thead>
+        <tbody>
+        <tr th:each="s : ${steps}">
+            <td th:text="${s.stepIndex}"></td>
+            <td th:text="${s.name}"></td>
+            <td><span th:class="'status status-' + ${s.status}" th:text="${s.status}"></span></td>
+            <td class="mono" th:text="${s.resolvedLocator}"></td>
+            <td th:text="${s.durationMs}"></td>
+            <td>
+                <span th:if="${s.output}" th:text="${s.output}"></span>
+                <span th:if="${s.errorMessage}" class="err" th:text="${s.errorType} + ': ' + ${s.errorMessage}"></span>
+            </td>
+            <td th:text="${s.screenshotRef}"></td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(steps)}" class="muted">No steps reported yet.</p>
+
+    <details th:if="${run.errorStack}">
+        <summary>Exception stack trace</summary>
+        <pre th:text="${run.errorStack}"></pre>
+    </details>
+</section>
+
+<p th:unless="${run}" class="muted">Run not found.</p>
+</body>
+</html>

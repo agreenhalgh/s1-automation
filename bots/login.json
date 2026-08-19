@@ -1,0 +1,43 @@
+{
+  "botId": "login",
+  "name": "Login to SystmOne",
+  "version": 1,
+  "s1Version": "2024",
+  "globalTimeoutMs": 60000,
+  "steps": [
+    {
+      "index": 0,
+      "name": "Click Patient",
+      "action": "CLICK",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        {
+          "type": "JAB",
+          "role": "push button",
+          "name": "Patient",
+          "nameMatch": "EXACT"
+        },
+        {
+          "type": "IMAGE",
+          "templateRef": "patient-button",
+          "threshold": 0.9
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Type NHS number",
+      "action": "SET_TEXT",
+      "inputValue": "${nhsNumber}",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        {
+          "type": "JAB",
+          "role": "text",
+          "name": "NHS Number",
+          "nameMatch": "CONTAINS"
+        }
+      ]
+    }
+  ]
+}

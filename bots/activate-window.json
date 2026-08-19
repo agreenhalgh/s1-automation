@@ -1,0 +1,43 @@
+{
+  "botId": "activate-window",
+  "name": "Bring SystmOne to the front, then type into it",
+  "version": 1,
+  "s1Version": "2024",
+  "globalTimeoutMs": 60000,
+  "steps": [
+    {
+      "index": 0,
+      "name": "Activate SystmOne",
+      "action": "ACTIVATE",
+      "outputKey": "activatedWindow",
+      "timeoutMs": 10000
+    },
+    {
+      "index": 1,
+      "name": "Open patient search",
+      "action": "KEYS",
+      "inputValue": "CTRL+F",
+      "timeoutMs": 5000,
+      "locatorChain": [
+        { "type": "JAB", "role": "frame", "name": "SystmOne", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Activate the Appointment Book child window",
+      "action": "ACTIVATE",
+      "inputValue": "Appointment Book",
+      "continueOnFailure": true,
+      "timeoutMs": 8000
+    },
+    {
+      "index": 3,
+      "name": "Activate only once the main window really exists",
+      "action": "ACTIVATE",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "frame", "name": "SystmOne", "nameMatch": "CONTAINS" }
+      ]
+    }
+  ]
+}

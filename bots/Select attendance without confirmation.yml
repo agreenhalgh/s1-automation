@@ -1,0 +1,46 @@
+info:
+  name: Select attendance without confirmation
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: http://localhost:8080/api/bots
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "attend",
+        "name": "Attend Patient",
+        "version": 1,
+        "s1Version": "DEMO",
+        "globalTimeoutMs": 60000,
+        "steps": [
+          {
+            "name": "Enter NHS number",
+            "action": "SET_TEXT",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "patient-registration-search",
+                "offsetX": 150,
+                "offsetY": 25,
+                "threshold": 0.8
+              }
+            ],
+            "inputValue": "${nhsNumber}",
+            "timeoutMs": 8000,
+            "continueOnFailure": false
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

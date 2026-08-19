@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: systmone
+  profiles:
+    # Default role is the control plane. Start a worker with --spring.profiles.active=worker
+    active: controlplane
+
+  # Control-plane persistence. Defaults to in-memory H2 so the app runs with no external
+  # database; point at PostgreSQL in production (NFR-CMP-03) via the env vars below.
+  datasource:
+    url: ${JDBC_URL:jdbc:h2:mem:systmone;DB_CLOSE_DELAY=-1}
+    username: ${JDBC_USER:sa}
+    password: ${JDBC_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  # RabbitMQ broker shared by control plane (publisher) and workers (consumers).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+  thymeleaf:
+    cache: false
+
+  jackson:
+    deserialization:
+      # Jackson 3 rejects an explicit JSON null for a primitive; Jackson 2 coerced it to
+      # 0/false. The definition records (BotDefinition, StepDefinition, RetryPolicyDef)
+      # normalise absent scalars in their compact constructors, so a bot JSON that spells
+      # out "continueOnFailure": null or "timeoutMs": null must land on the default rather
+      # than fail the whole submission.
+      fail-on-null-for-primitives: false
+
+# Shared secret workers present when POSTing results (FR-WRK-07). Override in every real
+# environment.
+systmone:
+  worker-token: ${SYSTMONE_WORKER_TOKEN:changeit}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    com.newbrid.epr_automation: INFO

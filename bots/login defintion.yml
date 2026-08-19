@@ -1,0 +1,61 @@
+info:
+  name: login defintion
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8080/api/bots
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "login",
+        "name": "Login with Username & Password",
+        "version": 1,
+        "s1Version": "DEMO",
+        "globalTimeoutMs": 60000,
+        "steps": [
+          {
+            "index": 0,
+            "name": "Focus username",
+            "action": "CLICK",
+            "timeoutMs": 8000,
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "login-fields",
+                "offsetX": 300,
+                "offsetY": 270,
+                "threshold": 0.94
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "name": "Type Username",
+            "action": "SET_TEXT",
+            "inputValue": "${username}",
+            "timeoutMs": 8000,
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "login-fields",
+                "offsetX": 300,
+                "offsetY": 270,
+                "threshold": 0.94
+              }
+            ]
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

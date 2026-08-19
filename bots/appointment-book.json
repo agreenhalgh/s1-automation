@@ -1,0 +1,121 @@
+{
+  "botId": "appointment-book",
+  "name": "Book the first free slot in a named clinic",
+  "version": 2,
+  "s1Version": "2024",
+  "globalTimeoutMs": 120000,
+  "defaultRetry": {
+    "maxAttempts": 2,
+    "initialBackoffMs": 400,
+    "multiplier": 2.0,
+    "maxBackoffMs": 3000
+  },
+  "steps": [
+    {
+      "index": 0,
+      "name": "Open the appointments module",
+      "action": "CLICK",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "push button", "name": "Appointments", "nameMatch": "EXACT" },
+        { "type": "IMAGE", "templateRef": "toolbar-appointments", "threshold": 0.95 }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Filter to the clinic",
+      "action": "SET_TEXT",
+      "inputValue": "${clinicName}",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "combo box", "name": "Clinic", "nameMatch": "CONTAINS" },
+        { "type": "IMAGE", "anchorTemplateRef": "label-clinic", "offsetX": 96, "offsetY": 9, "threshold": 0.94 }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Wait for the slot grid to render",
+      "action": "WAIT",
+      "timeoutMs": 20000,
+      "locatorChain": [
+        { "type": "IMAGE", "templateRef": "appt-grid-header", "threshold": 0.93 }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Select row 4 of the slot grid (header top-left + 18px gutter + 4 x 22px row pitch = 106)",
+      "action": "CLICK",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        {
+          "type": "IMAGE",
+          "anchorTemplateRef": "appt-grid-header",
+          "templateRef": "appt-row-strip",
+          "offsetX": 0,
+          "offsetY": 106,
+          "threshold": 0.93
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Open the slot's context menu in the Status column (row from the anchor, column from the step offset)",
+      "action": "RIGHT_CLICK",
+      "timeoutMs": 10000,
+      "clickOffsetX": 260,
+      "clickOffsetY": 0,
+      "locatorChain": [
+        {
+          "type": "IMAGE",
+          "anchorTemplateRef": "appt-grid-header",
+          "templateRef": "appt-row-strip",
+          "offsetX": 0,
+          "offsetY": 106,
+          "threshold": 0.93
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Choose Book Appointment",
+      "action": "CLICK",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "menu item", "name": "Book Appointment", "nameMatch": "EXACT" },
+        { "type": "IMAGE", "templateRef": "menu-book-appointment", "threshold": 0.95 }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Enter the booking reason",
+      "action": "SET_TEXT",
+      "inputValue": "${reason}",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "text", "name": "Reason", "nameMatch": "CONTAINS" },
+        { "type": "IMAGE", "anchorTemplateRef": "label-reason", "offsetX": 110, "offsetY": 8, "threshold": 0.94 }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Confirm the booking",
+      "action": "CLICK",
+      "timeoutMs": 10000,
+      "retry": { "maxAttempts": 1, "initialBackoffMs": 0, "multiplier": 1.0, "maxBackoffMs": 0 },
+      "locatorChain": [
+        { "type": "JAB", "role": "push button", "name": "OK", "nameMatch": "EXACT", "ancestorPath": "frame/dialog[Book Appointment]" }
+      ]
+    },
+    {
+      "index": 8,
+      "name": "Capture the booked slot time from the confirmation strip",
+      "action": "GET_TEXT",
+      "outputKey": "bookedSlotTime",
+      "timeoutMs": 10000,
+      "continueOnFailure": true,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "name": "Booked", "nameMatch": "CONTAINS" }
+      ]
+    }
+  ]
+}

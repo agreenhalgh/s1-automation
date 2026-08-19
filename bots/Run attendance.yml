@@ -1,0 +1,27 @@
+info:
+  name: Run attendance
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: http://localhost:8080/api/runs
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "attend",
+        "input": {
+          "nhsNumber": "9999991238"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

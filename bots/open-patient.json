@@ -1,0 +1,98 @@
+{
+  "botId": "open-patient",
+  "name": "Open a patient record by NHS number",
+  "version": 3,
+  "s1Version": "2024",
+  "globalTimeoutMs": 90000,
+  "defaultRetry": {
+    "maxAttempts": 3,
+    "initialBackoffMs": 250,
+    "multiplier": 2.0,
+    "maxBackoffMs": 2000
+  },
+  "steps": [
+    {
+      "index": 0,
+      "name": "Wait for the main window",
+      "action": "WAIT",
+      "timeoutMs": 30000,
+      "retry": { "maxAttempts": 1, "initialBackoffMs": 0, "multiplier": 1.0, "maxBackoffMs": 0 },
+      "locatorChain": [
+        { "type": "JAB", "role": "frame", "name": "SystmOne", "nameMatch": "CONTAINS" },
+        { "type": "IMAGE", "templateRef": "s1-titlebar", "threshold": 0.93 }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Dismiss the news banner if present",
+      "action": "CLICK",
+      "timeoutMs": 3000,
+      "continueOnFailure": true,
+      "retry": { "maxAttempts": 1, "initialBackoffMs": 0, "multiplier": 1.0, "maxBackoffMs": 0 },
+      "locatorChain": [
+        { "type": "JAB", "role": "push button", "name": "Close", "nameMatch": "EXACT", "ancestorPath": "frame/dialog[News]" },
+        { "type": "IMAGE", "templateRef": "news-banner-close", "threshold": 0.95 }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Open patient search",
+      "action": "KEYS",
+      "inputValue": "CTRL+F",
+      "timeoutMs": 5000,
+      "locatorChain": [
+        { "type": "JAB", "role": "frame", "name": "SystmOne", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Type NHS number",
+      "action": "SET_TEXT",
+      "inputValue": "${nhsNumber}",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "text", "name": "NHS Number", "nameMatch": "CONTAINS" },
+        { "type": "IMAGE", "anchorTemplateRef": "label-nhs-number", "offsetX": 130, "offsetY": 8, "threshold": 0.94 }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Search",
+      "action": "CLICK",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "push button", "name": "Search", "nameMatch": "EXACT" },
+        { "type": "IMAGE", "templateRef": "search-button", "threshold": 0.92 }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Select the first result row",
+      "action": "DOUBLE_CLICK",
+      "timeoutMs": 15000,
+      "locatorChain": [
+        { "type": "IMAGE", "anchorTemplateRef": "results-grid-header", "offsetX": 60, "offsetY": 30, "threshold": 0.93 }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Read the patient banner name",
+      "action": "GET_TEXT",
+      "outputKey": "patientName",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "name": "Patient", "nameMatch": "CONTAINS", "index": 0 }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Confirm the record is open",
+      "action": "READ_STATE",
+      "outputKey": "recordTabState",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "page tab", "name": "Patient Record", "nameMatch": "EXACT" }
+      ]
+    }
+  ]
+}

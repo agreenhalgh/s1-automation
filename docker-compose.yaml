@@ -1,0 +1,59 @@
+# RabbitMQ for the SystmOne RPA framework — the job transport from the control plane
+# (publisher) to the workers (competing consumers, FR-CP-01 / FR-WRK-01).
+#
+#   docker compose up -d                 # start the broker
+#   docker compose logs -f rabbitmq      # watch it
+#   docker compose down                  # stop it (queues survive in the named volume)
+#   docker compose down -v               # stop it and discard all queue state
+#
+# The application declares its own topology through RabbitAdmin — exchange
+# systmone.jobs.exchange, durable queue systmone.jobs.q, and the DLX/DLQ pair, see
+# config/RabbitTopologyConfig — so this broker needs no preloaded definitions. Queues
+# appear the first time the control plane or a worker connects.
+#
+# Management UI: http://localhost:15672 (guest/guest unless overridden below).
+# Inspect the work queue:
+#   docker exec systmone-rabbit rabbitmqctl list_queues name messages consumers
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: systmone-rabbit
+    # Fixed node name. RabbitMQ keys its data directory on the hostname, so a random
+    # container hostname would orphan the volume's contents on every recreate.
+    hostname: systmone-rabbit
+    restart: unless-stopped
+    ports:
+      # Loopback-only by default. Workers on other workstations need the broker reachable
+      # over the network — set RABBITMQ_BIND=0.0.0.0 for that, and set real credentials
+      # below at the same time (the image relaxes guest's loopback restriction, so an
+      # exposed broker with guest/guest is open to anyone who can route to the port).
+      - "${RABBITMQ_BIND:-127.0.0.1}:5672:5672"      # AMQP — spring.rabbitmq.port
+      - "${RABBITMQ_BIND:-127.0.0.1}:15672:15672"    # management UI
+      - "${RABBITMQ_BIND:-127.0.0.1}:15692:15692"    # Prometheus scrape endpoint
+    environment:
+      # Defaults match application.yaml's ${RABBITMQ_USER:guest} / ${RABBITMQ_PASSWORD:guest},
+      # so the control plane and workers connect with no configuration at all.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      # Durable queues and anything parked in the DLQ outlive the container. Dead-lettered
+      # jobs are the audit trail for runs a worker could not complete (FR-WRK-05), so
+      # losing them on restart would hide real failures.
+      - rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      # check_running alone reports a booting node as healthy; check_local_alarms also
+      # fails while a memory/disk alarm is blocking publishers.
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_local_alarms"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+volumes:
+  rabbit-data:

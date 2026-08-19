@@ -1,0 +1,25 @@
+# Worker profile: consumes jobs from RabbitMQ and POSTs results to the control plane.
+# A worker needs no database and no web server of its own.
+spring:
+  main:
+    web-application-type: none
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+systmone:
+  worker:
+    control-plane-url: ${CONTROL_PLANE_URL:http://localhost:8080}
+    token: ${SYSTMONE_WORKER_TOKEN:changeit}
+    worker-id: ${WORKER_ID:}
+    capability-tag: ${WORKER_CAPABILITY:}
+    window-title: ${S1_WINDOW_TITLE:SystmOne}
+    s1-version: ${S1_VERSION:unknown}
+    screenshot-dir: ${WORKER_SCREENSHOT_DIR:./worker-screenshots}

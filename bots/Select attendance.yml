@@ -1,0 +1,89 @@
+info:
+  name: Select attendance
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:8080/api/bots
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "attend",
+        "name": "Attend Patient",
+        "version": 1,
+        "s1Version": "DEMO",
+        "globalTimeoutMs": 60000,
+        "steps": [
+          {
+            "index": 0,
+            "name": "Activate SystmOne",
+            "action": "ACTIVATE",
+            "outputKey": "activatedWindow",
+            "inputValue": "SystmOne A&E",
+            "timeoutMs": 10000,
+            "locatorChain": [
+              {
+                "type": "JAB",
+                "role": "menu",
+                "name": "Patient",
+                "nameMatch": "CONTAINS"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "name": "Click attendance",
+            "action": "CLICK",
+            "timeoutMs": 8000,
+            "locatorChain": [
+              {
+                "type": "JAB",
+                "role": "push button",
+                "name": "Attendance",
+                "nameMatch": "EXACT"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "name": "Enter NHS number",
+            "action": "SET_TEXT",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "patient-registration-search",
+                "offsetX": 150,
+                "offsetY": 25,
+                "threshold": 0.2
+              }
+            ],
+            "inputValue": "${nhsNumber}",
+            "timeoutMs": 8000
+          },
+          {
+            "index": 3,
+            "name": "Click Search",
+            "action": "CLICK",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "templateRef": "patient-registration-search-button",
+                "threshold": 0.2
+              }
+            ],
+            "timeoutMs": 8000
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

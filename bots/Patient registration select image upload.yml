@@ -1,0 +1,40 @@
+info:
+  name: Patient registration select image upload
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: http://localhost:8080/api/templates
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "name": "patient-registration-select",
+        "s1Version": "DEMO",
+        "threshold": 0.8,
+        "dataBase64": "{{select-b64}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const fs = require('fs');
+        const path = require('path');
+
+        const filePath = path.join(bru.cwd(), 'patient-registration', 'select.png');
+        const fileBuffer = fs.readFileSync(filePath);
+        const base64Content = fileBuffer.toString('base64');
+
+        bru.setVar('select-b64', base64Content);
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

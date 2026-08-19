@@ -1,0 +1,27 @@
+info:
+  name: Run login
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: http://localhost:8080/api/runs
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "login",
+        "input": {
+          "username": "testing123"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

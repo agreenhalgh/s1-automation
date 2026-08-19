@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/AledGreenhalgh/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/**)",
+      "Read(//c/Users/AledGreenhalgh/.m2/repository/tools/jackson/core/jackson-databind/**)",
+      "Bash(./mvnw -o -q compile)"
+    ]
+  }
+}
