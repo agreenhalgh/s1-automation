@@ -3,6 +3,11 @@
 spring:
   main:
     web-application-type: none
+    # Spring Boot sets java.awt.headless=true by default, which disables Robot outright — and
+    # with it every IMAGE locator, failure screenshot and authoring capture. A worker's whole
+    # job needs the desktop, so it opts out here rather than relying on a JVM flag being
+    # remembered. On a host with no display, Robot still degrades gracefully (see RobotInput).
+    headless: false
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration

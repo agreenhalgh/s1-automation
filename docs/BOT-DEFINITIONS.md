@@ -306,6 +306,9 @@ curl -X POST $B/api/runs -H "$TOKEN" -H 'Content-Type: application/json' \
   -d '{"botId":"appointment-book","input":{"clinicName":"Dr Smith AM","reason":"Medication review"}}'
 ```
 
+The [capture tool](CAPTURE-TOOL.md) authors both templates and anchor-relative locators against a
+live worker screen, which is the least error-prone way to get the offsets below right.
+
 `GET /api/templates` shows what is already registered — add `?s1Version=2024` to see one
 release, or `GET /api/templates/{name}` to check a single `templateRef` before you cite it.
 

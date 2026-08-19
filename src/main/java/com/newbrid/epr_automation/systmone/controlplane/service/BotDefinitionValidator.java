@@ -49,14 +49,7 @@ public class BotDefinitionValidator {
                 LocatorDefinition locator = chain.get(i);
                 if (locator.type() != LocatorType.IMAGE) continue;
 
-                String where = describe(step, i);
-                if (isBlank(locator.templateRef()) && isBlank(locator.anchorTemplateRef())) {
-                    problems.add(where + " is an IMAGE locator with neither templateRef nor "
-                            + "anchorTemplateRef, so it can never resolve");
-                    continue;
-                }
-                checkRef(problems, checked, where, "anchorTemplateRef", locator.anchorTemplateRef());
-                checkRef(problems, checked, where, "templateRef", locator.templateRef());
+                checkLocator(problems, checked, describe(step, i), locator);
             }
         }
 
@@ -66,6 +59,36 @@ public class BotDefinitionValidator {
                             + " unresolved template(s); upload them with POST /api/templates first",
                     problems);
         }
+    }
+
+    /**
+     * The same check for a locator authored on its own rather than inside a bot — what the
+     * capture tool saves (FR-REG-01, FR-SR-07). Catching a dangling reference here means the
+     * author finds out while looking at the screenshot, not when a run fails days later.
+     *
+     * @throws RegistryValidationException if the locator's template references do not resolve
+     */
+    public void validate(LocatorDefinition locator, String locatorName) {
+        if (locator.type() != LocatorType.IMAGE) return;
+        List<String> problems = new ArrayList<>();
+        checkLocator(problems, new HashMap<>(), "locator '" + locatorName + "'", locator);
+        if (!problems.isEmpty()) {
+            throw new RegistryValidationException(
+                    "Locator '" + locatorName + "' references " + problems.size()
+                            + " unresolved template(s); upload them with POST /api/templates first",
+                    problems);
+        }
+    }
+
+    private void checkLocator(List<String> problems, Map<String, String> checked, String where,
+                              LocatorDefinition locator) {
+        if (isBlank(locator.templateRef()) && isBlank(locator.anchorTemplateRef())) {
+            problems.add(where + " is an IMAGE locator with neither templateRef nor "
+                    + "anchorTemplateRef, so it can never resolve");
+            return;
+        }
+        checkRef(problems, checked, where, "anchorTemplateRef", locator.anchorTemplateRef());
+        checkRef(problems, checked, where, "templateRef", locator.templateRef());
     }
 
     private void checkRef(List<String> problems, Map<String, String> checked,

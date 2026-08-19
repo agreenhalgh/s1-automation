@@ -289,9 +289,9 @@ HTTP. Any number of workers may run concurrently against the same queue.
 | ID | Priority | Requirement |
 |----|----------|-------------|
 | FR-TOOL-01 | M | Provide an **element inspector** that overlays the live SystmOne window and, on hover/click, shows the JAB accessibility attributes of the element under the cursor. |
-| FR-TOOL-02 | M | Provide a **partial-screenshot capture** mode: drag a rectangle over the screen to capture a template, name it, set a match threshold, and save it to the registry. |
+| FR-TOOL-02 | M | Provide a **partial-screenshot capture** mode: drag a rectangle over the screen to capture a template, name it, set a match threshold, and save it to the registry. *(Implemented — [capture tool](CAPTURE-TOOL.md), `authoring` profile.)* |
 | FR-TOOL-03 | S | Allow the developer to generate a suggested locator from an inspected element (best-effort role/name/path) and copy it into a bot definition. |
-| FR-TOOL-04 | S | Provide a **locator test** action: given a locator, highlight the resolved element (or matched region) and report resolution time and confidence. |
+| FR-TOOL-04 | S | Provide a **locator test** action: given a locator, highlight the resolved element (or matched region) and report resolution time and confidence. *(Implemented for image locators — [capture tool](CAPTURE-TOOL.md); JAB locators still need the inspector of FR-TOOL-01.)* |
 | FR-TOOL-05 | C | Provide a **recorder** that observes developer interactions and emits a draft bot (steps + locators) for editing. |
 
 ---

@@ -13,6 +13,12 @@ import org.springframework.context.annotation.Configuration;
  * a durable work queue behind a direct exchange, plus a dead-letter exchange/queue for
  * jobs a worker cannot complete or deliver results for (FR-WRK-05, FR-CP-01).
  *
+ * <p>Alongside the work queue sits a <b>control exchange</b> for request/reply commands
+ * addressed to <em>one</em> named worker — screenshot capture for the authoring tool
+ * (FR-TOOL-02). Jobs are deliberately anonymous, load-balanced across a pool; a capture is
+ * the opposite, and must reach the one workstation the author is looking at. Each worker
+ * therefore binds its own queue with its worker id as the routing key.</p>
+ *
  * <p>Declared as {@code Declarable} beans; the {@code RabbitAdmin} materialises them once
  * a broker connection is available, so their declaration never blocks startup when the
  * broker is temporarily down.</p>
@@ -26,6 +32,15 @@ public class RabbitTopologyConfig {
     public static final String DLX = "systmone.jobs.dlx";
     public static final String DLQ = "systmone.jobs.dlq";
 
+    /** Direct exchange for per-worker commands; the routing key is the worker id. */
+    public static final String CONTROL_EXCHANGE = "systmone.control.exchange";
+    private static final String CONTROL_QUEUE_PREFIX = "systmone.control.";
+
+    /** The command queue a given worker consumes from. */
+    public static String controlQueueName(String workerId) {
+        return CONTROL_QUEUE_PREFIX + workerId;
+    }
+
     @Bean
     public DirectExchange jobsExchange() {
         return new DirectExchange(EXCHANGE, true, false);
@@ -34,6 +49,11 @@ public class RabbitTopologyConfig {
     @Bean
     public DirectExchange deadLetterExchange() {
         return new DirectExchange(DLX, true, false);
+    }
+
+    @Bean
+    public DirectExchange controlExchange() {
+        return new DirectExchange(CONTROL_EXCHANGE, true, false);
     }
 
     @Bean

@@ -2,6 +2,8 @@ package com.newbrid.epr_automation.systmone.controlplane.service;
 
 import tools.jackson.databind.ObjectMapper;
 import com.newbrid.epr_automation.systmone.common.dto.BotDefinition;
+import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
+import com.newbrid.epr_automation.systmone.common.model.LocatorType;
 import com.newbrid.epr_automation.systmone.controlplane.domain.BotEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.LocatorEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.TemplateEntity;
@@ -110,12 +112,30 @@ public class RegistryService {
 
     // ---- locators ----
 
+    /**
+     * Store a named locator, upserting by name so re-authoring one in the capture tool revises
+     * it rather than accumulating near-duplicates. A revised definition bumps the entity's
+     * version and returns to UNVERIFIED: whatever verification the previous definition had
+     * earned says nothing about this one (FR-REG-02/03).
+     *
+     * @throws RegistryValidationException if an image locator's template references do not resolve
+     */
     @Transactional
-    public String saveLocator(String name, String type, String s1Version, String owner, Object definition) {
-        String id = UUID.randomUUID().toString();
-        LocatorEntity e = new LocatorEntity(id, name, type, s1Version, owner, toJson(definition));
-        locators.save(e);
-        return id;
+    public String saveLocator(String name, String s1Version, String owner, LocatorDefinition definition) {
+        validator.validate(definition, name);
+        String json = toJson(definition);
+        String type = definition.type() == null ? LocatorType.IMAGE.name() : definition.type().name();
+        LocatorEntity entity = locators.findByName(name).orElse(null);
+        if (entity == null) {
+            entity = new LocatorEntity(UUID.randomUUID().toString(), name, type, s1Version, owner, json);
+        } else {
+            entity.setDefinitionJson(json);
+            entity.setS1Version(s1Version);
+            entity.setStatus(LocatorEntity.Status.UNVERIFIED);
+        }
+        locators.save(entity);
+        audit.record(owner, "SAVE_LOCATOR", null, null, "locator=" + name + " type=" + type);
+        return entity.getId();
     }
 
     @Transactional
@@ -128,6 +148,19 @@ public class RegistryService {
 
     public List<LocatorEntity> listLocators() {
         return locators.findAllByOrderByUpdatedAtDesc();
+    }
+
+    public Optional<LocatorEntity> getLocator(String id) {
+        return locators.findById(id);
+    }
+
+    /** The stored JSON parsed back into a definition, for callers that act on its fields. */
+    public LocatorDefinition readLocatorDefinition(LocatorEntity locator) {
+        try {
+            return mapper.readValue(locator.getDefinitionJson(), LocatorDefinition.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Corrupt locator definition for " + locator.getId(), e);
+        }
     }
 
     // ---- helpers ----

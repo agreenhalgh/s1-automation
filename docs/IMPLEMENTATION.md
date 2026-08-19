@@ -166,6 +166,12 @@ curl -s $B/api/templates/patient-button -H "$TOKEN"
 The image bytes stay out of these payloads — `checksum` and `bytes` describe them, and
 `GET /api/templates/{name}/image` still serves the PNG itself for workers.
 
+**Authoring by hand is not the only way in.** The [capture tool](CAPTURE-TOOL.md) is a third
+application (`--spring.profiles.active=authoring`, port 8081) that pulls a screenshot from a chosen
+worker, cuts templates out of it, derives anchor-relative locators from a click, and tests both
+against a freshly captured screen. It writes through the same `/api/templates` and `/api/locators`
+endpoints used above, so nothing about the registry changes.
+
 Worked bot definitions live in [`bots/`](../bots) — including
 [`offset-clicks.json`](../bots/offset-clicks.json), which demonstrates every way to click
 at a position relative to a matched image. [`BOT-DEFINITIONS.md`](BOT-DEFINITIONS.md)
@@ -187,6 +193,15 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
   honours `s1Version`, `page` and `size`; `GET /api/templates/{name}` returns one template's
   metadata and 404s on an unknown name; both stay behind the worker token
   (`TemplateApiControllerTest` plus a live HTTP check).
+- The **capture tool** end to end, with all three profiles and RabbitMQ 4 running on this host:
+  a screenshot pulled from a worker over the control queue (1440x900 at 2.0x scaling), a template
+  cut from it and matched back at score 1.000, an offset locator derived from a click and resolving
+  to that exact point — with and without a sizing template — and a live test that captured a fresh
+  screen and resolved against it in ~670 ms. An under-threshold anchor was refused with its score,
+  a re-authored locator became version 2, `/api/**` still rejected an untokened call, the tool's own
+  JSON surface rejected a request without its CSRF token (403), and unauthenticated browsing
+  redirected to login. Offset arithmetic is pinned by `OffsetLocatorGeometryTest`
+  (`AuthoringServiceTest`, `CaptureStoreTest`, `ControlQueueTest` cover the rest).
 - The **worker profile boots**, the **Windows Access Bridge loads and initialises** on
   this Windows host, the worker **registers with the control plane over HTTP**, and its
   listener waits on RabbitMQ as a competing consumer. (Screen adapter reports unavailable

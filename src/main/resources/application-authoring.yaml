@@ -1,0 +1,34 @@
+# Authoring profile: the capture tool. A web app on its own port that pulls screenshots from
+# workers over RabbitMQ and reads/writes the registry through the control plane's REST API.
+# It owns no database of its own, and never writes a screenshot to disk (§5.4).
+server:
+  port: ${AUTHORING_PORT:8081}
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  thymeleaf:
+    cache: false
+
+systmone:
+  authoring:
+    control-plane-url: ${CONTROL_PLANE_URL:http://localhost:8080}
+    token: ${SYSTMONE_WORKER_TOKEN:changeit}
+    capture-timeout-ms: ${AUTHORING_CAPTURE_TIMEOUT_MS:15000}
+    max-captures: ${AUTHORING_MAX_CAPTURES:6}
+    default-threshold: ${AUTHORING_DEFAULT_THRESHOLD:0.90}
+    s1-version: ${S1_VERSION:unknown}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

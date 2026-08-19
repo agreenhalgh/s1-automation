@@ -8,13 +8,20 @@ import com.newbrid.epr_automation.systmone.automation.screen.ScreenBackend;
 import com.newbrid.epr_automation.systmone.automation.screen.TemplateStore;
 import com.newbrid.epr_automation.systmone.automation.window.NoopWindowControl;
 import com.newbrid.epr_automation.systmone.automation.window.Win32WindowControl;
+import com.newbrid.epr_automation.systmone.config.RabbitTopologyConfig;
 import com.newbrid.epr_automation.systmone.sdk.engine.WindowControl;
 import com.newbrid.epr_automation.systmone.sdk.engine.BotEngine;
 import com.newbrid.epr_automation.systmone.sdk.engine.ScreenshotSink;
 import com.newbrid.epr_automation.systmone.sdk.locator.BackendRegistry;
 import org.springframework.amqp.core.AcknowledgeMode;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -80,6 +87,34 @@ public class WorkerConfig {
     @Bean
     public BotEngine botEngine(BackendRegistry registry, ScreenshotSink sink, WindowControl windows) {
         return new BotEngine(registry, sink, windows);
+    }
+
+    /**
+     * This worker's own command queue, addressed by worker id — how the authoring tool asks
+     * <em>this</em> workstation for a screenshot (FR-TOOL-02).
+     *
+     * <p><b>Auto-delete</b> is the point: the queue exists only while this worker is consuming,
+     * so a capture request aimed at a stopped worker is unroutable and fails fast at the caller's
+     * reply timeout. Queuing it instead would deliver a burst of stale captures on restart, of a
+     * screen the author stopped looking at long ago.</p>
+     *
+     * <p><b>Durable</b> not by choice but by necessity: RabbitMQ 4 removed transient
+     * non-exclusive queues ({@code transient_nonexcl_queues}), and declaring one now fails the
+     * whole connection with {@code INTERNAL_ERROR}. Durability only decides whether the queue
+     * survives a broker restart, which for an auto-delete queue with no live consumer is moot.</p>
+     */
+    @Bean
+    public Queue controlQueue(WorkerProperties props) {
+        return QueueBuilder.durable(RabbitTopologyConfig.controlQueueName(props.resolveWorkerId()))
+                .autoDelete()
+                .build();
+    }
+
+    // Qualified explicitly: three DirectExchange beans exist, so by-type injection is ambiguous.
+    @Bean
+    public Binding controlBinding(@Qualifier("controlExchange") DirectExchange controlExchange,
+                                  WorkerProperties props) {
+        return BindingBuilder.bind(controlQueue(props)).to(controlExchange).with(props.resolveWorkerId());
     }
 
     @Bean

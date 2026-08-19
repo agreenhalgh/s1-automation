@@ -1,5 +1,7 @@
 package com.newbrid.epr_automation.systmone.controlplane.web.dto;
 
+import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
+import com.newbrid.epr_automation.systmone.controlplane.domain.LocatorEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.RunEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.StepResultEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.TemplateEntity;
@@ -35,6 +37,24 @@ public final class WebDtos {
             return new TemplateSummary(t.getId(), t.getName(), t.getS1Version(), t.getThreshold(),
                     t.getScreenContext(), t.getCreatedBy(), t.getChecksum(),
                     t.getData() != null ? t.getData().length : 0, t.getCreatedAt());
+        }
+    }
+
+    /** POST /api/locators — store a named locator authored in the capture tool (FR-REG-01). */
+    public record LocatorUpsertRequest(String name, String s1Version, LocatorDefinition definition) {}
+
+    /**
+     * GET /api/locators — a stored locator with its definition parsed back out, so a client can
+     * read the offsets and template references rather than re-parsing the stored JSON.
+     */
+    public record LocatorSummary(String id, String name, String type, String s1Version, String owner,
+                                 int version, String status, LocatorDefinition definition,
+                                 Instant createdAt, Instant updatedAt) {
+
+        public static LocatorSummary of(LocatorEntity e, LocatorDefinition definition) {
+            return new LocatorSummary(e.getId(), e.getName(), e.getType(), e.getS1Version(), e.getOwner(),
+                    e.getVersion(), e.getStatus() == null ? null : e.getStatus().name(), definition,
+                    e.getCreatedAt(), e.getUpdatedAt());
         }
     }
 

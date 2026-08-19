@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>SystmOne RPA — Capture Tool</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+    <link rel="stylesheet" th:href="@{/css/authoring.css}"/>
+    <meta name="csrf-token" th:content="${_csrf != null} ? ${_csrf.token} : ''"/>
+    <meta name="csrf-header" th:content="${_csrf != null} ? ${_csrf.headerName} : 'X-CSRF-TOKEN'"/>
+</head>
+<body class="wide">
+<header>
+    <h1>
+        <a th:href="@{/}">Capture Tool</a>
+        <span class="muted" th:text="'— ' + ${capture.workerId}">— worker</span>
+    </h1>
+    <div class="row">
+        <span class="muted" th:text="${capture.width} + 'x' + ${capture.height} + ' at x' + ${capture.uiScale} + ' scaling'"></span>
+        <button type="button" id="recapture">Re-capture</button>
+    </div>
+</header>
+
+<main id="workspace"
+      th:attr="data-capture-id=${capture.id},
+               data-worker-id=${capture.workerId},
+               data-width=${capture.width},
+               data-height=${capture.height},
+               data-ui-scale=${capture.uiScale},
+               data-image-url=${capture.imageUrl},
+               data-default-threshold=${defaultThreshold},
+               data-s1-version=${s1Version}">
+
+    <section class="stage-wrap">
+        <div id="banner" class="banner" hidden></div>
+
+        <div class="stage" id="stage">
+            <img id="shot" th:src="${capture.imageUrl}" alt="Captured screen"/>
+            <!-- viewBox is set to the capture's pixel size, so every overlay coordinate below is
+                 in the worker's own pixels — the same numbers the registry and the engine use. -->
+            <svg id="overlay" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
+        </div>
+
+        <p class="muted" id="hint"></p>
+
+        <fieldset class="modes">
+            <legend>What a drag or click on the screenshot means</legend>
+            <label><input type="radio" name="mode" value="template" checked/> Drag a rectangle to define a template</label>
+            <label><input type="radio" name="mode" value="locator"/> Click a point to place an offset locator</label>
+        </fieldset>
+    </section>
+
+    <aside class="sidebar">
+        <section class="panel">
+            <h2>New template</h2>
+            <p class="muted" id="selection-readout">Drag a rectangle over a control on the screenshot.</p>
+            <div class="crop-preview" id="crop-preview" hidden>
+                <div class="crop-window"><img id="crop-img" alt="Selected region"/></div>
+            </div>
+            <label>Name <input type="text" id="tpl-name" placeholder="patient-button" autocomplete="off"/></label>
+            <label>Match threshold <input type="number" id="tpl-threshold" step="0.01" min="0" max="1"/></label>
+            <label>Screen context <input type="text" id="tpl-context" placeholder="patient-record" autocomplete="off"/></label>
+            <label>S1 version <input type="text" id="tpl-s1" autocomplete="off"/></label>
+            <button type="button" id="save-template" disabled>Save template</button>
+        </section>
+
+        <section class="panel">
+            <h2>
+                Templates
+                <button type="button" id="locate-all" class="link-btn">Locate all on this screenshot</button>
+                <button type="button" id="refresh-templates" class="link-btn">Refresh</button>
+            </h2>
+            <p class="muted">
+                Tick a template to find it on this screenshot and draw where it matched. Green outlines
+                are regions cut from this capture; blue are matches found by the same resolver the
+                engine uses.
+            </p>
+            <ul class="list" id="template-list"></ul>
+        </section>
+
+        <section class="panel">
+            <h2>Offset locator</h2>
+            <p class="muted">
+                For a control with nothing distinctive of its own: match a stable
+                <em>anchor</em> nearby, then act at a fixed offset from it (FR-SR-07).
+            </p>
+            <label>Anchor template
+                <select id="anchor-select"><option value="">— choose —</option></select>
+            </label>
+            <button type="button" id="locate-anchor">Locate anchor</button>
+            <p class="muted" id="anchor-readout">Locate the anchor, then click the target point on the screenshot.</p>
+            <label>Sizing template <span class="muted">(optional — gives the target an extent)</span>
+                <select id="sizing-select"><option value="">— none: target is a point —</option></select>
+            </label>
+            <label>Name <input type="text" id="loc-name" placeholder="row-4-select" autocomplete="off"/></label>
+            <label>Match threshold <input type="number" id="loc-threshold" step="0.01" min="0" max="1"/></label>
+            <button type="button" id="save-locator" disabled>Save locator</button>
+            <pre id="locator-json" hidden></pre>
+        </section>
+
+        <section class="panel">
+            <h2>Saved locators <button type="button" id="refresh-locators" class="link-btn">Refresh</button></h2>
+            <ul class="list" id="locator-list"></ul>
+        </section>
+
+        <section class="panel">
+            <h2>Test</h2>
+            <p class="muted">
+                Takes a <strong>fresh</strong> screenshot from
+                <code th:text="${capture.workerId}">worker</code> and resolves the selected template or
+                locator against it, exactly as a run would (FR-TOOL-04).
+            </p>
+            <label class="inline-check">
+                <input type="checkbox" id="test-activate" checked/> Bring SystmOne to the front first
+            </label>
+            <div id="test-result" class="test-result" hidden></div>
+            <button type="button" id="back-to-capture" hidden>Back to the working capture</button>
+        </section>
+    </aside>
+</main>
+
+<script th:src="@{/js/authoring.js}"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>SystmOne RPA — Capture Tool</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+    <link rel="stylesheet" th:href="@{/css/authoring.css}"/>
+    <meta name="csrf-token" th:content="${_csrf != null} ? ${_csrf.token} : ''"/>
+    <meta name="csrf-header" th:content="${_csrf != null} ? ${_csrf.headerName} : 'X-CSRF-TOKEN'"/>
+</head>
+<body>
+<header>
+    <h1>SystmOne RPA — Capture Tool</h1>
+    <form th:action="@{/logout}" method="post" class="inline">
+        <span sec:authorize="isAuthenticated()" th:text="${#authentication.name}">developer</span>
+        <button type="submit">Sign out</button>
+    </form>
+</header>
+
+<p class="muted">
+    Templates and locators are read from and written to the control plane at
+    <code th:text="${controlPlaneUrl}">http://localhost:8080</code>. Screenshots are captured from a
+    worker on request and held <strong>in memory only</strong> — this tool never writes them to disk.
+</p>
+
+<p class="err" th:if="${registryError}" th:text="${registryError}"></p>
+
+<section>
+    <h2>Workers</h2>
+    <p class="muted">
+        Capture from the workstation the bot will run on. A template cropped anywhere else is a
+        different set of pixels, and image matching has no scale invariance to absorb the difference.
+    </p>
+    <table>
+        <thead>
+        <tr><th>Worker</th><th>Host</th><th>S1 version</th><th>Screen</th><th>Status</th><th>Last seen</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="w : ${workers}">
+            <td th:text="${w.id}"></td>
+            <td th:text="${w.host}"></td>
+            <td th:text="${w.s1Version}"></td>
+            <td th:text="${w.screenWidth} + 'x' + ${w.screenHeight}"></td>
+            <td><span th:class="'status status-' + ${w.status}" th:text="${w.status}"></span></td>
+            <td th:text="${w.lastSeenAt}"></td>
+            <td>
+                <button type="button" class="capture-btn" th:attr="data-worker=${w.id}">Capture screenshot</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(workers)}" class="muted">
+        No workers registered with the control plane. Start one with
+        <code>--spring.profiles.active=worker</code> on the machine running SystmOne.
+    </p>
+    <label class="inline-check">
+        <input type="checkbox" id="activate-window" checked/>
+        Bring the SystmOne window to the front first
+    </label>
+    <p id="capture-status" class="muted" aria-live="polite"></p>
+</section>
+
+<section>
+    <h2>Captures held in memory <span class="muted" th:text="'(' + ${#lists.size(captures)} + ')'"></span></h2>
+    <table>
+        <thead><tr><th>Capture</th><th>Worker</th><th>Size</th><th>Scaling</th><th>Templates cut</th><th>Taken</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="c : ${captures}">
+            <td><a th:href="@{'/captures/' + ${c.id}}" th:text="${#strings.abbreviate(c.id, 12)}"></a></td>
+            <td th:text="${c.workerId}"></td>
+            <td th:text="${c.width} + 'x' + ${c.height}"></td>
+            <td th:text="'x' + ${c.uiScale}"></td>
+            <td th:text="${#lists.size(c.crops)}"></td>
+            <td th:text="${c.capturedAt}"></td>
+            <td>
+                <a class="button-link" th:href="@{'/captures/' + ${c.id}}">Open</a>
+                <button type="button" class="discard-btn" th:attr="data-capture=${c.id}">Discard</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(captures)}" class="muted">No captures held. Capture one from a worker above.</p>
+    <p th:unless="${#lists.isEmpty(captures)}">
+        <button type="button" id="discard-all">Discard all captures</button>
+    </p>
+</section>
+
+<script th:src="@{/js/authoring-index.js}"></script>
+</body>
+</html>

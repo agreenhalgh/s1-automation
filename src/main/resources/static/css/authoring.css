@@ -1,0 +1,90 @@
+/* Capture tool. Builds on app.css: same palette, wider canvas, plus the overlay vocabulary. */
+
+body.wide { max-width: none; }
+
+main#workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    main#workspace { grid-template-columns: minmax(0, 1fr); }
+}
+
+.stage-wrap { position: sticky; top: 1rem; }
+
+/* The screenshot and its overlay share one coordinate space: the SVG is stretched over the
+   image and carries a viewBox of the capture's pixel size, so overlay geometry never needs
+   to know the display scale. */
+.stage { position: relative; display: block; line-height: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; touch-action: none; }
+.stage img { width: 100%; height: auto; display: block; user-select: none; -webkit-user-drag: none; }
+.stage svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.stage { cursor: crosshair; }
+
+.ov rect { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.ov line, .ov circle { stroke-width: 2; fill: none; vector-effect: non-scaling-stroke; }
+.ov text { font: 600 13px system-ui, sans-serif; paint-order: stroke; stroke: rgba(255, 255, 255, .85); stroke-width: 3px; }
+
+.ov-crop rect { stroke: #1a7f44; stroke-dasharray: 6 3; }
+.ov-crop text { fill: #1a7f44; }
+.ov-match rect { stroke: #2b5cff; }
+.ov-match text { fill: #2b5cff; }
+.ov-ambiguous rect { stroke: #b25e00; stroke-dasharray: 4 3; }
+.ov-ambiguous text { fill: #b25e00; }
+.ov-miss rect { stroke: #b42318; stroke-dasharray: 3 3; }
+.ov-miss text { fill: #b42318; }
+.ov-anchor rect { stroke: #b25e00; }
+.ov-anchor text { fill: #b25e00; }
+.ov-target line, .ov-target circle { stroke: #b42318; }
+.ov-target rect { stroke: #b42318; }
+.ov-target text { fill: #b42318; }
+.ov-selection rect { stroke: #1c2230; stroke-dasharray: 5 4; }
+.ov-selection text { fill: #1c2230; }
+
+.modes { border: 1px solid var(--line); border-radius: 6px; padding: .6rem .8rem; margin-top: .75rem; }
+.modes legend { font-size: .8rem; color: var(--muted); padding: 0 .3rem; }
+.modes label { display: block; font-size: .9rem; padding: .15rem 0; }
+
+.sidebar { display: flex; flex-direction: column; gap: 1rem; }
+.panel { border: 1px solid var(--line); border-radius: 6px; padding: .8rem 1rem; margin: 0; }
+.panel h2 { margin: 0 0 .5rem; font-size: .95rem; display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.panel label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .5rem; }
+.panel label input[type=text], .panel label input[type=number], .panel select { display: block; width: 100%; margin-top: .2rem; }
+.panel button { margin-top: .25rem; }
+.panel pre { margin-top: .6rem; }
+
+.inline-check { display: flex; align-items: center; gap: .4rem; font-size: .85rem; color: var(--muted); }
+.inline-check input { width: auto; }
+
+.link-btn { background: none; border: 0; color: var(--accent); padding: 0; font-size: .8rem; cursor: pointer; text-decoration: underline; }
+.button-link { display: inline-block; background: var(--accent); color: #fff; border-radius: 6px; padding: .35rem .7rem; font-size: .85rem; text-decoration: none; }
+
+.list { list-style: none; margin: 0; padding: 0; font-size: .85rem; max-height: 15rem; overflow-y: auto; }
+.list li { display: flex; align-items: baseline; gap: .4rem; padding: .3rem 0; border-bottom: 1px solid var(--line); }
+.list li label { margin: 0; color: var(--fg); flex: 0 1 auto; }
+.list .meta { flex: 1 1 auto; font-size: .75rem; }
+.score { font-weight: 600; font-size: .78rem; padding: .1rem .4rem; border-radius: 10px; }
+.score-ok { background: #e6f6ec; color: #1a7f44; }
+.score-warn { background: #fff4e5; color: #b25e00; }
+.score-bad { background: #fdecea; color: #b42318; }
+
+.banner { padding: .5rem .75rem; border-radius: 6px; font-size: .85rem; margin-bottom: .6rem; }
+.banner-info { background: #eef2ff; color: #2b5cff; }
+.banner-ok { background: #e6f6ec; color: #1a7f44; }
+.banner-warn { background: #fff4e5; color: #b25e00; }
+.banner-error { background: #fdecea; color: #b42318; }
+
+/* The crop preview is the screenshot itself, shifted inside a window the size of the
+   selection — the exact pixels that will be uploaded, with no resampling to mislead. */
+.crop-preview { margin-bottom: .6rem; }
+.crop-window { overflow: hidden; border: 1px solid var(--line); border-radius: 4px; max-width: 100%; }
+.crop-window img { display: block; max-width: none; }
+
+.test-result table.kv { font-size: .82rem; }
+.test-result.ok { border-left: 3px solid #1a7f44; padding-left: .6rem; }
+.test-result.bad { border-left: 3px solid #b42318; padding-left: .6rem; }
+
+body.busy { cursor: progress; }
+body.busy .stage { opacity: .7; }
