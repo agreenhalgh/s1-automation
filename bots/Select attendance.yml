@@ -57,9 +57,10 @@ http:
               {
                 "type": "IMAGE",
                 "anchorTemplateRef": "patient-registration-search",
-                "offsetX": 150,
-                "offsetY": 25,
-                "threshold": 0.2
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 105,
+                "offsetY": 13
               }
             ],
             "inputValue": "${nhsNumber}",
@@ -68,12 +69,137 @@ http:
           {
             "index": 3,
             "name": "Click Search",
-            "action": "CLICK",
+            "action": "KEYS",
+            "inputValue": "ALT+e",
             "locatorChain": [
               {
                 "type": "IMAGE",
                 "templateRef": "patient-registration-search-button",
-                "threshold": 0.2
+                "threshold": 0.4
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 4,
+            "name": "Click Select",
+            "action": "KEYS",
+            "inputValue": "ALT+s",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "templateRef": "1-patient-found",
+                "threshold": 0.9
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 5,
+            "name": "Dismiss information popup",
+            "action": "KEYS",
+            "inputValue": "ALT+o",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "information-popup",
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 248,
+                "offsetY": 117
+              }
+            ],
+            "timeoutMs": 4000,
+            "continueOnFailure": true
+          },
+          {
+            "index": 6,
+            "name": "Mode of arrival",
+            "action": "SET_TEXT",
+            "inputValue": "Walked in",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "mode-of-arrival",
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 136,
+                "offsetY": 10
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 7,
+            "name": "Referral source",
+            "action": "SET_TEXT",
+            "inputValue": "Police",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "referral-source",
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 156,
+                "offsetY": 10
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 8,
+            "name": "Triage category",
+            "action": "KEYS",
+            "inputValue": "DOWN,DOWN,DOWN",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "triage-category",
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 147,
+                "offsetY": 8
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 9,
+            "name": "Triage now",
+            "action": "CLICK",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "templateRef": "triage-now-button"
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 10,
+            "name": "Triage by me",
+            "action": "CLICK",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "templateRef": "triage-me-button"
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 11,
+            "name": "Accompanied by",
+            "action": "SET_TEXT",
+            "inputValue": "Carer",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "accompanied-by",
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 230,
+                "offsetY": 10
               }
             ],
             "timeoutMs": 8000

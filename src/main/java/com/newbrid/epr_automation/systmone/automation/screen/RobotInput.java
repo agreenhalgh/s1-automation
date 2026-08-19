@@ -15,6 +15,8 @@ import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * OS-level mouse/keyboard driving and screen capture via {@link java.awt.Robot}
@@ -156,11 +158,33 @@ public class RobotInput {
         for (char c : text.toCharArray()) typeChar(c);
     }
 
-    /** Send a key chord like {@code "CTRL+S"}, {@code "ENTER"}, {@code "ALT+F4"}. */
+    /**
+     * Send a key chord like {@code "CTRL+S"}, {@code "ENTER"}, {@code "ALT+F4"}, or a sequence
+     * of them separated by commas: {@code "DOWN,DOWN,ENTER"} presses each in turn.
+     *
+     * <p>The comma is the separator, so the comma key itself is named {@code COMMA}.</p>
+     */
     public void keys(String combo) {
         requireRobot();
-        if (combo == null || combo.isBlank()) return;
-        String[] parts = combo.toUpperCase().split("\\+");
+        for (String chord : chords(combo)) pressChord(chord);
+    }
+
+    /**
+     * Split a sequence into its chords. Blank chords are dropped rather than rejected: a
+     * trailing or doubled comma is a typo with an obvious intent, not a reason to fail a step.
+     */
+    static List<String> chords(String combo) {
+        if (combo == null || combo.isBlank()) return List.of();
+        List<String> chords = new ArrayList<>();
+        for (String chord : combo.split(",")) {
+            if (!chord.isBlank()) chords.add(chord.trim());
+        }
+        return chords;
+    }
+
+    /** Press every key of one chord, then release them in the reverse order. */
+    private void pressChord(String chord) {
+        String[] parts = chord.toUpperCase().split("\\+");
         int[] codes = new int[parts.length];
         for (int i = 0; i < parts.length; i++) codes[i] = keyCode(parts[i].trim());
         for (int c : codes) robot.keyPress(c);
@@ -180,7 +204,7 @@ public class RobotInput {
         if (shift) robot.keyRelease(KeyEvent.VK_SHIFT);
     }
 
-    private static int keyCode(String name) {
+    static int keyCode(String name) {
         return switch (name) {
             case "CTRL", "CONTROL" -> KeyEvent.VK_CONTROL;
             case "ALT" -> KeyEvent.VK_ALT;
@@ -189,10 +213,13 @@ public class RobotInput {
             case "TAB" -> KeyEvent.VK_TAB;
             case "ESC", "ESCAPE" -> KeyEvent.VK_ESCAPE;
             case "SPACE" -> KeyEvent.VK_SPACE;
+            case "COMMA" -> KeyEvent.VK_COMMA;
             case "DELETE", "DEL" -> KeyEvent.VK_DELETE;
             case "BACKSPACE" -> KeyEvent.VK_BACK_SPACE;
             case "HOME" -> KeyEvent.VK_HOME;
             case "END" -> KeyEvent.VK_END;
+            case "UP" -> KeyEvent.VK_UP;
+            case "DOWN" -> KeyEvent.VK_DOWN;
             case "F1" -> KeyEvent.VK_F1;
             case "F2" -> KeyEvent.VK_F2;
             case "F3" -> KeyEvent.VK_F3;

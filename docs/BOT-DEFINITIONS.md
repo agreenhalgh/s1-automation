@@ -44,6 +44,28 @@ the engine treats as a step failure. `ACTIVATE` is described below.
 Omitted `retry` inherits the bot's `defaultRetry` (default 3 attempts, 250 ms → 500 ms →
 1 s). `timeoutMs` of 0 or less becomes 10 000 ms; `globalTimeoutMs` of 0 means no ceiling.
 
+### Sending keys
+
+A `KEYS` step takes its keystrokes from `inputValue`. Join a chord with `+`, and separate
+successive presses with `,`:
+
+```jsonc
+"inputValue": "CTRL+S"            // one chord: hold CTRL, press S, release both
+"inputValue": "ALT"               // a modifier on its own is fine — focuses the menu bar
+"inputValue": "DOWN,DOWN,ENTER"   // three presses, in order, from one step
+```
+
+Recognised names: `CTRL`/`CONTROL`, `ALT`, `SHIFT`, `ENTER`/`RETURN`, `TAB`,
+`ESC`/`ESCAPE`, `SPACE`, `COMMA`, `DELETE`/`DEL`, `BACKSPACE`, `HOME`, `END`, `UP`, `DOWN`,
+`F1`–`F4`. Any single character stands for itself, so `CTRL+S` and `ALT+F` work without
+being listed. An unrecognised name fails the step rather than being skipped — a keystroke
+that silently does not happen leaves the rest of the bot acting on a screen it never
+reached. Because `,` separates presses, the comma key is named `COMMA`.
+
+Keystrokes go to whichever window owns the keyboard focus, not to the element the locator
+resolved; the chain only gates the step. Point a `KEYS` step at something cheap, such as
+the SystmOne frame, rather than an IMAGE locator that costs a full-screen match per step.
+
 ## Activating the application
 
 `KEYS` and `SET_TEXT` ultimately go to whichever window owns the keyboard focus, so a bot
