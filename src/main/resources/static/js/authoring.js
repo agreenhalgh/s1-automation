@@ -27,6 +27,7 @@
         crops: [],            // template definitions cut from this capture
         located: new Map(),   // templateRef -> LocateResult drawn on the overlay
         anchor: null,         // LocateResult of the chosen anchor
+        inspect: null,        // InspectView of the element the author last clicked
         templates: [],
         locators: [],
         test: null            // active test result; while set, the stage shows the fresh capture
@@ -55,6 +56,13 @@
         locThreshold: document.getElementById('loc-threshold'),
         saveLocator: document.getElementById('save-locator'),
         locatorJson: document.getElementById('locator-json'),
+        inspectReadout: document.getElementById('inspect-readout'),
+        inspectResult: document.getElementById('inspect-result'),
+        inspectAttrs: document.getElementById('inspect-attrs'),
+        inspectAncestors: document.getElementById('inspect-ancestors'),
+        inspectVerdict: document.getElementById('inspect-verdict'),
+        inspectJson: document.getElementById('inspect-json'),
+        copyInspectJson: document.getElementById('copy-inspect-json'),
         testResult: document.getElementById('test-result'),
         testActivate: document.getElementById('test-activate'),
         backToCapture: document.getElementById('back-to-capture')
@@ -175,6 +183,11 @@
                 el.overlay.appendChild(box(state.anchor, 'ov-anchor',
                     'anchor ' + state.anchor.templateRef + '  ' + fmt(state.anchor.score)));
             }
+            if (state.inspect && state.inspect.element.width > 0) {
+                const e = state.inspect.element;
+                el.overlay.appendChild(box(e, 'ov-jab',
+                    (e.role || 'element') + (e.name ? '  ' + e.name : '')));
+            }
             if (state.target) {
                 el.overlay.appendChild(crosshair(state.target.x, state.target.y, 'ov-target',
                     'target ' + state.target.x + ',' + state.target.y));
@@ -210,7 +223,9 @@
             ? 'Showing the screenshot the test ran against. The working capture is unchanged.'
             : state.mode === 'template'
                 ? 'Drag over a control to select it. Small, distinctive regions match best.'
-                : 'Click the point the bot should act on. The offset is measured from the located anchor.';
+                : state.mode === 'inspect'
+                    ? 'Click a control to read it from the accessibility tree on the worker.'
+                    : 'Click the point the bot should act on. The offset is measured from the located anchor.';
     }
 
     // ---- pointer handling ----
@@ -230,6 +245,10 @@
 
     el.stage.addEventListener('pointerdown', (event) => {
         if (state.test) return;
+        if (state.mode === 'inspect') {
+            inspectAt(point(event));
+            return;
+        }
         if (state.mode === 'locator') {
             state.target = point(event);
             render();
@@ -281,6 +300,115 @@
         el.cropImg.style.marginTop = (-s.y) + 'px';
         render();
     }
+
+    // ---- JAB inspection ----
+
+    /**
+     * Ask the worker what accessible element sits under this point. The answer describes the
+     * live tree, not the screenshot, so it can disagree with what is on screen — the server
+     * says when it does and that is reported rather than smoothed over.
+     */
+    async function inspectAt(pt) {
+        el.inspectReadout.textContent = 'Reading the accessibility tree at ' + pt.x + ',' + pt.y + '…';
+        el.inspectResult.hidden = true;
+        try {
+            state.inspect = await api('POST', '/authoring/api/captures/' + state.captureId + '/inspect', pt);
+            renderInspection();
+            say('', null);
+        } catch (e) {
+            state.inspect = null;
+            el.inspectResult.hidden = true;
+            el.inspectReadout.textContent = e.message;
+            say(e.message, 'error');
+        }
+        render();
+    }
+
+    function renderInspection() {
+        const view = state.inspect;
+        const e = view.element;
+        el.inspectReadout.textContent = view.stale
+            ? 'The worker found this element outside the captured screen — SystmOne has moved or '
+              + 'changed since this screenshot. Re-capture before trusting the highlight.'
+            : 'Highlighted on the screenshot. Attributes are read from SystmOne itself, not from pixels.';
+
+        el.inspectAttrs.replaceChildren();
+        [
+            ['role', e.role],
+            ['name', e.name],
+            ['description', e.description],
+            ['states', e.states],
+            ['bounds', e.x + ',' + e.y + '  ' + e.width + 'x' + e.height],
+            ['index in parent', e.indexInParent],
+            ['children', e.childCount]
+        ].forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') return;
+            const row = document.createElement('tr');
+            const k = document.createElement('th');
+            k.textContent = key;
+            const v = document.createElement('td');
+            v.textContent = String(value);
+            row.appendChild(k);
+            row.appendChild(v);
+            el.inspectAttrs.appendChild(row);
+        });
+
+        el.inspectAncestors.textContent = view.ancestors.length
+            ? 'Inside: ' + view.ancestors.map(a => a.role + (a.name ? ' “' + a.name + '”' : '')).join(' › ')
+            : '';
+
+        // The count is the whole verdict. A locator matching several elements reads as correct
+        // and fails at run time, because the engine refuses to guess between them.
+        if (!view.locator) {
+            el.inspectVerdict.className = 'verdict verdict-bad';
+            el.inspectVerdict.textContent = 'This element exposes no role, name or description to '
+                + 'write a locator from. Cut a template over it instead, or anchor off a labelled '
+                + 'control nearby.';
+            el.inspectJson.hidden = true;
+            el.copyInspectJson.hidden = true;
+            return;
+        }
+        el.inspectJson.hidden = false;
+        el.copyInspectJson.hidden = false;
+        el.inspectJson.textContent = JSON.stringify(locatorJson(view.locator), null, 2);
+        if (view.matchCount === 1) {
+            el.inspectVerdict.className = 'verdict verdict-ok';
+            el.inspectVerdict.textContent = 'Matches exactly one element — usable as it stands.';
+        } else if (view.matchCount === 0) {
+            el.inspectVerdict.className = 'verdict verdict-bad';
+            el.inspectVerdict.textContent = 'Matches nothing on a second pass, so the tree changed '
+                + 'while it was being read. Click the control again.';
+        } else {
+            el.inspectVerdict.className = 'verdict verdict-warn';
+            el.inspectVerdict.textContent = 'Matches ' + view.matchCount + ' elements. The engine '
+                + 'treats that as ambiguous and will not act on it — add something that tells this '
+                + 'one apart, or use an offset locator from a nearby anchor.';
+        }
+    }
+
+    /** Only the fields a JAB locator actually uses, so the JSON pastes straight into a bot. */
+    function locatorJson(locator) {
+        const out = {type: 'JAB'};
+        ['role', 'name', 'nameMatch', 'description', 'index'].forEach(key => {
+            if (locator[key] !== null && locator[key] !== undefined) out[key] = locator[key];
+        });
+        return out;
+    }
+
+    el.copyInspectJson.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(el.inspectJson.textContent);
+            say('Locator JSON copied.', 'ok');
+        } catch (e) {
+            // Clipboard access is blocked outside a secure context; selecting it still works.
+            const range = document.createRange();
+            range.selectNodeContents(el.inspectJson);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            say('Could not reach the clipboard, so the JSON is selected instead — copy it.', 'warn');
+        }
+    });
 
     document.querySelectorAll('input[name="mode"]').forEach(radio =>
         radio.addEventListener('change', () => {

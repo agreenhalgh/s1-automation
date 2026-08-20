@@ -11,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
@@ -170,46 +172,97 @@ public class JnaAccessBridge implements AccessBridge {
     // AccessBridge API
     // =====================================================================
 
+    /**
+     * Top-level contexts to search: the window whose title matches, <em>and every other window
+     * belonging to the same JVM</em>.
+     *
+     * <p>That second half is what makes modal dialogs reachable. A Java modal is its own
+     * top-level window with its own title — "Confirm", "Warning", the name of the thing it is
+     * asking about — and almost never the application's. Filtering on the configured title alone
+     * therefore hid the entire contents of every dialog: a step could see the window it was
+     * blocked by, and nothing in it. Same-JVM is the right test rather than same title, because
+     * a dialog raised by SystmOne runs in SystmOne's JVM no matter what it calls itself, while
+     * an unrelated Java application on the same desktop has a different one.</p>
+     *
+     * <p>The foreground window comes first. When a modal is up it <em>is</em> the foreground
+     * window, so the search reaches the thing the user is looking at before the window behind
+     * it — which matters for the authoring tool, and costs nothing at run time where every root
+     * is searched anyway.</p>
+     */
     @Override
     public List<AcRef> roots(String windowTitleContains) {
         String needle = windowTitleContains == null ? "" : windowTitleContains.toLowerCase();
         // The whole enumeration runs on the bridge thread: isJavaWindow and
         // getAccessibleContextFromHWND are only valid there.
         return onBridgeThread("roots", l -> {
+            List<JavaWindow> windows = javaWindows(l);
+            Set<Integer> vmIds = new LinkedHashSet<>();
+            for (JavaWindow w : windows) {
+                if (w.title().toLowerCase().contains(needle)) vmIds.add(w.vmId());
+            }
+            if (vmIds.isEmpty()) {
+                log.debug("No Java window matched '{}' among {} Java window(s)",
+                        windowTitleContains, windows.size());
+                return List.<AcRef>of();
+            }
+
+            HWND foreground = User32.INSTANCE.GetForegroundWindow();
             List<AcRef> result = new ArrayList<>();
-            try {
-                User32.INSTANCE.EnumWindows((HWND hwnd, com.sun.jna.Pointer data) -> {
-                    char[] buf = new char[512];
-                    User32.INSTANCE.GetWindowText(hwnd, buf, buf.length);
-                    String title = Native.toString(buf);
-                    if (title != null && !title.isBlank() && title.toLowerCase().contains(needle)) {
-                        try {
-                            com.sun.jna.Pointer p = hwnd.getPointer();
-                            if (l.isJavaWindow(p)) {
-                                IntByReference vm = new IntByReference();
-                                LongByReference ac = new LongByReference();
-                                if (l.getAccessibleContextFromHWND(p, vm, ac)) {
-                                    result.add(new AcRef(vm.getValue(), ac.getValue()));
-                                } else {
-                                    log.debug("Window '{}' is a Java window but yielded no context", title);
-                                }
-                            } else {
-                                log.trace("Window '{}' is not a Java window", title);
-                            }
-                        } catch (Throwable t) {
-                            log.debug("Probe of window '{}' failed: {}", title, t.toString());
-                        }
-                    }
-                    return true;
-                }, null);
-            } catch (Throwable t) {
-                log.warn("Window enumeration failed: {}", t.toString());
+            List<String> titles = new ArrayList<>();
+            for (JavaWindow w : windows) {
+                if (!vmIds.contains(w.vmId())) continue;
+                boolean inFront = foreground != null && foreground.equals(w.hwnd());
+                if (inFront) {
+                    result.add(0, new AcRef(w.vmId(), w.ac()));
+                    titles.add(0, w.title() + " (foreground)");
+                } else {
+                    result.add(new AcRef(w.vmId(), w.ac()));
+                    titles.add(w.title());
+                }
             }
-            if (result.isEmpty()) {
-                log.debug("No Java window matched '{}'", windowTitleContains);
-            }
+            log.debug("Searching {} window(s) of the JVM(s) behind '{}': {}",
+                    result.size(), windowTitleContains, titles);
             return result;
         }, List.of());
+    }
+
+    /** One top-level window that answered to the Access Bridge. */
+    private record JavaWindow(HWND hwnd, String title, int vmId, long ac) {}
+
+    private List<JavaWindow> javaWindows(WindowsAccessBridgeLib l) {
+        List<JavaWindow> found = new ArrayList<>();
+        try {
+            User32.INSTANCE.EnumWindows((HWND hwnd, com.sun.jna.Pointer data) -> {
+                char[] buf = new char[512];
+                User32.INSTANCE.GetWindowText(hwnd, buf, buf.length);
+                String title = Native.toString(buf);
+                // A blank title is a message-only or shell window; an invisible one cannot be
+                // acted on, and a disposed JVM leaves plenty of those behind to walk pointlessly.
+                if (title == null || title.isBlank() || !User32.INSTANCE.IsWindowVisible(hwnd)) {
+                    return true;
+                }
+                try {
+                    com.sun.jna.Pointer p = hwnd.getPointer();
+                    if (l.isJavaWindow(p)) {
+                        IntByReference vm = new IntByReference();
+                        LongByReference ac = new LongByReference();
+                        if (l.getAccessibleContextFromHWND(p, vm, ac)) {
+                            found.add(new JavaWindow(hwnd, title, vm.getValue(), ac.getValue()));
+                        } else {
+                            log.debug("Window '{}' is a Java window but yielded no context", title);
+                        }
+                    } else {
+                        log.trace("Window '{}' is not a Java window", title);
+                    }
+                } catch (Throwable t) {
+                    log.debug("Probe of window '{}' failed: {}", title, t.toString());
+                }
+                return true;
+            }, null);
+        } catch (Throwable t) {
+            log.warn("Window enumeration failed: {}", t.toString());
+        }
+        return found;
     }
 
     @Override

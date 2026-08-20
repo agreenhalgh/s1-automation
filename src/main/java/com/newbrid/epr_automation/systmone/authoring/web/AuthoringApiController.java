@@ -5,6 +5,8 @@ import com.newbrid.epr_automation.systmone.authoring.RegistryClient;
 import com.newbrid.epr_automation.systmone.authoring.RegistryTemplateStore;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CaptureCommand;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CaptureView;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.InspectCommand;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.InspectView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.LocateCommand;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.LocateResult;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.OffsetLocatorCommand;
@@ -90,6 +92,12 @@ public class AuthoringApiController {
     @PostMapping("/captures/{id}/locate")
     public List<LocateResult> locate(@PathVariable String id, @RequestBody LocateCommand cmd) {
         return authoring.locate(id, cmd.templateRefs());
+    }
+
+    /** What accessible element is under this point? Reads the worker's live tree (FR-TOOL-03). */
+    @PostMapping("/captures/{id}/inspect")
+    public InspectView inspect(@PathVariable String id, @RequestBody InspectCommand cmd) {
+        return authoring.inspect(id, cmd.x(), cmd.y());
     }
 
     @PostMapping("/templates")

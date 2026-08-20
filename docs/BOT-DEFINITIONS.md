@@ -133,7 +133,43 @@ Every step other than `ACTIVATE` still requires a non-empty `locatorChain`.
 ## Locators
 
 **JAB** (preferred): `role`, `name` + `nameMatch` (`EXACT` | `CONTAINS` | `REGEX`),
-`description`, `value`, `index`, `ancestorPath`.
+`description`, `index`, `ancestorPath`. (`value` is carried on the record but not matched on.)
+
+A locator resolving to more than one element is **ambiguous**, and the engine refuses to act on
+it rather than guess (NFR-REL-04). That is the usual reason a JAB step fails on a screen where
+the control is plainly visible.
+
+### Targeting a modal dialog
+
+A Java modal is its own top-level window with its own title — "Confirm", "Warning", the name of
+the thing it is asking about — and almost never the application's. Every window belonging to
+SystmOne's JVM is searched, whatever it calls itself, so a dialog's contents are reachable
+without configuring anything.
+
+The catch is that the window *behind* the modal is still there: still in the tree, still
+rendered, still matched. Its buttons are routinely named the same as the dialog's, so a bare
+`{"role": "push button", "name": "Cancel"}` matches both and the step fails as ambiguous. Use
+`ancestorPath` to say which window you mean:
+
+```jsonc
+{
+  "type": "JAB",
+  "role": "push button",
+  "name": "Cancel",
+  "ancestorPath": "dialog[Confirm deletion]"   // the Cancel in the dialog, not the one behind it
+}
+```
+
+`ancestorPath` is a `>`-separated chain of `role`, `role[name]` or `[name]` segments, outermost
+first, matched against the element's containers as a **subsequence** — `"dialog > table[Slots]"`
+means "inside a dialog, inside a table named Slots", not "a table whose parent is a dialog".
+Swing inserts panels, scroll panes and viewports that nobody should have to enumerate and that a
+SystmOne release can add without changing anything visible. The bracketed name is a
+case-insensitive *contains*, because a dialog title carries what it is asking about ("Confirm
+deletion of Mr Smith") and a locator pinned to the whole string would work for one patient only.
+
+The capture tool writes this for you: click a control while a dialog is up and the suggested
+locator arrives scoped to that dialog, but only when the scope is what makes it unique.
 
 **IMAGE** (fallback): `templateRef` (a name registered via `POST /api/templates`, and
 listed by `GET /api/templates`), `threshold`, and for anchor-relative locating

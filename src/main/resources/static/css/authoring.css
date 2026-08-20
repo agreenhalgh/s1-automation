@@ -42,6 +42,10 @@ main#workspace {
 .ov-target text { fill: #b42318; }
 .ov-selection rect { stroke: #1c2230; stroke-dasharray: 5 4; }
 .ov-selection text { fill: #1c2230; }
+/* Distinct from every match colour: a JAB element is not a match at all, it is the control
+   itself, reported by SystmOne rather than inferred from pixels. */
+.ov-jab rect { stroke: #7b3ff2; }
+.ov-jab text { fill: #7b3ff2; }
 
 .modes { border: 1px solid var(--line); border-radius: 6px; padding: .6rem .8rem; margin-top: .75rem; }
 .modes legend { font-size: .8rem; color: var(--muted); padding: 0 .3rem; }
@@ -81,6 +85,17 @@ main#workspace {
 .crop-preview { margin-bottom: .6rem; }
 .crop-window { overflow: hidden; border: 1px solid var(--line); border-radius: 4px; max-width: 100%; }
 .crop-window img { display: block; max-width: none; }
+
+/* Attributes read from the accessibility tree. Values wrap: a name can be a whole sentence,
+   and truncating one would hide the very thing that makes a locator unique. */
+table.attrs { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: .5rem; }
+table.attrs th { text-align: left; font-weight: 600; color: var(--muted); padding: .2rem .5rem .2rem 0; vertical-align: top; white-space: nowrap; }
+table.attrs td { padding: .2rem 0; word-break: break-word; }
+
+.verdict { font-size: .82rem; margin: .5rem 0 0; padding-left: .6rem; border-left: 3px solid var(--line); }
+.verdict-ok { border-left-color: #1a7f44; color: #1a7f44; }
+.verdict-warn { border-left-color: #b25e00; color: #b25e00; }
+.verdict-bad { border-left-color: #b42318; color: #b42318; }
 
 .test-result table.kv { font-size: .82rem; }
 .test-result.ok { border-left: 3px solid #1a7f44; padding-left: .6rem; }

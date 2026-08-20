@@ -2,6 +2,7 @@ package com.newbrid.epr_automation.systmone.worker;
 
 import com.newbrid.epr_automation.systmone.automation.jab.AccessBridge;
 import com.newbrid.epr_automation.systmone.automation.jab.JabBackend;
+import com.newbrid.epr_automation.systmone.automation.jab.JabInspector;
 import com.newbrid.epr_automation.systmone.automation.jab.JnaAccessBridge;
 import com.newbrid.epr_automation.systmone.automation.screen.RobotInput;
 import com.newbrid.epr_automation.systmone.automation.screen.ScreenBackend;
@@ -64,6 +65,15 @@ public class WorkerConfig {
         }
         return new NoopWindowControl("window activation needs Windows; this host is "
                 + System.getProperty("os.name"));
+    }
+
+    /**
+     * Reads the accessibility tree for the authoring tool. Shares the window-title filter with
+     * {@link JabBackend} so the tool inspects the same windows a run resolves locators in.
+     */
+    @Bean
+    public JabInspector jabInspector(AccessBridge bridge, WorkerProperties props) {
+        return new JabInspector(bridge, props.getWindowTitle());
     }
 
     @Bean

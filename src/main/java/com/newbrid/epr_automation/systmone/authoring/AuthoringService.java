@@ -2,6 +2,7 @@ package com.newbrid.epr_automation.systmone.authoring;
 
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CaptureView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CropView;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.InspectView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.LocateResult;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.OffsetLocatorCommand;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.OffsetLocatorView;
@@ -11,6 +12,8 @@ import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.TestComma
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.TestResult;
 import com.newbrid.epr_automation.systmone.automation.screen.ImageLocatorResolver;
 import com.newbrid.epr_automation.systmone.common.dto.CaptureResponse;
+import com.newbrid.epr_automation.systmone.common.dto.InspectResponse;
+import com.newbrid.epr_automation.systmone.common.dto.JabNode;
 import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
 import com.newbrid.epr_automation.systmone.common.model.LocatorType;
 import org.slf4j.Logger;
@@ -160,6 +163,44 @@ public class AuthoringService {
         } catch (IllegalStateException e) {
             return notFound(ref, e.getMessage());
         }
+    }
+
+    // ---- inspect ----
+
+    /**
+     * Ask the worker what accessible element sits under a point on this capture, and turn the
+     * answer into a locator the author can paste into a bot (FR-TOOL-03, FR-JAB-02).
+     *
+     * <p>The point is in the capture's pixel space, which is the worker's logical screen space,
+     * so it needs no conversion — but it does need checking: a click outside the captured screen
+     * would ask the worker about a coordinate that never existed.</p>
+     *
+     * <p>The reply describes the tree as it is <em>now</em>. If the element comes back outside
+     * the bounds of the screenshot the author is looking at, the screen has changed since the
+     * capture, and the result is flagged rather than drawn as though it lined up.</p>
+     *
+     * @throws IllegalStateException if the worker could not inspect; the message is the worker's
+     *         own explanation, which is what the author needs to act on
+     */
+    public InspectView inspect(String captureId, int x, int y) {
+        CaptureStore.Capture capture = store.require(captureId);
+        if (x < 0 || y < 0 || x >= capture.width() || y >= capture.height()) {
+            throw new IllegalArgumentException(String.format(
+                    "(%d,%d) is outside this %dx%d capture", x, y, capture.width(), capture.height()));
+        }
+        InspectResponse response = captures.inspect(capture.workerId(), x, y);
+        if (!response.ok()) {
+            throw new IllegalStateException(response.error() == null
+                    ? "Worker '" + capture.workerId() + "' returned no element" : response.error());
+        }
+        JabNode element = response.element();
+        boolean stale = element.width() > 0 && element.height() > 0
+                && !new Rectangle(0, 0, capture.width(), capture.height())
+                        .intersects(new Rectangle(element.x(), element.y(), element.width(), element.height()));
+        log.info("Inspected ({},{}) on capture {}: {} '{}' matched by the suggested locator {} time(s)",
+                x, y, captureId, element.role(), element.name(), response.matchCount());
+        return new InspectView(element, response.ancestors(), response.suggested(),
+                response.matchCount(), stale);
     }
 
     // ---- offset locators ----

@@ -1,5 +1,6 @@
 package com.newbrid.epr_automation.systmone.authoring.dto;
 
+import com.newbrid.epr_automation.systmone.common.dto.JabNode;
 import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
 
 import java.time.Instant;
@@ -93,4 +94,24 @@ public final class AuthoringDtos {
                              long elapsedMs, String diagnostic) {}
 
     public record RegionView(int x, int y, int width, int height) {}
+
+    /** POST /authoring/api/captures/{id}/inspect — what is the accessible element at this point? */
+    public record InspectCommand(int x, int y) {}
+
+    /**
+     * The element under the author's click, as the page shows it (FR-TOOL-03).
+     *
+     * <p>{@code matchCount} is the field that decides whether {@code locator} is worth saving.
+     * The engine refuses to act on a locator that matches more than one element, so a count
+     * above 1 means the suggestion identifies the control for a human but not for a run.</p>
+     *
+     * @param element    the element itself, in the capture's pixel space
+     * @param ancestors  containers above it, outermost first
+     * @param locator    a JAB locator that resolves to it, or null if nothing distinguishes it
+     * @param matchCount how many elements that locator matches on the worker right now
+     * @param stale      the live tree no longer agrees with the screenshot — the element was
+     *                   found outside the capture's bounds, so the screen has moved on
+     */
+    public record InspectView(JabNode element, List<JabNode> ancestors, LocatorDefinition locator,
+                              int matchCount, boolean stale) {}
 }

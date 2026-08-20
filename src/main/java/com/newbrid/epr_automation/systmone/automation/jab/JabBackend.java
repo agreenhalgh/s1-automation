@@ -4,7 +4,6 @@ import com.newbrid.epr_automation.systmone.automation.screen.RobotInput;
 import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
 import com.newbrid.epr_automation.systmone.common.model.ActionType;
 import com.newbrid.epr_automation.systmone.common.model.LocatorType;
-import com.newbrid.epr_automation.systmone.common.model.NameMatch;
 import com.newbrid.epr_automation.systmone.sdk.locator.ActionParams;
 import com.newbrid.epr_automation.systmone.sdk.locator.AutomationBackend;
 import com.newbrid.epr_automation.systmone.sdk.locator.ElementHandle;
@@ -17,7 +16,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * Java Access Bridge automation backend (LocatorType.JAB) — the preferred, attribute-
@@ -61,7 +59,7 @@ public class JabBackend implements AutomationBackend {
         do {
             List<JabElementHandle> matches = new ArrayList<>();
             for (AcRef root : bridge.roots(windowTitleContains)) {
-                search(root, locator, 0, new int[]{0}, matches);
+                search(root, locator, 0, new int[]{0}, matches, new ArrayList<>());
                 if (matches.size() > 1) break;
             }
             if (matches.size() == 1) {
@@ -78,41 +76,33 @@ public class JabBackend implements AutomationBackend {
         return Optional.empty();
     }
 
+    /**
+     * @param ancestors the containers above {@code node}, outermost first, maintained as the
+     *                  walk descends so a locator can be scoped by {@code ancestorPath} — which
+     *                  is how a step targets a control inside a modal dialog rather than the
+     *                  identically named one in the window behind it
+     */
     private void search(AcRef node, LocatorDefinition locator, int depth, int[] visited,
-                        List<JabElementHandle> out) {
+                        List<JabElementHandle> out, List<AccessibleInfo> ancestors) {
         if (node == null || depth > MAX_DEPTH || visited[0] > MAX_NODES || out.size() > 1) return;
         visited[0]++;
         AccessibleInfo info = bridge.info(node);
         if (info == null) return;
 
-        if (matches(info, locator)) {
+        if (JabMatching.matches(info, ancestors, locator)) {
             out.add(new JabElementHandle(info.bounds(), node, describe(info)));
             if (out.size() > 1) return;
         }
-        for (int i = 0; i < info.childCount(); i++) {
-            AcRef child = bridge.child(node, i);
-            search(child, locator, depth + 1, visited, out);
-            if (out.size() > 1) return;
+        ancestors.add(info);
+        try {
+            for (int i = 0; i < info.childCount(); i++) {
+                AcRef child = bridge.child(node, i);
+                search(child, locator, depth + 1, visited, out, ancestors);
+                if (out.size() > 1) return;
+            }
+        } finally {
+            ancestors.remove(ancestors.size() - 1);
         }
-    }
-
-    private boolean matches(AccessibleInfo info, LocatorDefinition l) {
-        if (l.role() != null && !l.role().equalsIgnoreCase(info.role())) return false;
-        if (l.description() != null && !l.description().equalsIgnoreCase(info.description())) return false;
-        if (l.index() != null && l.index() != info.indexInParent()) return false;
-        if (l.name() != null && !nameMatches(l, info.name())) return false;
-        // visible/rendered guard: an element with no bounds cannot be acted on
-        return info.width() > 0 && info.height() > 0;
-    }
-
-    private boolean nameMatches(LocatorDefinition l, String actual) {
-        if (actual == null) return false;
-        NameMatch mode = l.nameMatch() == null ? NameMatch.EXACT : l.nameMatch();
-        return switch (mode) {
-            case EXACT -> actual.equals(l.name());
-            case CONTAINS -> actual.contains(l.name());
-            case REGEX -> Pattern.compile(l.name()).matcher(actual).find();
-        };
     }
 
     @Override

@@ -9,10 +9,15 @@ spring:
     # remembered. On a host with no display, Robot still degrades gracefully (see RobotInput).
     headless: false
   autoconfigure:
+    # Spring Boot 4 moved these out of spring-boot-autoconfigure into their own modules and
+    # renamed the repositories one. The 3.x names silently excluded nothing — the class is not
+    # on the classpath, so Boot has no way to tell a stale name from a typo — and this role
+    # quietly started a datasource it has no use for. It only became visible when the default
+    # datasource stopped being in-memory H2.
     exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

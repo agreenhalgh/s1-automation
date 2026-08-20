@@ -83,6 +83,40 @@ Two details make the derived numbers correct rather than merely plausible:
   from a click, resolve with the engine's resolver, land on that same click — at 1:1 and at 200%
   scaling, with and without a sizing template.
 
+**Read JAB attributes** (FR-TOOL-03, FR-JAB-02). Choose *Click a control to read its JAB
+attributes* and click a control. The tool asks the worker what accessible element sits under that
+screen point, outlines it in purple on the screenshot, and lists its role, name, description,
+states, bounds and index — then proposes a JAB locator for it, ready to paste into a bot.
+
+Prefer an attribute locator over a template wherever the control exposes itself. A template is a
+picture and breaks when the picture changes: a theme, a resolution, a font, a redesigned icon.
+`role` and `name` come from SystmOne itself and survive all four.
+
+Three things about this panel are worth knowing:
+
+- **It reads the live tree, not the screenshot.** The accessibility tree only exists inside the
+  running SystmOne process; nothing about it can be recovered from a PNG afterwards. So the answer
+  describes the screen *now*. If the element comes back outside the captured screen, the tool says
+  the screen has moved on rather than drawing a highlight that lines up with nothing.
+- **The match count is the verdict, not the attributes.** The engine refuses to act on a locator
+  matching more than one element (NFR-REL-04), so the worker runs the proposed locator back over
+  the same tree and reports how many it hits. One is usable. More is reported as ambiguous, with
+  the advice to distinguish the control or fall back to an offset locator — never dressed up as a
+  working suggestion.
+- **Specificity is added only when it buys uniqueness.** Role and name come first because they
+  describe the control; `index` is a position among siblings and is exactly what an extra row or a
+  redesign breaks, so it is a last resort. If even that leaves the locator ambiguous, you get the
+  real count rather than a false green light.
+
+An element that reports no role, name or description has nothing to write a locator from — that is
+a control painted rather than built from accessible components, and it needs a template.
+
+**Modal dialogs work.** Every window of SystmOne's JVM is searched, so clicking into a dialog
+reads the dialog, and the panel names it in the *Inside:* chain. Because the window behind stays
+matchable and tends to hold identically named buttons, a suggestion made while a dialog is up
+comes back scoped with `ancestorPath` — but only when that scope is what makes it unique, since
+pinning a locator to a window title costs something the day the title changes.
+
 **Test** (FR-TOOL-04). *Test* on any template or locator captures a **new** screenshot from the
 same worker and resolves against it, then displays that screenshot with the matched template
 outlined and the action point crosshaired, plus score, runner-up, match scale and resolution time.
@@ -97,11 +131,15 @@ and input on top: polling captures until the step's timeout, then driving the mo
 
 That shared resolver is deliberate. A tool that judged matches by rules of its own would be worse
 than no tool: it would certify locators the engine then fails to resolve. It also means the tool
-reproduces the matcher's real behaviour rather than an idealised version — including that on a
-full-screen capture the coarse-to-fine search can settle on a *different* location than the one a
-template was cropped from when the screen has repetitive content. Seeing that box land in the wrong
-place is exactly the signal that the template needs more distinguishing context, and it is what the
-engine would have done at run time.
+reproduces the matcher's real behaviour rather than an idealised version. When a template genuinely
+appears twice on screen, the box lands on one of them and the panel reports the runner-up scoring
+just as well — that amber verdict is the signal the template needs more distinguishing context, and
+it is exactly what the engine would refuse to act on at run time.
+
+The same argument applies to `JabMatching`, which decides whether one accessible node satisfies one
+JAB locator. `JabBackend` uses it to resolve locators during a run and `JabInspector` uses it to
+count how many elements a suggestion matches, so the tool's "matches one element" means the engine's
+"resolves".
 
 ## Patient data
 

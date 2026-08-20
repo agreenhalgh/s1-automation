@@ -46,6 +46,7 @@
             <legend>What a drag or click on the screenshot means</legend>
             <label><input type="radio" name="mode" value="template" checked/> Drag a rectangle to define a template</label>
             <label><input type="radio" name="mode" value="locator"/> Click a point to place an offset locator</label>
+            <label><input type="radio" name="mode" value="inspect"/> Click a control to read its JAB attributes</label>
         </fieldset>
     </section>
 
@@ -75,6 +76,23 @@
                 engine uses.
             </p>
             <ul class="list" id="template-list"></ul>
+        </section>
+
+        <section class="panel">
+            <h2>JAB element</h2>
+            <p class="muted">
+                Click a control on the screenshot to read it from SystmOne's accessibility tree.
+                Attribute locators survive a screen redraw, a theme change and a different
+                resolution, so prefer one over a template wherever the control exposes itself.
+            </p>
+            <p class="muted" id="inspect-readout">Choose <em>read its JAB attributes</em> above, then click a control.</p>
+            <div id="inspect-result" hidden>
+                <table class="attrs" id="inspect-attrs"></table>
+                <p class="muted" id="inspect-ancestors"></p>
+                <p id="inspect-verdict" class="verdict"></p>
+                <pre id="inspect-json"></pre>
+                <button type="button" id="copy-inspect-json" class="link-btn">Copy locator JSON</button>
+            </div>
         </section>
 
         <section class="panel">
