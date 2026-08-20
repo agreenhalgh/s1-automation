@@ -1,19 +1,33 @@
-# RabbitMQ for the SystmOne RPA framework — the job transport from the control plane
-# (publisher) to the workers (competing consumers, FR-CP-01 / FR-WRK-01).
+# Backing services for the SystmOne RPA framework: RabbitMQ, the job transport from the
+# control plane (publisher) to the workers (competing consumers, FR-CP-01 / FR-WRK-01),
+# PostgreSQL, the control plane's store for run history, audit and the element registry
+# (NFR-CMP-03), and pgAdmin for looking at that database. The control plane, workers and
+# capture tool all run on the host, not in here.
 #
-#   docker compose up -d                 # start the broker
-#   docker compose logs -f rabbitmq      # watch it
-#   docker compose down                  # stop it (queues survive in the named volume)
-#   docker compose down -v               # stop it and discard all queue state
+#   docker compose up -d --wait          # start everything, waiting until each is healthy
+#   docker compose logs -f rabbitmq      # watch the broker
+#   docker compose down                  # stop them (state survives in the named volumes)
+#   docker compose down -v               # stop them and discard all queue and database state
+#
+# Web UIs, both loopback-only by default:
+#   RabbitMQ management  http://localhost:15672
+#   pgAdmin              http://localhost:5050
 #
 # The application declares its own topology through RabbitAdmin — exchange
 # systmone.jobs.exchange, durable queue systmone.jobs.q, and the DLX/DLQ pair, see
 # config/RabbitTopologyConfig — so this broker needs no preloaded definitions. Queues
 # appear the first time the control plane or a worker connects.
 #
-# Management UI: http://localhost:15672 (guest/guest unless overridden below).
-# Inspect the work queue:
+# Inspect the work queue. rabbitmqadmin ships with the management plugin already enabled in
+# this image (v2 — subcommands, not the old flag style), and drives the HTTP API rather than
+# the Erlang distribution port, so it works from anywhere that can reach 15672:
+#   docker exec systmone-rabbit rabbitmqadmin show overview
+#   docker exec systmone-rabbit rabbitmqadmin list queues
+#   docker exec systmone-rabbit rabbitmqadmin get queue systmone.jobs.dlq count 5
 #   docker exec systmone-rabbit rabbitmqctl list_queues name messages consumers
+# It authenticates as guest/guest by default; with RABBITMQ_USER/RABBITMQ_PASSWORD set, pass
+# --username and --password. A dead-lettered job stays in systmone.jobs.dlq until it is read
+# off, so a non-zero count there is history, not a live backlog (FR-WRK-05).
 
 services:
   rabbitmq:
@@ -55,5 +69,77 @@ services:
         soft: 65536
         hard: 65536
 
+  postgres:
+    image: postgres:17-alpine
+    container_name: systmone-postgres
+    restart: unless-stopped
+    ports:
+      # Loopback-only by default, like the broker. The control plane is the only client —
+      # workers and the capture tool reach the registry through its REST API, never the
+      # database — so this normally has no reason to be reachable off the host.
+      - "${POSTGRES_BIND:-127.0.0.1}:5432:5432"      # spring.datasource.url
+    environment:
+      # Defaults match application.yaml's ${JDBC_USER:systmone} / ${JDBC_PASSWORD:systmone}
+      # and the systmone database in ${JDBC_URL}, so the control plane connects with no
+      # configuration at all. Set real credentials before this leaves a developer machine.
+      POSTGRES_DB: ${JDBC_DATABASE:-systmone}
+      POSTGRES_USER: ${JDBC_USER:-systmone}
+      POSTGRES_PASSWORD: ${JDBC_PASSWORD:-systmone}
+      # Hibernate writes timestamps in UTC; matching the server avoids a session default
+      # quietly reinterpreting run start/finish times.
+      PGTZ: UTC
+      TZ: UTC
+    volumes:
+      # Run history and the audit log are the record of what the bots did to real patient
+      # records, so they outlive the container (FR-CP-02, NFR-SEC-02).
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      # -U and -d matter: bare pg_isready checks the default 'postgres' database as the
+      # current OS user and reports ready while ours is still being created on first boot.
+      test: ["CMD-SHELL", "pg_isready -q -U ${JDBC_USER:-systmone} -d ${JDBC_DATABASE:-systmone}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  pgadmin:
+    image: dpage/pgadmin4:9
+    container_name: systmone-pgadmin
+    restart: unless-stopped
+    depends_on:
+      # Nothing breaks if pgAdmin starts first — it would just fail to connect until the
+      # database is up — but waiting means the pre-registered server works on first click.
+      postgres:
+        condition: service_healthy
+    ports:
+      # 5050 on the host because 80 in the container is pgAdmin's own default and 8080 is
+      # the control plane's. Loopback-only: this is a database console, and it holds saved
+      # credentials for the database behind it.
+      - "${PGADMIN_BIND:-127.0.0.1}:${PGADMIN_PORT:-5050}:80"
+    environment:
+      # Login for the console itself, not for PostgreSQL. pgAdmin validates this and refuses
+      # to start on a reserved domain, so .local, .localhost, .test and .invalid are all out
+      # however plausible they look for a container that is only reachable on loopback.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@systmone.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-systmone}
+      # Skips the second, separate prompt that would otherwise guard saved server
+      # passwords. One login is enough for a loopback-only development console.
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      # Saved server definitions, query history and preferences. Discardable — everything
+      # here can be rebuilt from servers.json below.
+      - pgadmin-data:/var/lib/pgadmin
+      # Read at first start of an empty pgadmin-data volume, so the systmone database is
+      # already listed rather than waiting to be typed in by hand.
+      - ./docker/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:80/misc/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
 volumes:
   rabbit-data:
+  pg-data:
+  pgadmin-data:

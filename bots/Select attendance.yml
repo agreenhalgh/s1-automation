@@ -59,8 +59,8 @@ http:
                 "anchorTemplateRef": "patient-registration-search",
                 "templateRef": null,
                 "threshold": 0.9,
-                "offsetX": 105,
-                "offsetY": 13
+                "offsetX": 79,
+                "offsetY": 39
               }
             ],
             "inputValue": "${nhsNumber}",
@@ -75,7 +75,7 @@ http:
               {
                 "type": "IMAGE",
                 "templateRef": "patient-registration-search-button",
-                "threshold": 0.4
+                "threshold": 0.9
               }
             ],
             "timeoutMs": 8000
@@ -123,8 +123,8 @@ http:
                 "anchorTemplateRef": "mode-of-arrival",
                 "templateRef": null,
                 "threshold": 0.9,
-                "offsetX": 136,
-                "offsetY": 10
+                "offsetX": 143,
+                "offsetY": 12
               }
             ],
             "timeoutMs": 8000
@@ -140,7 +140,7 @@ http:
                 "anchorTemplateRef": "referral-source",
                 "templateRef": null,
                 "threshold": 0.9,
-                "offsetX": 156,
+                "offsetX": 218,
                 "offsetY": 10
               }
             ],
@@ -148,6 +148,22 @@ http:
           },
           {
             "index": 8,
+            "name": "Triage category",
+            "action": "CLICK",
+            "locatorChain": [
+              {
+                "type": "IMAGE",
+                "anchorTemplateRef": "triage-category",
+                "templateRef": null,
+                "threshold": 0.9,
+                "offsetX": 156,
+                "offsetY": 10
+              }
+            ],
+            "timeoutMs": 8000
+          },
+          {
+            "index": 9,
             "name": "Triage category",
             "action": "KEYS",
             "inputValue": "DOWN,DOWN,DOWN",
@@ -157,14 +173,14 @@ http:
                 "anchorTemplateRef": "triage-category",
                 "templateRef": null,
                 "threshold": 0.9,
-                "offsetX": 147,
-                "offsetY": 8
+                "offsetX": 156,
+                "offsetY": 10
               }
             ],
             "timeoutMs": 8000
           },
           {
-            "index": 9,
+            "index": 10,
             "name": "Triage now",
             "action": "CLICK",
             "locatorChain": [
@@ -176,7 +192,7 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 10,
+            "index": 11,
             "name": "Triage by me",
             "action": "CLICK",
             "locatorChain": [
@@ -188,7 +204,7 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 11,
+            "index": 12,
             "name": "Accompanied by",
             "action": "SET_TEXT",
             "inputValue": "Carer",
@@ -198,8 +214,8 @@ http:
                 "anchorTemplateRef": "accompanied-by",
                 "templateRef": null,
                 "threshold": 0.9,
-                "offsetX": 230,
-                "offsetY": 10
+                "offsetX": 252,
+                "offsetY": 12
               }
             ],
             "timeoutMs": 8000

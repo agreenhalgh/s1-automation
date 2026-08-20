@@ -3,8 +3,9 @@ package com.newbrid.epr_automation.systmone.controlplane.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -25,7 +26,21 @@ public class TemplateEntity {
     private String createdBy;
     private String checksum;
 
-    @Lob
+    /**
+     * PNG bytes, held inline in the row.
+     *
+     * <p>Deliberately not {@code @Lob}: on PostgreSQL that maps to {@code oid}, which keeps
+     * the bytes in {@code pg_largeobject} and leaves only a reference here. Large objects are
+     * not removed when their row is deleted — every replaced template would leak until
+     * someone ran {@code vacuumlo} — and they can only be read inside a transaction, so
+     * serving an image outside one fails at run time. On H2 {@code @Lob} behaves, which is
+     * exactly why this needs saying: the tests would not catch it.</p>
+     *
+     * <p>The length is for databases that need one; PostgreSQL ignores it for {@code bytea}.
+     * Templates are small crops, so 16 MB is far more headroom than any real one needs.</p>
+     */
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(length = 16 * 1024 * 1024)
     private byte[] data;
 
     private Instant createdAt;

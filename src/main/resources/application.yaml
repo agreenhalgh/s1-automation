@@ -5,14 +5,22 @@ spring:
     # Default role is the control plane. Start a worker with --spring.profiles.active=worker
     active: controlplane
 
-  # Control-plane persistence. Defaults to in-memory H2 so the app runs with no external
-  # database; point at PostgreSQL in production (NFR-CMP-03) via the env vars below.
+  # Control-plane persistence: PostgreSQL (NFR-CMP-03), served locally by the postgres
+  # service in docker-compose.yaml, whose defaults these match. Only the controlplane
+  # profile touches it — worker and authoring exclude the datasource entirely.
+  #
+  # `docker compose up -d` is therefore a prerequisite for starting the control plane. To
+  # run without it, point JDBC_URL at in-memory H2, which is still on the runtime classpath:
+  #   JDBC_URL='jdbc:h2:mem:systmone;DB_CLOSE_DELAY=-1' JDBC_USER=sa JDBC_PASSWORD=
   datasource:
-    url: ${JDBC_URL:jdbc:h2:mem:systmone;DB_CLOSE_DELAY=-1}
-    username: ${JDBC_USER:sa}
-    password: ${JDBC_PASSWORD:}
+    url: ${JDBC_URL:jdbc:postgresql://localhost:5432/systmone}
+    username: ${JDBC_USER:systmone}
+    password: ${JDBC_PASSWORD:systmone}
   jpa:
     hibernate:
+      # Hibernate owns the schema for now; a real migration tool is listed as production
+      # hardening in docs/IMPLEMENTATION.md. On Postgres this creates the tables on first
+      # boot and adds columns after that, but it never drops or narrows one.
       ddl-auto: update
     open-in-view: false
 

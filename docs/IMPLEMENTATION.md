@@ -68,11 +68,26 @@ com.newbrid.epr_automation.systmone
 
 ### Prerequisites
 - JDK 25, the bundled Maven wrapper (`./mvnw`).
-- A RabbitMQ broker for the dispatch→worker→results loop: `docker compose up -d`
-  (see [`docker-compose.yaml`](../docker-compose.yaml) — loopback-only by default; set
-  `RABBITMQ_BIND=0.0.0.0` plus real credentials when workers connect from other hosts).
-- The control plane defaults to in-memory **H2**; point at PostgreSQL with
-  `JDBC_URL`/`JDBC_USER`/`JDBC_PASSWORD` for production (NFR-CMP-03).
+- The backing services, all from [`docker-compose.yaml`](../docker-compose.yaml):
+  `docker compose up -d --wait`. That is RabbitMQ for the dispatch→worker→results loop,
+  PostgreSQL for the control plane's store (NFR-CMP-03), and pgAdmin for looking at that
+  database. All bind to loopback only; set `RABBITMQ_BIND=0.0.0.0` / `POSTGRES_BIND=0.0.0.0`
+  plus real credentials when workers connect from other hosts.
+- Consoles: RabbitMQ management on <http://localhost:15672> (guest/guest), pgAdmin on
+  <http://localhost:5050> (`admin@systmone.dev` / `systmone`, override with
+  `PGADMIN_EMAIL`/`PGADMIN_PASSWORD`). pgAdmin arrives with the control-plane database
+  already registered from [`docker/pgadmin-servers.json`](../docker/pgadmin-servers.json) —
+  it prompts once for the database password. Queue inspection without a browser:
+  `docker exec systmone-rabbit rabbitmqadmin list queues` (rabbitmqadmin v2 ships with the
+  image's management plugin).
+- The control plane connects to that database with no configuration — `application.yaml`'s
+  defaults match the compose service. Override with `JDBC_URL`/`JDBC_USER`/`JDBC_PASSWORD`
+  per environment, including to fall back to in-memory H2, which is still on the runtime
+  classpath: `JDBC_URL='jdbc:h2:mem:systmone;DB_CLOSE_DELAY=-1' JDBC_USER=sa JDBC_PASSWORD=`.
+  Hibernate creates the schema on first boot (`ddl-auto: update`).
+- The tests need neither container. Surefire layers `src/test/resources/test-datasource.yaml`
+  over the main config through `spring.config.additional-location`, which swaps in H2 while
+  leaving every other setting — including the default `controlplane` profile — in place.
 
 Both roles are the same artefact; the active profile picks the role, and `controlplane`
 is the default in `application.yaml`.
@@ -186,7 +201,9 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
   matches (`TemplateMatcherTest`).
 - Results endpoint applies a terminal outcome once and ignores duplicates
   (`ResultServiceIdempotencyTest`, FR-CP-02a).
-- Control plane boots on H2 with all 7 repositories; UI redirects unauthenticated users
+- Control plane boots against the compose PostgreSQL with all 7 repositories, Hibernate
+  creating all 7 tables on first connection, and a template's PNG survives an upload/fetch
+  round-trip byte-identically out of a `bytea` column; UI redirects unauthenticated users
   to login; `/api/**` rejects requests without a worker token (403); bot registration,
   template upload + image fetch, and worker registration all work; unknown-run POST → 404.
 - Template registry read/list: `GET /api/templates` lists metadata ordered by name and

@@ -125,6 +125,19 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<!-- Adds to the config the application already loads, rather than
+						     replacing it: the tests get H2 in place of the PostgreSQL the
+						     control plane runs on, and keep every other setting, including
+						     the default controlplane profile that half the beans require. -->
+						<spring.config.additional-location>classpath:/test-datasource.yaml</spring.config.additional-location>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

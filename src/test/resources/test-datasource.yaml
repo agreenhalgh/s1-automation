@@ -1,0 +1,19 @@
+# Layered over the main application.yaml when the tests run, via
+# spring.config.additional-location in the surefire configuration. It is deliberately not
+# named application.yaml: a file of that name in test resources would shadow the main one
+# outright rather than override part of it, silently dropping every other setting the
+# application depends on.
+#
+# The control plane runs on PostgreSQL, but no test should need a container to be up. The
+# context-loading tests here exercise mapping, wiring and HTTP behaviour rather than
+# anything Postgres-specific, so in-memory H2 backs them. Anything that genuinely depends
+# on PostgreSQL behaviour belongs in an integration test against a real database.
+spring:
+  datasource:
+    url: jdbc:h2:mem:systmone;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      # Each run starts from an empty schema, so no test inherits another's rows.
+      ddl-auto: create-drop

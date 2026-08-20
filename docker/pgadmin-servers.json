@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "Pre-registers the control plane's database in pgAdmin so a fresh container is not an",
+    "empty console. Host is the compose service name, not localhost: pgAdmin connects across",
+    "the compose network, where 5432 is the container's own port and the published loopback",
+    "mapping is irrelevant.",
+    "No password is stored here — pgAdmin prompts on first connect and can then save it.",
+    "If JDBC_USER or JDBC_DATABASE is overridden in compose, edit Username/MaintenanceDB to",
+    "match, or just correct them in the UI."
+  ],
+  "Servers": {
+    "1": {
+      "Name": "systmone control plane",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "systmone",
+      "Username": "systmone",
+      "SSLMode": "prefer",
+      "Comment": "Run history, audit log and the element registry (NFR-CMP-03)."
+    }
+  }
+}
