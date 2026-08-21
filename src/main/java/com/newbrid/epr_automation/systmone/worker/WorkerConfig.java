@@ -12,6 +12,7 @@ import com.newbrid.epr_automation.systmone.automation.window.Win32WindowControl;
 import com.newbrid.epr_automation.systmone.config.RabbitTopologyConfig;
 import com.newbrid.epr_automation.systmone.sdk.engine.WindowControl;
 import com.newbrid.epr_automation.systmone.sdk.engine.BotEngine;
+import com.newbrid.epr_automation.systmone.sdk.engine.KeyboardControl;
 import com.newbrid.epr_automation.systmone.sdk.engine.ScreenshotSink;
 import com.newbrid.epr_automation.systmone.sdk.locator.BackendRegistry;
 import org.springframework.amqp.core.AcknowledgeMode;
@@ -94,9 +95,14 @@ public class WorkerConfig {
                 .register(new ScreenBackend(templateStore, robot));
     }
 
+    /**
+     * @param keyboard the same {@link RobotInput} the backends drive — it is the engine's
+     *                 {@link KeyboardControl} too, which is what lets a KEYS step carry no locator
+     */
     @Bean
-    public BotEngine botEngine(BackendRegistry registry, ScreenshotSink sink, WindowControl windows) {
-        return new BotEngine(registry, sink, windows);
+    public BotEngine botEngine(BackendRegistry registry, ScreenshotSink sink, WindowControl windows,
+                               RobotInput keyboard) {
+        return new BotEngine(registry, sink, windows, keyboard);
     }
 
     /**

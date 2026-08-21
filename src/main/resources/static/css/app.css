@@ -23,3 +23,17 @@ pre { background:#f6f8fc; padding:.75rem; border-radius:6px; overflow-x:auto; }
 .status-FAILED, .status-TIMED_OUT, .status-ABORTED { background:#fdecea; color:#b42318; }
 .status-RUNNING, .status-DISPATCHED, .status-PENDING { background:#eef2ff; color:#2b5cff; }
 .status-SKIPPED { background:#f3f4f6; color:#6b7280; }
+
+/* Marks an execution of a step the flow came back to, so a loop reads as a loop rather than as
+   a table of near-identical rows. */
+.repeat {
+    display: inline-block;
+    margin-left: .4rem;
+    padding: .05rem .35rem;
+    border-radius: 10px;
+    background: #eef2ff;
+    color: #2b5cff;
+    font-size: .72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}

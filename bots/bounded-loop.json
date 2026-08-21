@@ -1,0 +1,78 @@
+{
+  "botId": "bounded-loop",
+  "name": "Find a patient in the results grid, paging down at most ten times",
+  "version": 1,
+  "s1Version": "2024",
+  "globalTimeoutMs": 180000,
+  "steps": [
+    {
+      "name": "Activate SystmOne",
+      "action": "ACTIVATE",
+      "timeoutMs": 10000
+    },
+    {
+      "key": "look",
+      "name": "Is the row on screen?",
+      "action": "WAIT",
+      "timeoutMs": 3000,
+      "onFound": "select-row",
+      "onMissing": "page-down",
+      "locatorChain": [
+        { "type": "JAB", "role": "table row", "name": "${patientName}", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "page-down",
+      "name": "Page down the results grid",
+      "action": "KEYS",
+      "inputValue": "PAGE_DOWN",
+      "timeoutMs": 5000,
+      "maxExecutions": 10,
+      "onLimit": "not-in-list",
+      "onFound": "look",
+      "locatorChain": [
+        { "type": "JAB", "role": "table", "name": "Results", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "select-row",
+      "name": "Select the patient row",
+      "action": "DOUBLE_CLICK",
+      "timeoutMs": 8000,
+      "onFound": "read-header",
+      "locatorChain": [
+        { "type": "JAB", "role": "table row", "name": "${patientName}", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "not-in-list",
+      "name": "Record that ten pages did not contain the patient",
+      "action": "GET_TEXT",
+      "outputKey": "searchOutcome",
+      "timeoutMs": 5000,
+      "onFound": "done",
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "name": "results", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "read-header",
+      "name": "Read back who was opened",
+      "action": "GET_TEXT",
+      "outputKey": "patientHeader",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "name": "Patient:", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "done",
+      "name": "Both paths end here",
+      "action": "WAIT",
+      "timeoutMs": 3000,
+      "locatorChain": [
+        { "type": "JAB", "role": "frame", "name": "SystmOne", "nameMatch": "CONTAINS" }
+      ]
+    }
+  ]
+}

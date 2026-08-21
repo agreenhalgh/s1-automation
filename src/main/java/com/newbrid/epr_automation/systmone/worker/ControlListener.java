@@ -71,7 +71,7 @@ public class ControlListener {
             // A capture request carries no 'kind' at all, so its absence means capture. That is
             // what keeps the older, wider-deployed message valid without a version negotiation.
             String kind = json.path("kind").asString(null);
-            if (InspectRequest.KIND.equals(kind)) {
+            if (InspectRequest.KIND.equals(kind) || InspectRequest.FOCUSED.equals(kind)) {
                 return json(inspect(mapper.treeToValue(json, InspectRequest.class), workerId));
             }
             return json(capture(mapper.treeToValue(json, CaptureRequest.class), workerId));
@@ -139,19 +139,26 @@ public class ControlListener {
                                 + "SystmOne runs under, then restart both SystmOne and this worker. "
                                 + "Templates still work without it.");
             }
-            Optional<JabInspector.Inspection> found = inspector.inspect(req.x(), req.y());
+            Optional<JabInspector.Inspection> found = req.isFocusedRequest()
+                    ? inspector.focused()
+                    : inspector.inspect(req.x(), req.y());
             if (found.isEmpty()) {
-                return InspectResponse.failed(requestId, workerId, String.format(
-                        "No accessible element at (%d,%d) in a window matching '%s'. Either that "
-                                + "point is outside SystmOne, or the control is painted rather than "
-                                + "built from accessible components — use a template there.",
-                        req.x(), req.y(), props.getWindowTitle()));
+                return InspectResponse.failed(requestId, workerId, req.isFocusedRequest()
+                        ? "Nothing in a window matching '" + props.getWindowTitle() + "' reports the "
+                                + "focused state. Click into a field or button in SystmOne, then ask "
+                                + "again — a window with nothing focused has nothing to report."
+                        : String.format("No accessible element at (%d,%d) in a window matching '%s'. "
+                                + "Either that point is outside SystmOne, or the control is painted "
+                                + "rather than built from accessible components — use a template there.",
+                                req.x(), req.y(), props.getWindowTitle()));
             }
             JabInspector.Inspection i = found.get();
-            log.info("Inspected ({},{}) for request {}: {} '{}', suggested locator matches {} element(s)",
-                    req.x(), req.y(), requestId, i.element().role(), i.element().name(), i.matchCount());
+            log.info("Inspected {} for request {}: {} '{}', suggested locator matches {} element(s)",
+                    req.isFocusedRequest() ? "the focused element"
+                            : "(" + req.x() + "," + req.y() + ")",
+                    requestId, i.element().role(), i.element().name(), i.matchCount());
             return new InspectResponse(requestId, workerId, i.element(), i.ancestors(),
-                    i.suggested(), i.matchCount(), null);
+                    i.previousSibling(), i.followingSibling(), i.suggested(), i.matchCount(), null);
         } catch (Exception e) {
             log.warn("Inspect request {} failed: {}", requestId, e.toString());
             return InspectResponse.failed(requestId, workerId, e.toString());

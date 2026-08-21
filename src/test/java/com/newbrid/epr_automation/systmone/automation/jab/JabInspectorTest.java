@@ -1,13 +1,14 @@
 package com.newbrid.epr_automation.systmone.automation.jab;
 
 import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
+import com.newbrid.epr_automation.systmone.automation.jab.FakeTree.Node;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,83 +20,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class JabInspectorTest {
 
-    // ---- a tree that answers like the bridge does ----
-
-    /** One node of a fake application. Children are addressed by index, as JAB addresses them. */
-    private static final class Node {
-        final AccessibleInfo info;
-        final List<Node> children = new ArrayList<>();
-
-        Node(String role, String name, String description, int x, int y, int w, int h, int indexInParent) {
-            this.info = new AccessibleInfo(role, name, description, "enabled,visible",
-                    x, y, w, h, 0, indexInParent);
-        }
-
-        Node add(Node child) {
-            children.add(child);
-            return this;
-        }
-
-        AccessibleInfo info() {
-            // childCount has to reflect the children actually attached, the way the real
-            // struct does — the descent trusts it to know how far to walk.
-            return new AccessibleInfo(info.role(), info.name(), info.description(), info.states(),
-                    info.x(), info.y(), info.width(), info.height(), children.size(), info.indexInParent());
-        }
-    }
-
-    /**
-     * Serves {@link Node} trees through the bridge interface; handles are indices into a list.
-     * Several roots stand for several top-level windows of one application — which is what a
-     * modal dialog is, and the case the real bridge reports the same way.
-     */
-    private static final class FakeBridge implements AccessBridge {
-        private final List<Node> handles = new ArrayList<>();
-        private final List<Node> windows;
-
-        FakeBridge(Node... windows) {
-            this.windows = List.of(windows);
-            this.windows.forEach(this::handleFor);
-        }
-
-        private long handleFor(Node node) {
-            int existing = handles.indexOf(node);
-            if (existing >= 0) return existing;
-            handles.add(node);
-            return handles.size() - 1;
-        }
-
-        @Override public boolean isAvailable() { return true; }
-
-        @Override public List<AcRef> roots(String windowTitleContains) {
-            return windows.stream().map(w -> new AcRef(1, handleFor(w))).toList();
-        }
-        @Override public AccessibleInfo info(AcRef ref) { return handles.get((int) ref.ac()).info(); }
-
-        @Override public AcRef child(AcRef ref, int index) {
-            List<Node> children = handles.get((int) ref.ac()).children;
-            if (index < 0 || index >= children.size()) return null;
-            return new AcRef(ref.vmId(), handleFor(children.get(index)));
-        }
-
-        @Override public boolean doAction(AcRef ref, String action) { return false; }
-        @Override public boolean setText(AcRef ref, String text) { return false; }
-        @Override public String getText(AcRef ref) { return null; }
-        @Override public void release(AcRef ref) {}
-    }
-
     /** A window with a toolbar button, and a table of rows whose cells share a role. */
     private static Node systmOne() {
-        Node window = new Node("frame", "SystmOne", null, 0, 0, 1920, 1080, 0);
-        Node toolbar = new Node("tool bar", null, null, 0, 0, 1920, 40, 0);
-        toolbar.add(new Node("push button", "Patient", "Open a patient record", 10, 5, 90, 30, 0));
-        toolbar.add(new Node("push button", "Appointments", null, 110, 5, 130, 30, 1));
+        Node window = FakeTree.node("frame", "SystmOne", null, 0, 0, 1920, 1080, 0);
+        Node toolbar = FakeTree.node("tool bar", null, null, 0, 0, 1920, 40, 0);
+        toolbar.add(FakeTree.node("push button", "Patient", "Open a patient record", 10, 5, 90, 30, 0));
+        toolbar.add(FakeTree.node("push button", "Appointments", null, 110, 5, 130, 30, 1));
         window.add(toolbar);
 
-        Node table = new Node("table", "Appointments", null, 0, 100, 1200, 400, 1);
+        Node table = FakeTree.node("table", "Appointments", null, 0, 100, 1200, 400, 1);
         for (int row = 0; row < 3; row++) {
-            Node line = new Node("table row", null, null, 0, 100 + row * 30, 1200, 30, row);
-            line.add(new Node("label", "Select", null, 20, 105 + row * 30, 60, 20, 0));
+            Node line = FakeTree.node("table row", null, null, 0, 100 + row * 30, 1200, 30, row);
+            line.add(FakeTree.node("label", "Select", null, 20, 105 + row * 30, 60, 20, 0));
             table.add(line);
         }
         window.add(table);
@@ -104,18 +40,18 @@ class JabInspectorTest {
 
     /** The window behind, and a modal over it whose buttons are named the same. */
     private static Node confirmDialog() {
-        Node dialog = new Node("dialog", "Confirm deletion of Mr Smith", null, 600, 400, 400, 200, 0);
-        dialog.add(new Node("push button", "Cancel", null, 620, 540, 80, 30, 0));
-        dialog.add(new Node("push button", "Delete", null, 720, 540, 80, 30, 1));
+        Node dialog = FakeTree.node("dialog", "Confirm deletion of Mr Smith", null, 600, 400, 400, 200, 0);
+        dialog.add(FakeTree.node("push button", "Cancel", null, 620, 540, 80, 30, 0));
+        dialog.add(FakeTree.node("push button", "Delete", null, 720, 540, 80, 30, 1));
         return dialog;
     }
 
     private static Node withCancelButton(Node window) {
-        window.add(new Node("push button", "Cancel", null, 1500, 900, 80, 30, 2));
+        window.add(FakeTree.node("push button", "Cancel", null, 1500, 900, 80, 30, 2));
         return window;
     }
 
-    private final JabInspector inspector = new JabInspector(new FakeBridge(systmOne()), "SystmOne");
+    private final JabInspector inspector = new JabInspector(FakeTree.bridge(systmOne()), "SystmOne");
 
     // ---- descent ----
 
@@ -186,9 +122,9 @@ class JabInspectorTest {
 
     @Test
     void suggestsNothingForAnElementWithNoDistinguishingAttributes() {
-        Node bare = new Node("frame", "SystmOne", null, 0, 0, 200, 200, 0);
-        bare.add(new Node(null, null, null, 10, 10, 50, 50, 0));
-        JabInspector plain = new JabInspector(new FakeBridge(bare), "SystmOne");
+        Node bare = FakeTree.node("frame", "SystmOne", null, 0, 0, 200, 200, 0);
+        bare.add(FakeTree.node(null, null, null, 10, 10, 50, 50, 0));
+        JabInspector plain = new JabInspector(FakeTree.bridge(bare), "SystmOne");
 
         JabInspector.Inspection found = plain.inspect(20, 20).orElseThrow();
 
@@ -208,6 +144,126 @@ class JabInspectorTest {
         assertTrue(JabMatching.matches(element, List.of(), found.suggested()));
     }
 
+    // ---- neighbours ----
+
+    /** dialog > panel > [label Surname, text, label Forename, text] — a form of unlabelled fields. */
+    private static Node patientForm() {
+        Node dialog = FakeTree.node("dialog", "Patient Registration", null, 0, 0, 800, 600, 0);
+        Node panel = FakeTree.node("panel", null, null, 10, 40, 780, 500, 0);
+        panel.add(FakeTree.node("label", "Surname", null, 20, 60, 80, 20, 0));
+        panel.add(FakeTree.node("text", null, null, 110, 60, 200, 24, 1));
+        panel.add(FakeTree.node("label", "Forename", null, 20, 100, 80, 20, 2));
+        panel.add(FakeTree.node("text", null, null, 110, 100, 200, 24, 3));
+        dialog.add(panel);
+        return dialog;
+    }
+
+    @Test
+    void reportsTheElementsImmediateNeighbours() {
+        JabInspector form = new JabInspector(FakeTree.bridge(patientForm()), "SystmOne");
+
+        JabInspector.Inspection found = form.inspect(150, 70).orElseThrow();
+
+        assertEquals("text", found.element().role());
+        assertEquals("Surname", found.previousSibling().name());
+        assertEquals("label", found.previousSibling().role());
+        assertEquals("Forename", found.followingSibling().name());
+    }
+
+    @Test
+    void reportsNoNeighboursForAnOnlyChild() {
+        Node window = FakeTree.node("frame", "SystmOne", null, 0, 0, 400, 400, 0);
+        window.add(FakeTree.node("text", "Only", null, 10, 10, 100, 24, 0));
+        JabInspector lonely = new JabInspector(FakeTree.bridge(window), "SystmOne");
+
+        JabInspector.Inspection found = lonely.inspect(20, 20).orElseThrow();
+
+        assertNull(found.previousSibling());
+        assertNull(found.followingSibling());
+    }
+
+    /**
+     * The case sibling selectors exist for. Two unlabelled fields of the same role: nothing about
+     * either one distinguishes it, and the label beside it does.
+     */
+    @Test
+    void suggestsTheLabelBesideAnUnlabelledField() {
+        JabInspector form = new JabInspector(FakeTree.bridge(patientForm()), "SystmOne");
+
+        JabInspector.Inspection found = form.inspect(150, 70).orElseThrow();
+
+        assertEquals("label[Surname]", found.suggested().previousSibling());
+        assertNull(found.suggested().index(),
+                "a neighbour describes the form as an author reads it; index describes today's layout");
+        assertEquals(1, found.matchCount(), "which makes it usable as it stands");
+    }
+
+    @Test
+    void suggestsTheOtherFieldsOwnLabel() {
+        JabInspector form = new JabInspector(FakeTree.bridge(patientForm()), "SystmOne");
+
+        JabInspector.Inspection found = form.inspect(150, 110).orElseThrow();
+
+        assertEquals("label[Forename]", found.suggested().previousSibling());
+        assertEquals(1, found.matchCount());
+    }
+
+    /**
+     * When the element before is anonymous, the one after can still do the job — a bare role is a
+     * weaker selector than role[name] but it is a real constraint, and it beats a position.
+     */
+    @Test
+    void usesTheFollowingNeighbourWhenThePrecedingOneIsAnonymous() {
+        Node window = FakeTree.node("frame", "SystmOne", null, 0, 0, 400, 400, 0);
+        Node panel = FakeTree.node("panel", null, null, 0, 0, 400, 400, 0);
+        panel.add(FakeTree.node(null, null, null, 10, 10, 50, 20, 0));
+        panel.add(FakeTree.node("text", null, null, 10, 40, 100, 24, 1));
+        panel.add(FakeTree.node("text", null, null, 10, 70, 100, 24, 2));
+        window.add(panel);
+        JabInspector anonymous = new JabInspector(FakeTree.bridge(window), "SystmOne");
+
+        JabInspector.Inspection found = anonymous.inspect(50, 50).orElseThrow();
+
+        assertNull(found.suggested().previousSibling(),
+                "the element before it has neither role nor name, so it distinguishes nothing");
+        assertEquals("text", found.suggested().followingSibling(),
+                "the field after it is a text, and the other field has nothing after it");
+        assertEquals(1, found.matchCount());
+    }
+
+    /** With nothing nameable on either side, position is all that is left. */
+    @Test
+    void fallsBackToIndexWhenNeitherNeighbourCanBeNamed() {
+        Node window = FakeTree.node("frame", "SystmOne", null, 0, 0, 400, 400, 0);
+        Node panel = FakeTree.node("panel", null, null, 0, 0, 400, 400, 0);
+        panel.add(FakeTree.node(null, null, null, 10, 10, 50, 20, 0));
+        panel.add(FakeTree.node("text", null, null, 10, 40, 100, 24, 1));
+        window.add(panel);
+        Node second = FakeTree.node("panel", null, null, 0, 200, 400, 200, 1);
+        second.add(FakeTree.node(null, null, null, 10, 210, 50, 20, 0));
+        second.add(FakeTree.node("text", null, null, 10, 240, 100, 24, 1));
+        window.add(second);
+        JabInspector anonymous = new JabInspector(FakeTree.bridge(window), "SystmOne");
+
+        JabInspector.Inspection found = anonymous.inspect(50, 50).orElseThrow();
+
+        assertNull(found.suggested().previousSibling());
+        assertNull(found.suggested().followingSibling(), "nothing follows it either");
+        assertEquals(1, found.suggested().index(), "position is what is left");
+        assertEquals(2, found.matchCount(),
+                "and it does not even work: the other panel holds the same shape, which is the "
+                        + "honest answer rather than a suggestion that looks fine");
+    }
+
+    /** A named control still gets the simplest thing that works, not a neighbour. */
+    @Test
+    void doesNotReachForANeighbourWhenTheElementNamesItself() {
+        JabInspector.Inspection found = inspector.inspect(50, 20).orElseThrow();
+
+        assertNull(found.suggested().previousSibling());
+        assertEquals("Patient", found.suggested().name());
+    }
+
     // ---- modal dialogs ----
 
     /**
@@ -218,7 +274,7 @@ class JabInspectorTest {
     @Test
     void scopesTheLocatorToTheDialogWhenTheWindowBehindHasTheSameControl() {
         JabInspector withModal = new JabInspector(
-                new FakeBridge(withCancelButton(systmOne()), confirmDialog()), "SystmOne");
+                FakeTree.bridge(withCancelButton(systmOne()), confirmDialog()), "SystmOne");
 
         JabInspector.Inspection found = withModal.inspect(650, 550).orElseThrow();
 
@@ -232,7 +288,7 @@ class JabInspectorTest {
     @Test
     void reportsTheDialogAsTheElementsWindow() {
         JabInspector withModal = new JabInspector(
-                new FakeBridge(withCancelButton(systmOne()), confirmDialog()), "SystmOne");
+                FakeTree.bridge(withCancelButton(systmOne()), confirmDialog()), "SystmOne");
 
         JabInspector.Inspection found = withModal.inspect(650, 550).orElseThrow();
 
@@ -247,6 +303,83 @@ class JabInspectorTest {
 
         assertNull(found.suggested().ancestorPath(),
                 "a window title that could gain a patient name is not worth pinning to for nothing");
+    }
+
+    // ---- the focused element ----
+
+    @Test
+    void findsTheFocusedElementWithoutCoordinates() {
+        Node window = FakeTree.node("frame", "SystmOne", null, 0, 0, 1920, 1080, 0);
+        Node panel = FakeTree.node("panel", null, null, 0, 40, 800, 400, 0);
+        panel.add(FakeTree.node("text", "NHS Number", null, 20, 60, 200, 24, 0).focused());
+        panel.add(FakeTree.node("text", "Surname", null, 20, 100, 200, 24, 1));
+        window.add(panel);
+        JabInspector withFocus = new JabInspector(FakeTree.bridge(window), "SystmOne");
+
+        JabInspector.Inspection found = withFocus.focused().orElseThrow();
+
+        assertEquals("text", found.element().role());
+        assertEquals("NHS Number", found.element().name());
+        assertEquals(1, found.matchCount(), "role+name identifies it, so it is usable as it stands");
+    }
+
+    /**
+     * A focused container and the focused control inside it both carry the state. The control is
+     * the answer — it is the thing with the caret in it.
+     */
+    @Test
+    void prefersTheDeepestFocusedNode() {
+        Node window = FakeTree.node("frame", "SystmOne", null, 0, 0, 1920, 1080, 0).focused();
+        Node panel = FakeTree.node("panel", "Details", null, 0, 40, 800, 400, 0).focused();
+        panel.add(FakeTree.node("text", "NHS Number", null, 20, 60, 200, 24, 0).focused());
+        window.add(panel);
+        JabInspector withFocus = new JabInspector(FakeTree.bridge(window), "SystmOne");
+
+        JabInspector.Inspection found = withFocus.focused().orElseThrow();
+
+        assertEquals("text", found.element().role());
+        assertEquals(List.of("frame", "panel"),
+                found.ancestors().stream().map(a -> a.role()).toList());
+    }
+
+    /** A window with nothing focused has nothing to report, and says so rather than guessing. */
+    @Test
+    void findsNothingWhenNoElementHoldsFocus() {
+        assertEquals(Optional.empty(), inspector.focused());
+    }
+
+    /** Focus is found in a modal too, and the suggestion is scoped to it like any other. */
+    @Test
+    void findsFocusInsideAModalDialog() {
+        Node dialog = FakeTree.node("dialog", "Confirm deletion of Mr Smith", null, 600, 400, 400, 200, 0);
+        dialog.add(FakeTree.node("push button", "Cancel", null, 620, 540, 80, 30, 0).focused());
+        JabInspector withModal = new JabInspector(
+                FakeTree.bridge(withCancelButton(systmOne()), dialog), "SystmOne");
+
+        JabInspector.Inspection found = withModal.focused().orElseThrow();
+
+        assertEquals("Cancel", found.element().name());
+        assertEquals("dialog[Confirm deletion of Mr Smith]", found.suggested().ancestorPath(),
+                "the window behind holds a Cancel button too, so the scope is what makes it unique");
+    }
+
+    /**
+     * The ambiguity warning has to describe the locator, not just its name: an attribute locator
+     * identified by role and ancestorPath has no name at all, and "locator null matched 2
+     * elements" was the message an author got for exactly that shape.
+     */
+    @Test
+    void describesEveryFieldALocatorSets() {
+        LocatorDefinition scoped = LocatorDefinition.jab("text", null, null, null, 1,
+                "dialog[Patient Registration] > page tab[Patient Details]");
+
+        String described = scoped.describe();
+
+        assertTrue(described.contains("role=\"text\""), described);
+        assertTrue(described.contains("index=1"), described);
+        assertTrue(described.contains("ancestorPath=\"dialog[Patient Registration] > page tab[Patient Details]\""),
+                described);
+        assertFalse(described.contains("name="), "a field that is not set must not appear: " + described);
     }
 
     @Test

@@ -8,6 +8,9 @@ import com.newbrid.epr_automation.systmone.controlplane.domain.TemplateEntity;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Map;
 
 /** Request/response payloads for the control-plane REST API. */
@@ -58,6 +61,38 @@ public final class WebDtos {
         }
     }
 
-    /** GET /api/runs/{id} — run plus its step history. */
+    /** GET /api/runs/{id} — run plus its step history, one row per execution. */
     public record RunDetail(RunEntity run, List<StepResultEntity> steps) {}
+
+    /**
+     * One execution, as the run page shows it: the stored row plus where this visit sits among
+     * the visits to that same step.
+     *
+     * <p>A conditional flow can run one step several times, and a table of identical-looking rows
+     * is how you fail to notice that. {@code visit} and {@code visits} give each row the context
+     * to say "pass 2 of 4" instead.</p>
+     *
+     * @param visit  which visit to this step this row is, counting from 1
+     * @param visits how many times the run visited this step in total
+     */
+    public record StepRow(StepResultEntity step, int visit, int visits) {
+
+        public boolean repeated() {
+            return visits > 1;
+        }
+
+        /** Rows in execution order, each labelled with its place among visits to the same step. */
+        public static List<StepRow> of(List<StepResultEntity> executions) {
+            Map<Integer, Long> totals = executions.stream()
+                    .collect(Collectors.groupingBy(StepResultEntity::getStepIndex, Collectors.counting()));
+            Map<Integer, Integer> seen = new HashMap<>();
+            List<StepRow> rows = new ArrayList<>(executions.size());
+            for (StepResultEntity execution : executions) {
+                int position = execution.getStepIndex();
+                int visit = seen.merge(position, 1, Integer::sum);
+                rows.add(new StepRow(execution, visit, totals.getOrDefault(position, 1L).intValue()));
+            }
+            return rows;
+        }
+    }
 }

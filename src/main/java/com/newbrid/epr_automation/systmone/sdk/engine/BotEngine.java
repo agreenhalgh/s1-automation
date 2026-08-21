@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.awt.image.BufferedImage;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ public class BotEngine {
     private final BackendRegistry backends;
     private final ScreenshotSink screenshotSink;
     private final WindowControl windows;
+    private final KeyboardControl keyboard;
 
     public BotEngine(BackendRegistry backends) {
         this(backends, ScreenshotSink.NONE, WindowControl.UNAVAILABLE);
@@ -58,10 +60,23 @@ public class BotEngine {
         this(backends, screenshotSink, WindowControl.UNAVAILABLE);
     }
 
+    /**
+     * Ceiling on how many steps one run may execute, however the flow branches. Generous enough
+     * that no honest loop reaches it, and finite so a mistaken one ends with a diagnosis instead
+     * of running until the global timeout — which a bot is free not to declare.
+     */
+    private static final int MAX_STEP_EXECUTIONS = 1000;
+
     public BotEngine(BackendRegistry backends, ScreenshotSink screenshotSink, WindowControl windows) {
+        this(backends, screenshotSink, windows, KeyboardControl.UNAVAILABLE);
+    }
+
+    public BotEngine(BackendRegistry backends, ScreenshotSink screenshotSink, WindowControl windows,
+                     KeyboardControl keyboard) {
         this.backends = backends;
         this.screenshotSink = screenshotSink == null ? ScreenshotSink.NONE : screenshotSink;
         this.windows = windows == null ? WindowControl.UNAVAILABLE : windows;
+        this.keyboard = keyboard == null ? KeyboardControl.UNAVAILABLE : keyboard;
     }
 
     public RunResult run(BotDefinition bot, Map<String, String> input, String runId, RunListener listener) {
@@ -80,21 +95,63 @@ public class BotEngine {
         RunStatus terminal = RunStatus.SUCCEEDED;
         ExceptionInfo runError = null;
 
-        for (StepDefinition step : bot.steps()) {
+        List<StepDefinition> steps = bot.steps();
+        Map<String, Integer> jumpTargets = jumpTargets(steps);
+        int[] executionsAt = new int[steps.size()];
+        int position = 0;
+        int executed = 0;
+
+        while (position < steps.size()) {
+            StepDefinition step = steps.get(position);
             if (aborted.getAsBoolean()) {
                 terminal = RunStatus.ABORTED;
-                runError = new ExceptionInfo("Aborted", "Run aborted before step " + step.index(), null, step.name());
+                runError = new ExceptionInfo("Aborted", "Run aborted before step " + position, null, step.name());
                 break;
             }
             if (System.currentTimeMillis() >= deadline) {
                 terminal = RunStatus.TIMED_OUT;
-                runError = new ExceptionInfo("Timeout", "Global run timeout exceeded before step " + step.index(),
+                runError = new ExceptionInfo("Timeout", "Global run timeout exceeded before step " + position,
+                        null, step.name());
+                break;
+            }
+            // A backward jump is a loop, and a loop with a condition that never changes would
+            // otherwise run until the global timeout — or forever, on a bot that declares none.
+            if (++executed > MAX_STEP_EXECUTIONS) {
+                terminal = RunStatus.FAILED;
+                runError = new ExceptionInfo("FlowLoop", "Stopped after " + MAX_STEP_EXECUTIONS
+                        + " step executions: the conditional flow is looping without making progress",
                         null, step.name());
                 break;
             }
 
-            listener.onProgress(step.index());
-            StepReport report = executeStep(bot, step, ctx, runId, deadline, aborted);
+            // The author's own bound on a loop, checked before the step runs so the limit is a
+            // number of executions rather than a number of executions plus one.
+            int limit = step.executionLimit();
+            if (limit > 0 && executionsAt[position] >= limit) {
+                StepReport limitReport = limitReached(step, position, executed, limit);
+                reports.add(limitReport);
+                listener.onStepComplete(limitReport);
+                if (step.onLimit() == null) {
+                    terminal = RunStatus.FAILED;
+                    runError = limitReport.error();
+                    break;
+                }
+                Integer onLimitTarget = jumpTargets.get(step.onLimit());
+                if (onLimitTarget == null) {
+                    terminal = RunStatus.FAILED;
+                    runError = unknownKey(step, step.onLimit());
+                    break;
+                }
+                log.info("Step '{}' has run its limit of {} — continuing at '{}' (step {})",
+                        step.name(), limit, step.onLimit(), onLimitTarget);
+                position = onLimitTarget;
+                continue;
+            }
+
+            listener.onProgress(position);
+            executionsAt[position]++;
+            StepOutcome outcome = executeStep(bot, step, position, executed, ctx, runId, deadline, aborted);
+            StepReport report = outcome.report();
             reports.add(report);
             listener.onStepComplete(report);
 
@@ -103,6 +160,23 @@ public class BotEngine {
                 runError = report.error();
                 break;
             }
+
+            String jumpTo = outcome.resolved() ? step.onFound()
+                    : outcome.unresolved() ? step.onMissing()
+                    : null;
+            if (jumpTo == null) {
+                position++;
+                continue;
+            }
+            Integer target = jumpTargets.get(jumpTo);
+            if (target == null) {
+                terminal = RunStatus.FAILED;
+                runError = unknownKey(step, jumpTo);
+                break;
+            }
+            log.info("Step '{}' {} — continuing at '{}' (step {})", step.name(),
+                    outcome.resolved() ? "resolved" : "found nothing", jumpTo, target);
+            position = target;
         }
 
         Map<String, String> outputs = ctx.outputs();
@@ -110,8 +184,15 @@ public class BotEngine {
         return new RunResult(terminal, runError, outputs, reports);
     }
 
-    private StepReport executeStep(BotDefinition bot, StepDefinition step, ExecutionContext ctx,
-                                   String runId, long deadline, BooleanSupplier aborted) {
+    /**
+     * @param position where this step sits in the list — which step this is
+     * @param sequence which execution of the run this is, counting from 1 — which visit to that
+     *                 step this is. A conditional flow can bring the run back to the same
+     *                 position, and both visits are worth keeping
+     */
+    private StepOutcome executeStep(BotDefinition bot, StepDefinition step, int position, int sequence,
+                                    ExecutionContext ctx, String runId, long deadline,
+                                    BooleanSupplier aborted) {
         RetryPolicyDef policy = step.retry() != null ? step.retry() : bot.defaultRetry();
         long start = System.currentTimeMillis();
         Throwable lastError = null;
@@ -129,11 +210,13 @@ public class BotEngine {
                     if (step.outputKey() != null && result.output != null) {
                         ctx.putOutput(step.outputKey(), result.output);
                     }
-                    return new StepReport(step.index(), step.name(), StepStatus.SUCCEEDED,
-                            result.locatorDesc, System.currentTimeMillis() - start, result.output, null, null);
+                    return new StepOutcome(new StepReport(position, sequence, step.name(),
+                            StepStatus.SUCCEEDED, result.locatorDesc, System.currentTimeMillis() - start,
+                            result.output, null, null), true, false);
                 }
                 lastError = new StepResolutionException(
-                        "No locator in the chain resolved for step '" + step.name() + "'"
+                        "No locator in the chain resolved for step '" + step.name() + "': "
+                                + describeChain(step)
                                 + (result.reason != null ? " — " + result.reason : ""));
             } catch (Throwable t) {
                 lastError = t;
@@ -143,13 +226,67 @@ public class BotEngine {
         }
 
         // Exhausted — record a diagnosable failure with a screenshot (FR-JAB-10, NFR-OBS-02).
-        String screenshotRef = captureFailureScreenshot(runId, step.index());
-        ExceptionInfo error = ExceptionInfo.from(
-                lastError != null ? lastError : new StepResolutionException("Step failed"),
-                "locator=" + lastLocatorDesc);
-        StepStatus status = step.continueOnFailure() ? StepStatus.SKIPPED : StepStatus.FAILED;
-        return new StepReport(step.index(), step.name(), status, lastLocatorDesc,
-                System.currentTimeMillis() - start, null, error, screenshotRef);
+        Throwable cause = lastError != null ? lastError : new StepResolutionException("Step failed");
+        // Nothing resolved, as opposed to something resolving and then throwing. Only the former
+        // is an onMissing branch: an action that blew up is a fault, and routing it down the
+        // "not there" path would bury it.
+        boolean unresolved = cause instanceof StepResolutionException;
+        String screenshotRef = captureFailureScreenshot(runId, position);
+        ExceptionInfo error = ExceptionInfo.from(cause, "locator=" + lastLocatorDesc);
+        // A declared onMissing makes absence an expected outcome, so the step is skipped rather
+        // than failed and the run continues down the branch the author chose.
+        boolean branchOnAbsence = unresolved && step.onMissing() != null;
+        StepStatus status = step.continueOnFailure() || branchOnAbsence
+                ? StepStatus.SKIPPED : StepStatus.FAILED;
+        return new StepOutcome(new StepReport(position, sequence, step.name(), status, lastLocatorDesc,
+                System.currentTimeMillis() - start, null, error, screenshotRef), false, unresolved);
+    }
+
+    /**
+     * Registration rejects unknown targets, so a run only meets one when the definition was
+     * dispatched from somewhere that did not validate it. Failing beats silently falling through
+     * to a step the author did not choose.
+     */
+    private static ExceptionInfo unknownKey(StepDefinition step, String target) {
+        return new ExceptionInfo("UnknownStepKey", "Step '" + step.name() + "' jumps to '" + target
+                + "', which no step declares as its key", null, step.name());
+    }
+
+    /**
+     * The row that records a loop hitting its bound. Written even when the flow carries on
+     * afterwards: without it the history simply stops mentioning the step, and "the loop gave up"
+     * is the single most useful thing to know about a run that did not do what was expected.
+     */
+    private static StepReport limitReached(StepDefinition step, int position, int sequence, int limit) {
+        String message = "Step '" + step.name() + "' reached its maxExecutions of " + limit
+                + (step.onLimit() == null
+                        ? " and declares no onLimit, so the run stops here"
+                        : " — continuing at '" + step.onLimit() + "'");
+        return new StepReport(position, sequence, step.name(), StepStatus.SKIPPED, null, 0, null,
+                new ExceptionInfo("StepLimit", message, null, step.name()), null);
+    }
+
+    /**
+     * What the step did, beyond what its report says: whether it resolved, and — when it did
+     * not — whether that was because nothing was there. The flow needs both to choose a branch,
+     * and neither belongs in a report POSTed to the control plane.
+     */
+    private record StepOutcome(StepReport report, boolean resolved, boolean unresolved) {}
+
+    /**
+     * Keyed steps, by position. Keys are the only jump targets: positions deliberately are not,
+     * because a numeric target silently means a different step the moment one is inserted above
+     * it, and that is the mistake the old positional field invited.
+     */
+    private static Map<String, Integer> jumpTargets(List<StepDefinition> steps) {
+        Map<String, Integer> targets = new LinkedHashMap<>();
+        for (int i = 0; i < steps.size(); i++) {
+            String key = steps.get(i).key();
+            // First declaration wins; registration rejects duplicates, so this only decides what
+            // an unvalidated definition does rather than defining behaviour anyone should rely on.
+            if (key != null) targets.putIfAbsent(key, i);
+        }
+        return targets;
     }
 
     /** Try each locator in the chain in turn; act on the first that resolves. */
@@ -162,6 +299,19 @@ public class BotEngine {
             if (step.action() == ActionType.ACTIVATE) {
                 String title = activate(step, ctx);
                 return new Attempt(true, "WINDOW[" + title + "]", title, null);
+            }
+            // KEYS goes to whatever holds the keyboard focus, and always did: both backends
+            // discard the element they resolve for it. A chain on a KEYS step is a gate, not a
+            // target, so a step that wants no gate should not have to invent one — and inventing
+            // one made the keystroke depend on a backend it never used.
+            if (step.action() == ActionType.KEYS) {
+                String combo = ctx.resolve(step.inputValue());
+                if (combo == null || combo.isBlank()) {
+                    throw new StepResolutionException("Step '" + step.name() + "' is a KEYS step with "
+                            + "no inputValue, so there is nothing to send");
+                }
+                keyboard.keys(combo);
+                return new Attempt(true, "KEYBOARD[" + combo + "]", null, null);
             }
             throw new StepResolutionException("Step '" + step.name() + "' has no locators");
         }
@@ -250,6 +400,19 @@ public class BotEngine {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Every locator the step tried, spelled out. The step's own failure message is the one place
+     * an author reliably sees, and "no locator resolved" without saying what was asked for leaves
+     * them guessing at which field of which locator was wrong. Safe to be verbose: this lands in
+     * the error message, not in the 255-character resolvedLocator column.
+     */
+    private static String describeChain(StepDefinition step) {
+        return step.locatorChain().isEmpty()
+                ? "the step has no locators"
+                : step.locatorChain().stream().map(LocatorDefinition::describe)
+                        .collect(java.util.stream.Collectors.joining("; then "));
     }
 
     private static String describe(LocatorDefinition l) {

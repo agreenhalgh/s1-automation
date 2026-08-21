@@ -78,10 +78,24 @@ public class CaptureClient {
      * will be reported where it is now — the tool says so rather than pretending otherwise.</p>
      */
     public InspectResponse inspect(String workerId, int x, int y) {
-        String requestId = UUID.randomUUID().toString();
+        return inspect(workerId, new InspectRequest(UUID.randomUUID().toString(), x, y));
+    }
+
+    /**
+     * Identify whatever SystmOne currently considers focused (FR-TOOL-03).
+     *
+     * <p>No coordinates: this reads the accessibility tree's {@code focused} state, which stays
+     * put while the author switches to the browser to ask about it.</p>
+     */
+    public InspectResponse inspectFocused(String workerId) {
+        return inspect(workerId, InspectRequest.focused(UUID.randomUUID().toString()));
+    }
+
+    private InspectResponse inspect(String workerId, InspectRequest request) {
+        String requestId = request.requestId();
         int timeout = props.getCaptureTimeoutMs();
         try {
-            String body = mapper.writeValueAsString(new InspectRequest(requestId, x, y));
+            String body = mapper.writeValueAsString(request);
             Object reply = rabbit.convertSendAndReceive(RabbitTopologyConfig.CONTROL_EXCHANGE, workerId,
                     body, m -> {
                         m.getMessageProperties().setContentType("application/json");

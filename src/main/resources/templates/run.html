@@ -21,11 +21,20 @@
     </table>
 
     <h2>Steps</h2>
+    <!-- One row per execution, in the order they ran. A conditional flow can visit a step more
+         than once, so the step's position and the visit count are shown separately: sorting or
+         de-duplicating by position would hide the loop entirely. -->
     <table>
-        <thead><tr><th>#</th><th>Name</th><th>Status</th><th>Resolved locator</th><th>ms</th><th>Output / Error</th><th>Screenshot</th></tr></thead>
+        <thead><tr><th>Seq</th><th>Step</th><th>Name</th><th>Status</th><th>Resolved locator</th><th>ms</th><th>Output / Error</th><th>Screenshot</th></tr></thead>
         <tbody>
-        <tr th:each="s : ${steps}">
-            <td th:text="${s.stepIndex}"></td>
+        <tr th:each="r : ${steps}" th:with="s=${r.step}">
+            <td th:text="${s.executionSeq}"></td>
+            <td>
+                <span th:text="${s.stepIndex}"></span>
+                <span th:if="${r.repeated}" class="repeat"
+                      th:text="'pass ' + ${r.visit} + ' of ' + ${r.visits}"
+                      th:title="'This step ran ' + ${r.visits} + ' times — the flow jumped back to it'"></span>
+            </td>
             <td th:text="${s.name}"></td>
             <td><span th:class="'status status-' + ${s.status}" th:text="${s.status}"></span></td>
             <td class="mono" th:text="${s.resolvedLocator}"></td>

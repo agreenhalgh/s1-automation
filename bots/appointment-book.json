@@ -12,7 +12,6 @@
   },
   "steps": [
     {
-      "index": 0,
       "name": "Open the appointments module",
       "action": "CLICK",
       "timeoutMs": 10000,
@@ -22,7 +21,6 @@
       ]
     },
     {
-      "index": 1,
       "name": "Filter to the clinic",
       "action": "SET_TEXT",
       "inputValue": "${clinicName}",
@@ -33,7 +31,6 @@
       ]
     },
     {
-      "index": 2,
       "name": "Wait for the slot grid to render",
       "action": "WAIT",
       "timeoutMs": 20000,
@@ -42,7 +39,6 @@
       ]
     },
     {
-      "index": 3,
       "name": "Select row 4 of the slot grid (header top-left + 18px gutter + 4 x 22px row pitch = 106)",
       "action": "CLICK",
       "timeoutMs": 10000,
@@ -58,7 +54,6 @@
       ]
     },
     {
-      "index": 4,
       "name": "Open the slot's context menu in the Status column (row from the anchor, column from the step offset)",
       "action": "RIGHT_CLICK",
       "timeoutMs": 10000,
@@ -76,7 +71,6 @@
       ]
     },
     {
-      "index": 5,
       "name": "Choose Book Appointment",
       "action": "CLICK",
       "timeoutMs": 10000,
@@ -86,7 +80,6 @@
       ]
     },
     {
-      "index": 6,
       "name": "Enter the booking reason",
       "action": "SET_TEXT",
       "inputValue": "${reason}",
@@ -97,7 +90,6 @@
       ]
     },
     {
-      "index": 7,
       "name": "Confirm the booking",
       "action": "CLICK",
       "timeoutMs": 10000,
@@ -107,7 +99,6 @@
       ]
     },
     {
-      "index": 8,
       "name": "Capture the booked slot time from the confirmation strip",
       "action": "GET_TEXT",
       "outputKey": "bookedSlotTime",

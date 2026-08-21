@@ -27,7 +27,7 @@ systmone:
   authoring:
     control-plane-url: ${CONTROL_PLANE_URL:http://localhost:8080}
     token: ${SYSTMONE_WORKER_TOKEN:changeit}
-    capture-timeout-ms: ${AUTHORING_CAPTURE_TIMEOUT_MS:20000}
+    capture-timeout-ms: ${AUTHORING_CAPTURE_TIMEOUT_MS:45000}
     max-captures: ${AUTHORING_MAX_CAPTURES:6}
     default-threshold: ${AUTHORING_DEFAULT_THRESHOLD:0.90}
     s1-version: ${S1_VERSION:DEMO}

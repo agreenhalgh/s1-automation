@@ -14,14 +14,28 @@ package com.newbrid.epr_automation.systmone.common.dto;
  * read against a screenshot the author is already looking at, and rearranging the desktop
  * first would move the very element they clicked on.</p>
  *
- * @param x screen x in the worker's logical pixels — the capture's own coordinate space
+ * @param kind {@link #KIND} to ask about a point, {@link #FOCUSED} to ask what SystmOne
+ *             considers focused
+ * @param x screen x in the worker's logical pixels — the capture's own coordinate space.
+ *          Unused, and ignored, for a {@link #FOCUSED} request
  * @param y screen y in the same space
  */
 public record InspectRequest(String kind, String requestId, int x, int y) {
 
     public static final String KIND = "inspect";
 
+    /** Ask which element has focus rather than which element is at a point. */
+    public static final String FOCUSED = "focused";
+
     public InspectRequest(String requestId, int x, int y) {
         this(KIND, requestId, x, y);
+    }
+
+    public static InspectRequest focused(String requestId) {
+        return new InspectRequest(FOCUSED, requestId, 0, 0);
+    }
+
+    public boolean isFocusedRequest() {
+        return FOCUSED.equals(kind);
     }
 }

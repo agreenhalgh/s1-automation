@@ -80,11 +80,123 @@ class JabMatchingTest {
     }
 
     @Test
+    void matchesUnnamedElements() {
+        List<AccessibleInfo> deep = List.of(
+                node("dialog", "Appointments"),
+                node("panel", null),
+                node("scroll pane", null),
+                node("viewport", null),
+                node("table", null));
+
+        assertTrue(JabMatching.matches(BUTTON, deep, scopedTo("dialog > table")));
+    }
+
+    @Test
     void requiresTheSegmentsInOrder() {
         List<AccessibleInfo> deep = List.of(node("dialog", "Appointments"), node("table", "Slots"));
 
         assertFalse(JabMatching.matches(BUTTON, deep, scopedTo("table > dialog")),
                 "outermost first — a reversed path describes a tree that does not exist");
+    }
+
+    // ---- sibling selectors ----
+
+    /** A lookup over one parent's children, the way the tree walk supplies it. */
+    private static SiblingLookup siblingsOf(List<AccessibleInfo> children, int index) {
+        return offset -> {
+            int wanted = index + offset;
+            return wanted < 0 || wanted >= children.size() ? null : children.get(wanted);
+        };
+    }
+
+    /** label, field, label, field — a form row, and the shape the selector exists for. */
+    private static final List<AccessibleInfo> FORM = List.of(
+            node("label", "Surname"),
+            node("text", null),
+            node("label", "Forename"),
+            node("text", null));
+
+    private static LocatorDefinition afterLabel(String previousSibling) {
+        return LocatorDefinition.jab("text", null, null, null, null, null, previousSibling, null);
+    }
+
+    private static LocatorDefinition beforeLabel(String followingSibling) {
+        return LocatorDefinition.jab("text", null, null, null, null, null, null, followingSibling);
+    }
+
+    @Test
+    void identifiesAnUnlabelledFieldByTheLabelBeforeIt() {
+        assertTrue(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1),
+                afterLabel("label[Surname]")));
+        assertFalse(JabMatching.matches(FORM.get(3), IN_DIALOG, siblingsOf(FORM, 3),
+                afterLabel("label[Surname]")),
+                "the other field follows the Forename label, so the two are told apart");
+    }
+
+    @Test
+    void identifiesAFieldByWhatFollowsIt() {
+        assertTrue(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1),
+                beforeLabel("label[Forename]")));
+    }
+
+    /** Same role[name] grammar as ancestorPath: bare role, bare name, or both. */
+    @Test
+    void acceptsTheSameSegmentFormsAsAncestorPath() {
+        assertTrue(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1),
+                afterLabel("label")), "role alone");
+        assertTrue(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1),
+                afterLabel("[surname]")), "name alone, case-insensitively");
+        assertFalse(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1),
+                afterLabel("push button[Surname]")), "role has to match too");
+    }
+
+    /**
+     * Immediately adjacent, unlike ancestorPath. "The field after this label" is a claim about
+     * adjacency; searching further could pin the locator to a label two fields up and click the
+     * wrong control, which is worse than not resolving at all.
+     */
+    @Test
+    void requiresTheSiblingToBeImmediatelyAdjacent() {
+        List<AccessibleInfo> spaced = List.of(
+                node("label", "Surname"),
+                node("filler", null),
+                node("text", null));
+
+        assertFalse(JabMatching.matches(spaced.get(2), IN_DIALOG, siblingsOf(spaced, 2),
+                afterLabel("label[Surname]")),
+                "a strut between label and field defeats it, and does so visibly");
+    }
+
+    @Test
+    void refusesWhenThereIsNoSiblingOnThatSide() {
+        assertFalse(JabMatching.matches(FORM.get(0), IN_DIALOG, siblingsOf(FORM, 0),
+                afterLabel("label[Surname]")), "nothing precedes the first child");
+        assertFalse(JabMatching.matches(FORM.get(3), IN_DIALOG, siblingsOf(FORM, 3),
+                beforeLabel("label")), "nothing follows the last child");
+    }
+
+    /** Same fail-safe as an unknown ancestor chain: refuse rather than assume. */
+    @Test
+    void refusesASiblingSelectorWhenSiblingsAreUnknown() {
+        assertFalse(JabMatching.matches(FORM.get(1), IN_DIALOG, SiblingLookup.NONE,
+                afterLabel("label[Surname]")));
+        assertFalse(JabMatching.matches(FORM.get(1), IN_DIALOG, afterLabel("label[Surname]")),
+                "the three-argument form knows no siblings, so it must refuse too");
+    }
+
+    @Test
+    void bothSidesCanBeRequiredAtOnce() {
+        LocatorDefinition between = LocatorDefinition.jab("text", null, null, null, null, null,
+                "label[Surname]", "label[Forename]");
+
+        assertTrue(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1), between));
+        assertFalse(JabMatching.matches(FORM.get(3), IN_DIALOG, siblingsOf(FORM, 3), between));
+    }
+
+    @Test
+    void aBlankSelectorIsNoConstraintAtAll() {
+        assertTrue(JabMatching.matches(FORM.get(1), IN_DIALOG, siblingsOf(FORM, 1),
+                afterLabel("   ")), "blank normalises to absent rather than rejecting everything");
     }
 
     @Test

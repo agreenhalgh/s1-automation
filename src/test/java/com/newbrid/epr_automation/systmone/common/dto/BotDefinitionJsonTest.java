@@ -107,9 +107,15 @@ class BotDefinitionJsonTest {
         assertFalse(bot.steps().isEmpty(), "a bot with no steps does nothing");
         for (StepDefinition step : bot.steps()) {
             assertNotNull(step.action(), "step '" + step.name() + "' has no action");
-            if (step.action() != ActionType.ACTIVATE) {
-                // ACTIVATE targets a window, so a chain is optional there; for every
-                // other action an empty chain is a step that can never resolve.
+            // ACTIVATE targets a window and KEYS goes to whatever holds focus, so a chain is
+            // optional for both; for every other action an empty chain is a step that can never
+            // resolve. A chainless KEYS still needs something to send.
+            if (step.action() == ActionType.KEYS) {
+                if (step.locatorChain().isEmpty()) {
+                    assertNotNull(step.inputValue(),
+                            "step '" + step.name() + "' sends nothing to nobody");
+                }
+            } else if (step.action() != ActionType.ACTIVATE) {
                 assertFalse(step.locatorChain().isEmpty(),
                         "step '" + step.name() + "' has no locators, so it can never resolve");
             }

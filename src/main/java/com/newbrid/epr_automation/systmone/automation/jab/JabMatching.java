@@ -28,12 +28,25 @@ public final class JabMatching {
      *                  will then correctly refuse to match rather than assume.
      */
     public static boolean matches(AccessibleInfo info, List<AccessibleInfo> ancestors, LocatorDefinition l) {
+        return matches(info, ancestors, SiblingLookup.NONE, l);
+    }
+
+    /**
+     * @param siblings reads what sits either side of {@code info}, for {@code previousSibling} and
+     *                 {@code followingSibling}. Pass {@link SiblingLookup#NONE} when the caller
+     *                 does not track the parent: a locator scoped by a sibling will then refuse to
+     *                 match rather than assume, the same way an unknown ancestor chain does
+     */
+    public static boolean matches(AccessibleInfo info, List<AccessibleInfo> ancestors,
+                                  SiblingLookup siblings, LocatorDefinition l) {
         if (info == null || l == null) return false;
         if (l.role() != null && !l.role().equalsIgnoreCase(info.role())) return false;
         if (l.description() != null && !l.description().equalsIgnoreCase(info.description())) return false;
         if (l.index() != null && l.index() != info.indexInParent()) return false;
         if (l.name() != null && !nameMatches(l, info.name())) return false;
         if (l.ancestorPath() != null && !ancestorPathMatches(l.ancestorPath(), ancestors)) return false;
+        if (l.previousSibling() != null && !siblingMatches(l.previousSibling(), siblings, -1)) return false;
+        if (l.followingSibling() != null && !siblingMatches(l.followingSibling(), siblings, 1)) return false;
         // Visible/rendered guard: an element with no bounds cannot be acted on, so it must not
         // count as a match here either — otherwise an off-screen twin would make a good locator
         // look ambiguous.
@@ -76,6 +89,28 @@ public final class JabMatching {
             if (next < segments.size() && segmentMatches(segments.get(next), ancestor)) next++;
         }
         return next == segments.size();
+    }
+
+    /**
+     * Whether the element immediately before or after this one matches a {@code role[name]}
+     * segment — the same syntax {@code ancestorPath} uses, for one element rather than a chain.
+     *
+     * <p>This is what identifies a control that has nothing to say about itself by the thing next
+     * to it that does: the unlabelled field after the "Surname" label. Without it the only
+     * options were {@code index}, which counts every sibling of every kind and shifts whenever
+     * the form gains one, or an image anchor.</p>
+     *
+     * <p><b>Immediately</b> adjacent, deliberately. Unlike {@code ancestorPath}, which skips
+     * intervening containers because they are incidental, "the field after this label" is a claim
+     * about adjacency and nothing else — searching further for a match could silently pin the
+     * locator to a label two fields up and click the wrong control, which is worse than not
+     * resolving. A layout strut between label and field will defeat it; {@code index} or an
+     * {@code ancestorPath} is the fallback there.</p>
+     */
+    private static boolean siblingMatches(String segment, SiblingLookup siblings, int offset) {
+        if (siblings == null) return false;
+        AccessibleInfo sibling = siblings.at(offset);
+        return sibling != null && segmentMatches(segment, sibling);
     }
 
     private static boolean segmentMatches(String segment, AccessibleInfo ancestor) {

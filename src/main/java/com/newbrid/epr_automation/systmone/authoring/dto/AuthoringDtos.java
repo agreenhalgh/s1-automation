@@ -107,11 +107,28 @@ public final class AuthoringDtos {
      *
      * @param element    the element itself, in the capture's pixel space
      * @param ancestors  containers above it, outermost first
+     * @param previousSibling the element immediately before it, or null — shown so the author can
+     *                        write a sibling selector by hand when the suggested one is not what
+     *                        they want
+     * @param followingSibling the element immediately after it, or null
      * @param locator    a JAB locator that resolves to it, or null if nothing distinguishes it
      * @param matchCount how many elements that locator matches on the worker right now
      * @param stale      the live tree no longer agrees with the screenshot — the element was
      *                   found outside the capture's bounds, so the screen has moved on
      */
-    public record InspectView(JabNode element, List<JabNode> ancestors, LocatorDefinition locator,
+    public record InspectView(JabNode element, List<JabNode> ancestors, JabNode previousSibling,
+                              JabNode followingSibling, LocatorDefinition locator,
                               int matchCount, boolean stale) {}
+
+    /**
+     * POST /authoring/api/locators/jab — store an attribute locator the tool worked out.
+     *
+     * <p>The locator is sent back rather than re-derived: the author may have looked at the
+     * suggestion, decided the index made it too brittle, and edited it. Re-deriving would throw
+     * that away.</p>
+     */
+    public record JabLocatorCommand(String name, String s1Version, LocatorDefinition locator) {}
+
+    /** What was stored, so the page can confirm it and refresh its list. */
+    public record SavedLocatorView(String locatorId, String name, LocatorDefinition definition) {}
 }

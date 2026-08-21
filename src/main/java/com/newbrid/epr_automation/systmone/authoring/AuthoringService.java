@@ -3,6 +3,8 @@ package com.newbrid.epr_automation.systmone.authoring;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CaptureView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CropView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.InspectView;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.JabLocatorCommand;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.SavedLocatorView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.LocateResult;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.OffsetLocatorCommand;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.OffsetLocatorView;
@@ -188,7 +190,41 @@ public class AuthoringService {
             throw new IllegalArgumentException(String.format(
                     "(%d,%d) is outside this %dx%d capture", x, y, capture.width(), capture.height()));
         }
-        InspectResponse response = captures.inspect(capture.workerId(), x, y);
+        return view(capture, captures.inspect(capture.workerId(), x, y));
+    }
+
+    /**
+     * Ask the worker what SystmOne currently considers focused (FR-TOOL-03).
+     *
+     * <p>No coordinates involved, which is the point: the author tabs to a field in SystmOne,
+     * switches to the tool, and asks. The browser holding the operating system's focus does not
+     * disturb what SystmOne's own tree calls focused.</p>
+     */
+    public InspectView inspectFocused(String captureId) {
+        CaptureStore.Capture capture = store.require(captureId);
+        return view(capture, captures.inspectFocused(capture.workerId()));
+    }
+
+    /** Store a JAB locator in the registry under a name a bot can reference (FR-REG-01). */
+    public SavedLocatorView saveJabLocator(JabLocatorCommand cmd) {
+        if (cmd.name() == null || cmd.name().isBlank()) {
+            throw new IllegalArgumentException("Give the locator a name — bots reference it by name");
+        }
+        LocatorDefinition locator = cmd.locator();
+        if (locator == null || locator.type() != LocatorType.JAB) {
+            throw new IllegalArgumentException("That is not a JAB locator; inspect an element first");
+        }
+        if (locator.role() == null && locator.name() == null && locator.description() == null) {
+            throw new IllegalStateException("This locator names no role, name or description, so it "
+                    + "would match on nothing. Inspect a control that exposes at least one of them, "
+                    + "or cut a template instead.");
+        }
+        String id = registry.saveLocator(cmd.name().trim(), s1Version(cmd.s1Version()), locator);
+        log.info("Saved JAB locator '{}' as {}", cmd.name().trim(), id);
+        return new SavedLocatorView(id, cmd.name().trim(), locator);
+    }
+
+    private InspectView view(CaptureStore.Capture capture, InspectResponse response) {
         if (!response.ok()) {
             throw new IllegalStateException(response.error() == null
                     ? "Worker '" + capture.workerId() + "' returned no element" : response.error());
@@ -197,10 +233,10 @@ public class AuthoringService {
         boolean stale = element.width() > 0 && element.height() > 0
                 && !new Rectangle(0, 0, capture.width(), capture.height())
                         .intersects(new Rectangle(element.x(), element.y(), element.width(), element.height()));
-        log.info("Inspected ({},{}) on capture {}: {} '{}' matched by the suggested locator {} time(s)",
-                x, y, captureId, element.role(), element.name(), response.matchCount());
-        return new InspectView(element, response.ancestors(), response.suggested(),
-                response.matchCount(), stale);
+        log.info("Inspected {} '{}' on capture {}: the suggested locator matches {} element(s)",
+                element.role(), element.name(), capture.id(), response.matchCount());
+        return new InspectView(element, response.ancestors(), response.previousSibling(),
+                response.followingSibling(), response.suggested(), response.matchCount(), stale);
     }
 
     // ---- offset locators ----
@@ -246,8 +282,7 @@ public class AuthoringService {
         int offsetX = (int) Math.round(dx / factor);
         int offsetY = (int) Math.round(dy / factor);
 
-        LocatorDefinition definition = new LocatorDefinition(LocatorType.IMAGE,
-                null, null, null, null, null, null, null,
+        LocatorDefinition definition = LocatorDefinition.imageAnchored(
                 blankToNull(cmd.sizingTemplateRef()), threshold, cmd.anchorTemplateRef().trim(),
                 offsetX, offsetY);
 

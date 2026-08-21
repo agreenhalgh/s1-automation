@@ -51,7 +51,7 @@ public class RunApiController {
     @GetMapping("/{id}")
     public ResponseEntity<RunDetail> get(@PathVariable String id) {
         return runs.findById(id)
-                .map(run -> ResponseEntity.ok(new RunDetail(run, steps.findByRunIdOrderByStepIndexAsc(id))))
+                .map(run -> ResponseEntity.ok(new RunDetail(run, steps.findByRunIdOrderByExecutionSeqAsc(id))))
                 .orElse(ResponseEntity.notFound().build());
     }
 }

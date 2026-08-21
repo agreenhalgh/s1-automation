@@ -5,6 +5,7 @@ import com.newbrid.epr_automation.systmone.controlplane.repo.StepResultRepositor
 import com.newbrid.epr_automation.systmone.controlplane.service.DispatchService;
 import com.newbrid.epr_automation.systmone.controlplane.service.RegistryService;
 import com.newbrid.epr_automation.systmone.controlplane.service.WorkerService;
+import com.newbrid.epr_automation.systmone.controlplane.web.dto.WebDtos;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -49,7 +50,8 @@ public class DashboardController {
     public String run(@PathVariable String id, Model model) {
         var run = runs.findById(id).orElse(null);
         model.addAttribute("run", run);
-        model.addAttribute("steps", steps.findByRunIdOrderByStepIndexAsc(id));
+        // Execution order, one row per execution: a run that looped shows every pass it took.
+        model.addAttribute("steps", WebDtos.StepRow.of(steps.findByRunIdOrderByExecutionSeqAsc(id)));
         return "run";
     }
 

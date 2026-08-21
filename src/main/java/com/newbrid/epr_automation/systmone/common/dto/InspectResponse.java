@@ -16,6 +16,10 @@ import java.util.List;
  * @param ancestors  containers from the window root down to the element's parent, outermost
  *                   first — context for an author deciding whether the element is the one
  *                   they meant
+ * @param previousSibling the element immediately before it, or null. Reported so an author can see
+ *                        what a {@code previousSibling} selector would have to name, rather than
+ *                        guessing whether the label beside a field calls itself "label"
+ * @param followingSibling the element immediately after it, or null
  * @param suggested  a locator that resolves to {@code element}, or null when nothing about
  *                   the element is distinctive enough to write one
  * @param matchCount how many elements {@code suggested} matches: 1 is usable, more is
@@ -27,12 +31,14 @@ public record InspectResponse(
         String workerId,
         JabNode element,
         List<JabNode> ancestors,
+        JabNode previousSibling,
+        JabNode followingSibling,
         LocatorDefinition suggested,
         int matchCount,
         String error
 ) {
     public static InspectResponse failed(String requestId, String workerId, String error) {
-        return new InspectResponse(requestId, workerId, null, List.of(), null, 0, error);
+        return new InspectResponse(requestId, workerId, null, List.of(), null, null, null, 0, error);
     }
 
     public boolean ok() {

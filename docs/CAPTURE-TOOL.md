@@ -111,6 +111,38 @@ Three things about this panel are worth knowing:
 An element that reports no role, name or description has nothing to write a locator from — that is
 a control painted rather than built from accessible components, and it needs a template.
 
+**The neighbours are shown too.** Under the attributes, the panel names the elements immediately
+before and after — `before: label[Surname] · after: label[Forename]` — written exactly as a
+`previousSibling` or `followingSibling` selector would name them, so writing one by hand needs no
+guessing about whether the label beside a field calls itself `label`.
+
+The suggestion uses them where they help. For a control with nothing of its own — an unlabelled
+text field, the usual case — the ladder tries the neighbour before it, then the one after, then
+both, and only falls back to `index` when neither can be named. A neighbour describes the form the
+way an author reads it; a position among siblings describes the layout as it happens to be today
+and shifts the moment a label is added. A control that names itself still gets the simpler locator.
+
+**Or read the focused element.** *Read the focused element* asks the worker which control
+SystmOne itself considers focused — no clicking on the screenshot, and no coordinates involved.
+Tab or click to a field in SystmOne, come back to the tool, press the button. It reads the
+`focused` state in the accessibility tree rather than the operating system's foreground window,
+which is why it still works from a browser that has taken the desktop's focus. A focused container
+and the focused control inside it both carry the state, so the deepest one is reported: the thing
+with the caret in it.
+
+A window with nothing focused has nothing to report, and says so rather than guessing.
+
+**Save it.** Once an element is inspected, *Save locator* stores the JSON in the registry under a
+name a bot can reference, through the same `POST /api/locators` the offset locators use. The name
+box is pre-filled from what the control calls itself — "Search patient" becomes
+`search-patient` — and anything you type is left alone. What is saved is what is on screen, so
+editing the JSON to drop a brittle `index` before saving does what you would expect.
+
+Saving an ambiguous locator is allowed, and the confirmation says so: the count is on screen, and
+an author who wants it anyway is usually about to add something to the definition by hand. What is
+refused is a locator with no `role`, `name` or `description` at all, because it would match on
+nothing.
+
 **Modal dialogs work.** Every window of SystmOne's JVM is searched, so clicking into a dialog
 reads the dialog, and the panel names it in the *Inside:* chain. Because the window behind stays
 matchable and tends to hold identically named buttons, a suggestion made while a dialog is up

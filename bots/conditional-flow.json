@@ -1,0 +1,77 @@
+{
+  "botId": "conditional-flow",
+  "name": "Open a patient, dealing with the duplicate-match dialog only if it appears",
+  "version": 1,
+  "s1Version": "2024",
+  "globalTimeoutMs": 120000,
+  "steps": [
+    {
+      "name": "Activate SystmOne",
+      "action": "ACTIVATE",
+      "timeoutMs": 10000
+    },
+    {
+      "name": "Search for the patient",
+      "action": "SET_TEXT",
+      "inputValue": "${nhsNumber}",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "text", "name": "NHS Number", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "name": "Run the search",
+      "action": "KEYS",
+      "inputValue": "ENTER",
+      "timeoutMs": 5000,
+      "locatorChain": [
+        { "type": "JAB", "role": "frame", "name": "SystmOne", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "name": "Did a duplicate-match dialog open?",
+      "action": "WAIT",
+      "timeoutMs": 4000,
+      "onFound": "pick-first-match",
+      "onMissing": "open-record",
+      "locatorChain": [
+        { "type": "JAB", "role": "dialog", "name": "Multiple patients", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "pick-first-match",
+      "name": "Choose the first match in the dialog, which opens the record",
+      "action": "DOUBLE_CLICK",
+      "timeoutMs": 8000,
+      "onFound": "read-patient-name",
+      "locatorChain": [
+        {
+          "type": "JAB",
+          "role": "table row",
+          "index": 0,
+          "ancestorPath": "dialog[Multiple patients]"
+        }
+      ]
+    },
+    {
+      "key": "open-record",
+      "name": "Open the patient record (only reached when no dialog appeared)",
+      "action": "CLICK",
+      "timeoutMs": 10000,
+      "locatorChain": [
+        { "type": "JAB", "role": "push button", "name": "Open", "nameMatch": "EXACT" },
+        { "type": "IMAGE", "templateRef": "btn-open-record", "threshold": 0.94 }
+      ]
+    },
+    {
+      "key": "read-patient-name",
+      "name": "Read back who was opened",
+      "action": "GET_TEXT",
+      "outputKey": "patientName",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "name": "Patient:", "nameMatch": "CONTAINS" }
+      ]
+    }
+  ]
+}

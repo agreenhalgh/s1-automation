@@ -20,7 +20,6 @@ http:
         "globalTimeoutMs": 60000,
         "steps": [
           {
-            "index": 0,
             "name": "Activate SystmOne",
             "action": "ACTIVATE",
             "outputKey": "activatedWindow",
@@ -36,7 +35,6 @@ http:
             ]
           },
           {
-            "index": 1,
             "name": "Click attendance",
             "action": "CLICK",
             "timeoutMs": 8000,
@@ -50,7 +48,6 @@ http:
             ]
           },
           {
-            "index": 2,
             "name": "Enter NHS number",
             "action": "SET_TEXT",
             "locatorChain": [
@@ -67,7 +64,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 3,
             "name": "Click Search",
             "action": "KEYS",
             "inputValue": "ALT+e",
@@ -81,7 +77,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 4,
             "name": "Click Select",
             "action": "KEYS",
             "inputValue": "ALT+s",
@@ -92,10 +87,10 @@ http:
                 "threshold": 0.9
               }
             ],
+            "continueOnFailure": false,
             "timeoutMs": 8000
           },
           {
-            "index": 5,
             "name": "Dismiss information popup",
             "action": "KEYS",
             "inputValue": "ALT+o",
@@ -113,7 +108,6 @@ http:
             "continueOnFailure": true
           },
           {
-            "index": 6,
             "name": "Mode of arrival",
             "action": "SET_TEXT",
             "inputValue": "Walked in",
@@ -130,7 +124,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 7,
             "name": "Referral source",
             "action": "SET_TEXT",
             "inputValue": "Police",
@@ -147,7 +140,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 8,
             "name": "Triage category",
             "action": "CLICK",
             "locatorChain": [
@@ -163,7 +155,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 9,
             "name": "Triage category",
             "action": "KEYS",
             "inputValue": "DOWN,DOWN,DOWN",
@@ -180,7 +171,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 10,
             "name": "Triage now",
             "action": "CLICK",
             "locatorChain": [
@@ -192,7 +182,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 11,
             "name": "Triage by me",
             "action": "CLICK",
             "locatorChain": [
@@ -204,7 +193,6 @@ http:
             "timeoutMs": 8000
           },
           {
-            "index": 12,
             "name": "Accompanied by",
             "action": "SET_TEXT",
             "inputValue": "Carer",

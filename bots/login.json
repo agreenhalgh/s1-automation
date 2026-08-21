@@ -6,7 +6,6 @@
   "globalTimeoutMs": 60000,
   "steps": [
     {
-      "index": 0,
       "name": "Click Patient",
       "action": "CLICK",
       "timeoutMs": 8000,
@@ -25,7 +24,6 @@
       ]
     },
     {
-      "index": 1,
       "name": "Type NHS number",
       "action": "SET_TEXT",
       "inputValue": "${nhsNumber}",

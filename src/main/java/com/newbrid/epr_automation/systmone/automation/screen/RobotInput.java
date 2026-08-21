@@ -1,5 +1,6 @@
 package com.newbrid.epr_automation.systmone.automation.screen;
 
+import com.newbrid.epr_automation.systmone.sdk.engine.KeyboardControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +23,12 @@ import java.util.List;
  * OS-level mouse/keyboard driving and screen capture via {@link java.awt.Robot}
  * (FR-SR-06, FR-JAB-08). Degrades to unavailable in headless environments so the
  * engine can skip screen-recognition steps rather than crash.
+ *
+ * <p>It is also the engine's {@link KeyboardControl}: {@code isAvailable} and {@code keys} are
+ * exactly that contract already, so a {@code KEYS} step with no locator chain is served by the
+ * same object that serves one with a chain.</p>
  */
-public class RobotInput {
+public class RobotInput implements KeyboardControl {
 
     private static final Logger log = LoggerFactory.getLogger(RobotInput.class);
 
@@ -51,6 +56,7 @@ public class RobotInput {
         if (r != null) logDisplayGeometry();
     }
 
+    @Override
     public boolean isAvailable() {
         return robot != null;
     }
@@ -164,6 +170,7 @@ public class RobotInput {
      *
      * <p>The comma is the separator, so the comma key itself is named {@code COMMA}.</p>
      */
+    @Override
     public void keys(String combo) {
         requireRobot();
         for (String chord : chords(combo)) pressChord(chord);

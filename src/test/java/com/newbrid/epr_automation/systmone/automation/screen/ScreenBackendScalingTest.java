@@ -90,9 +90,8 @@ class ScreenBackendScalingTest {
         // field sits +75,+12 from the anchor. Scaling the offset with the template is
         // what keeps one bot definition working across differently scaled workstations.
         ScreenBackend backend = backend(Map.of("anchor", NATIVE_CROP), 2.0);
-        LocatorDefinition anchored = new LocatorDefinition(LocatorType.IMAGE,
-                null, null, null, null, null, null, null,
-                null, 0.90, "anchor", 150, 25);
+        // No sizing template: the target is the point the offset lands on, not a region.
+        LocatorDefinition anchored = LocatorDefinition.imageAnchored(null, 0.90, "anchor", 150, 25);
 
         Optional<ElementHandle> hit = backend.resolve(anchored, Duration.ofMillis(100));
 

@@ -1,0 +1,73 @@
+info:
+  name: Set NHS Number JAB
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: http://localhost:8080/api/bots
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "search-nhs-number-jab",
+        "name": "Search NHS Number using JAB selector",
+        "version": 1,
+        "s1Version": "DEMO",
+        "globalTimeoutMs": 60000,
+        "steps": [
+          {
+            "name": "Activate SystmOne",
+            "action": "ACTIVATE",
+            "outputKey": "activatedWindow",
+            "inputValue": "SystmOne A&E",
+            "timeoutMs": 10000
+          },
+          {
+            "name": "Set NHS Number",
+            "action": "SET_TEXT",
+            "inputValue": "thisisaJABtest2",
+            "timeoutMs": 10000,
+            "locatorChain": [
+              {
+                "type": "JAB",
+                "role": "text",
+                "previousSibling": "label[NHS Number]",
+                "ancestorPath": "dialog[Patient Registration] > page tab[Patient Details]",
+                "index": 1
+              }
+            ]
+          },
+          {
+            "name": "Language dropdown focus",
+            "action": "CLICK",
+            "inputValue": "English",
+            "timeoutMs": 10000,
+            "locatorChain": [
+              {
+                "type": "JAB",
+                "role": "panel",
+                "previousSibling": "label[Language]",
+                "ancestorPath": "dialog[Patient Registration] > page tab[Patient Details]"
+              }
+            ]
+          },
+          {
+            "name": "Language dropdown select",
+            "action": "KEYS",
+            "inputValue": "DOWN",
+            "timeoutMs": 10000
+          }
+          
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

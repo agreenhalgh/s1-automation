@@ -85,13 +85,24 @@
                 Attribute locators survive a screen redraw, a theme change and a different
                 resolution, so prefer one over a template wherever the control exposes itself.
             </p>
-            <p class="muted" id="inspect-readout">Choose <em>read its JAB attributes</em> above, then click a control.</p>
+            <button type="button" id="read-focused">Read the focused element</button>
+            <p class="muted">
+                Reads whatever SystmOne itself considers focused, so no clicking on the screenshot is
+                needed: tab to a field in SystmOne, come back here and press the button. The browser
+                holding the desktop's focus does not change what SystmOne's own tree calls focused.
+            </p>
+            <p class="muted" id="inspect-readout">Choose <em>read its JAB attributes</em> above and click a control, or read the focused element.</p>
             <div id="inspect-result" hidden>
                 <table class="attrs" id="inspect-attrs"></table>
                 <p class="muted" id="inspect-ancestors"></p>
+                <p class="muted" id="inspect-siblings"></p>
                 <p id="inspect-verdict" class="verdict"></p>
                 <pre id="inspect-json"></pre>
                 <button type="button" id="copy-inspect-json" class="link-btn">Copy locator JSON</button>
+                <label>Save as locator named
+                    <input type="text" id="jab-loc-name" placeholder="patient-search-field" autocomplete="off"/>
+                </label>
+                <button type="button" id="save-jab-locator" disabled>Save locator</button>
             </div>
         </section>
 

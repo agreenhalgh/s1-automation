@@ -7,6 +7,8 @@ import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CaptureCo
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.CaptureView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.InspectCommand;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.InspectView;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.JabLocatorCommand;
+import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.SavedLocatorView;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.LocateCommand;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.LocateResult;
 import com.newbrid.epr_automation.systmone.authoring.dto.AuthoringDtos.OffsetLocatorCommand;
@@ -98,6 +100,18 @@ public class AuthoringApiController {
     @PostMapping("/captures/{id}/inspect")
     public InspectView inspect(@PathVariable String id, @RequestBody InspectCommand cmd) {
         return authoring.inspect(id, cmd.x(), cmd.y());
+    }
+
+    /** What has focus in SystmOne right now? No coordinates needed (FR-TOOL-03). */
+    @PostMapping("/captures/{id}/focus")
+    public InspectView focused(@PathVariable String id) {
+        return authoring.inspectFocused(id);
+    }
+
+    /** Store an attribute locator under a name a bot can reference. */
+    @PostMapping("/locators/jab")
+    public SavedLocatorView saveJabLocator(@RequestBody JabLocatorCommand cmd) {
+        return authoring.saveJabLocator(cmd);
     }
 
     @PostMapping("/templates")

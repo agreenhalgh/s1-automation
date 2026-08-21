@@ -50,8 +50,11 @@ public class ResultService {
     @Transactional
     public void recordStep(String runId, String workerId, StepReport report) {
         requireRun(runId);
-        StepResultEntity e = steps.findByRunIdAndStepIndex(runId, report.index())
-                .orElseGet(() -> new StepResultEntity(runId, report.index()));
+        // Keyed on the execution: a redelivered report for the same execution updates its row,
+        // while a second visit to the same step under a conditional jump writes a new one.
+        StepResultEntity e = steps.findByRunIdAndExecutionSeq(runId, report.sequence())
+                .orElseGet(() -> new StepResultEntity(runId, report.sequence(), report.index()));
+        e.setStepIndex(report.index());
         e.setName(report.name());
         e.setStatus(report.status());
         e.setResolvedLocator(report.resolvedLocator());

@@ -60,9 +60,13 @@
         inspectResult: document.getElementById('inspect-result'),
         inspectAttrs: document.getElementById('inspect-attrs'),
         inspectAncestors: document.getElementById('inspect-ancestors'),
+        inspectSiblings: document.getElementById('inspect-siblings'),
         inspectVerdict: document.getElementById('inspect-verdict'),
         inspectJson: document.getElementById('inspect-json'),
         copyInspectJson: document.getElementById('copy-inspect-json'),
+        readFocused: document.getElementById('read-focused'),
+        jabLocName: document.getElementById('jab-loc-name'),
+        saveJabLocator: document.getElementById('save-jab-locator'),
         testResult: document.getElementById('test-result'),
         testActivate: document.getElementById('test-activate'),
         backToCapture: document.getElementById('back-to-capture')
@@ -309,10 +313,25 @@
      * says when it does and that is reported rather than smoothed over.
      */
     async function inspectAt(pt) {
-        el.inspectReadout.textContent = 'Reading the accessibility tree at ' + pt.x + ',' + pt.y + '…';
+        await inspecting('Reading the accessibility tree at ' + pt.x + ',' + pt.y + '…',
+            () => api('POST', '/authoring/api/captures/' + state.captureId + '/inspect', pt));
+    }
+
+    /**
+     * Ask which element SystmOne considers focused. No coordinates: the author tabs to a field
+     * over there, comes back here and presses the button. The browser taking the desktop's focus
+     * does not change what SystmOne's own tree calls focused.
+     */
+    async function inspectFocused() {
+        await inspecting('Asking SystmOne what has focus…',
+            () => api('POST', '/authoring/api/captures/' + state.captureId + '/focus'));
+    }
+
+    async function inspecting(progress, request) {
+        el.inspectReadout.textContent = progress;
         el.inspectResult.hidden = true;
         try {
-            state.inspect = await api('POST', '/authoring/api/captures/' + state.captureId + '/inspect', pt);
+            state.inspect = await request();
             renderInspection();
             say('', null);
         } catch (e) {
@@ -327,6 +346,7 @@
     function renderInspection() {
         const view = state.inspect;
         const e = view.element;
+        el.inspectResult.hidden = false;
         el.inspectReadout.textContent = view.stale
             ? 'The worker found this element outside the captured screen — SystmOne has moved or '
               + 'changed since this screenshot. Re-capture before trusting the highlight.'
@@ -357,6 +377,16 @@
             ? 'Inside: ' + view.ancestors.map(a => a.role + (a.name ? ' “' + a.name + '”' : '')).join(' › ')
             : '';
 
+        // The neighbours, spelled out as the selector would name them. An author writing
+        // previousSibling by hand should not have to guess whether the label beside a field
+        // calls itself "label".
+        const neighbours = [];
+        if (view.previousSibling) neighbours.push('before: ' + segment(view.previousSibling));
+        if (view.followingSibling) neighbours.push('after: ' + segment(view.followingSibling));
+        el.inspectSiblings.textContent = neighbours.length
+            ? neighbours.join('  ·  ') + '  — usable as previousSibling / followingSibling'
+            : 'No siblings either side: this element is its parent’s only child.';
+
         // The count is the whole verdict. A locator matching several elements reads as correct
         // and fails at run time, because the engine refuses to guess between them.
         if (!view.locator) {
@@ -366,11 +396,18 @@
                 + 'control nearby.';
             el.inspectJson.hidden = true;
             el.copyInspectJson.hidden = true;
+            el.saveJabLocator.disabled = true;
             return;
         }
         el.inspectJson.hidden = false;
         el.copyInspectJson.hidden = false;
+        el.saveJabLocator.disabled = false;
         el.inspectJson.textContent = JSON.stringify(locatorJson(view.locator), null, 2);
+        // Suggest a name from what the control calls itself, so the common case is one keystroke
+        // away from saved. Never overwrite something the author has typed.
+        if (!el.jabLocName.value) {
+            el.jabLocName.value = suggestedName(e);
+        }
         if (view.matchCount === 1) {
             el.inspectVerdict.className = 'verdict verdict-ok';
             el.inspectVerdict.textContent = 'Matches exactly one element — usable as it stands.';
@@ -386,14 +423,54 @@
         }
     }
 
+    /** A neighbour written the way a sibling selector names it: role[name], or bare role. */
+    function segment(node) {
+        return node.name ? node.role + '[' + node.name + ']' : node.role;
+    }
+
     /** Only the fields a JAB locator actually uses, so the JSON pastes straight into a bot. */
     function locatorJson(locator) {
         const out = {type: 'JAB'};
-        ['role', 'name', 'nameMatch', 'description', 'index'].forEach(key => {
+        ['role', 'name', 'nameMatch', 'description', 'index', 'ancestorPath',
+            'previousSibling', 'followingSibling'].forEach(key => {
             if (locator[key] !== null && locator[key] !== undefined) out[key] = locator[key];
         });
         return out;
     }
+
+    /** A registry-friendly name from the element's own words: "Search patient" -> search-patient. */
+    function suggestedName(element) {
+        const words = (element.name || element.description || element.role || '').toLowerCase();
+        return words.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+    }
+
+    el.readFocused.addEventListener('click', () => inspectFocused());
+
+    el.saveJabLocator.addEventListener('click', async () => {
+        if (!state.inspect || !state.inspect.locator) return;
+        const name = el.jabLocName.value.trim();
+        if (!name) {
+            say('Give the locator a name — bots reference it by name.', 'warn');
+            return;
+        }
+        // Saved as shown, ambiguity and all: the count is on screen, and an author who wants it
+        // anyway may be about to edit it in the definition. The warning is the honest half.
+        try {
+            const saved = await api('POST', '/authoring/api/locators/jab', {
+                name: name,
+                s1Version: state.s1Version,
+                locator: state.inspect.locator
+            });
+            say('Saved locator "' + saved.name + '"'
+                + (state.inspect.matchCount === 1 ? '.' : ' — note it matches '
+                    + state.inspect.matchCount + ' elements, which the engine treats as ambiguous.'),
+                state.inspect.matchCount === 1 ? 'ok' : 'warn');
+            el.jabLocName.value = '';
+            await loadLocators();
+        } catch (e) {
+            say(e.message, 'error');
+        }
+    });
 
     el.copyInspectJson.addEventListener('click', async () => {
         try {

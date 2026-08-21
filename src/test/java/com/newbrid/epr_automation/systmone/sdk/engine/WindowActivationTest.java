@@ -13,6 +13,7 @@ import com.newbrid.epr_automation.systmone.sdk.locator.ActionParams;
 import com.newbrid.epr_automation.systmone.sdk.locator.AutomationBackend;
 import com.newbrid.epr_automation.systmone.sdk.locator.BackendRegistry;
 import com.newbrid.epr_automation.systmone.sdk.locator.ElementHandle;
+import com.newbrid.epr_automation.systmone.common.dto.TestSteps;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Rectangle;
@@ -75,8 +76,8 @@ class WindowActivationTest {
     }
 
     private static StepDefinition activateStep(String inputValue, LocatorDefinition... chain) {
-        return new StepDefinition(0, "Activate", ActionType.ACTIVATE, List.of(chain),
-                inputValue, "activatedWindow", 5000, RetryPolicyDef.none(), false, null, null);
+        return TestSteps.step("Activate", ActionType.ACTIVATE, chain)
+                .inputValue(inputValue).outputKey("activatedWindow").build();
     }
 
     private static BotDefinition bot(StepDefinition... steps) {
@@ -197,8 +198,7 @@ class WindowActivationTest {
     @Test
     void stepsOtherThanActivateStillRequireALocator() {
         RunResult result = run(new BackendRegistry(), new FakeWindowControl(),
-                new StepDefinition(0, "Click", ActionType.CLICK, List.of(), null, null,
-                        5000, RetryPolicyDef.none(), false, null, null));
+                TestSteps.step("Click", ActionType.CLICK).build());
 
         assertEquals(RunStatus.FAILED, result.status());
         assertTrue(result.error().message().contains("has no locators"), result.error().message());

@@ -43,20 +43,34 @@ public class BotDefinitionValidator {
         List<String> problems = new ArrayList<>();
         Map<String, String> checked = new HashMap<>();   // ref -> problem text, or "" if fine
 
-        for (StepDefinition step : def.steps()) {
+        List<StepDefinition> steps = def.steps();
+        for (int position = 0; position < steps.size(); position++) {
+            StepDefinition step = steps.get(position);
             List<LocatorDefinition> chain = step.locatorChain();
             for (int i = 0; i < chain.size(); i++) {
                 LocatorDefinition locator = chain.get(i);
                 if (locator.type() != LocatorType.IMAGE) continue;
 
-                checkLocator(problems, checked, describe(step, i), locator);
+                checkLocator(problems, checked, describe(position, step, i), locator);
+            }
+            for (int i = 0; i < chain.size(); i++) {
+                checkSiblingSelectors(problems, describe(position, step, i), chain.get(i));
+            }
+            // A KEYS step with nothing to send is a silent no-op at run time: the keystrokes are
+            // simply not sent and the step reports success.
+            if (step.action() == com.newbrid.epr_automation.systmone.common.model.ActionType.KEYS
+                    && (step.inputValue() == null || step.inputValue().isBlank())) {
+                problems.add("step " + position + " '" + step.name() + "' is a KEYS step with no "
+                        + "inputValue, so it would send nothing");
             }
         }
+        checkFlow(problems, def);
 
         if (!problems.isEmpty()) {
             throw new RegistryValidationException(
-                    "Bot '" + def.botId() + "' references " + problems.size()
-                            + " unresolved template(s); upload them with POST /api/templates first",
+                    "Bot '" + def.botId() + "' has " + problems.size() + " problem(s): unresolved "
+                            + "template references need uploading with POST /api/templates first, and "
+                            + "flow problems need fixing in the definition",
                     problems);
         }
     }
@@ -115,8 +129,83 @@ public class BotDefinitionValidator {
         return "";
     }
 
-    private static String describe(StepDefinition step, int locatorIndex) {
-        return "step " + step.index() + " '" + step.name() + "' locator " + locatorIndex;
+    /**
+     * A sibling selector names <em>one</em> element, not a path. A {@code >} in it means the
+     * author expected {@code ancestorPath}'s chain syntax, and it would silently match nothing:
+     * no single element has a role containing an angle bracket.
+     */
+    private static void checkSiblingSelectors(List<String> problems, String where,
+                                              LocatorDefinition locator) {
+        checkSiblingSelector(problems, where, "previousSibling", locator.previousSibling());
+        checkSiblingSelector(problems, where, "followingSibling", locator.followingSibling());
+    }
+
+    private static void checkSiblingSelector(List<String> problems, String where, String field,
+                                             String selector) {
+        if (selector != null && selector.contains(">")) {
+            problems.add(where + ": " + field + " '" + selector + "' names one sibling, so it takes "
+                    + "a single role[name] and not a '>' chain — use ancestorPath for a chain");
+        }
+    }
+
+    /**
+     * Step keys and the jumps between them (FR-ENG-01).
+     *
+     * <p>Checked here for the same reason template references are: a jump to a key nothing
+     * declares is a typo, and finding out at run time means a dispatched job, a failed step on a
+     * worker and a dead-lettered run before anyone learns of it. Duplicated keys are worse than
+     * a typo — the definition reads as though the flow goes one place and it goes another.</p>
+     */
+    private static void checkFlow(List<String> problems, BotDefinition def) {
+        List<StepDefinition> steps = def.steps();
+        Map<String, Integer> firstSeen = new HashMap<>();
+        for (int i = 0; i < steps.size(); i++) {
+            String key = steps.get(i).key();
+            if (key == null) continue;
+            Integer earlier = firstSeen.putIfAbsent(key, i);
+            if (earlier != null) {
+                problems.add("step " + i + " '" + steps.get(i).name() + "' reuses the key '" + key
+                        + "', already declared by step " + earlier + " — a jump to it would be a coin toss");
+            }
+        }
+        for (int i = 0; i < steps.size(); i++) {
+            StepDefinition step = steps.get(i);
+            checkTarget(problems, firstSeen, i, step, "onFound", step.onFound());
+            checkTarget(problems, firstSeen, i, step, "onMissing", step.onMissing());
+            checkTarget(problems, firstSeen, i, step, "onLimit", step.onLimit());
+            checkLimit(problems, i, step);
+        }
+    }
+
+    /**
+     * A limit has to be a number of executions, and a jump for exhausting it has to have a limit
+     * to exhaust. Both mistakes read as working configuration and do nothing at run time.
+     */
+    private static void checkLimit(List<String> problems, int position, StepDefinition step) {
+        Integer max = step.maxExecutions();
+        if (max != null && max < 1) {
+            problems.add("step " + position + " '" + step.name() + "' has maxExecutions " + max
+                    + "; it must be at least 1, or absent for no limit");
+        }
+        if (step.onLimit() != null && max == null) {
+            problems.add("step " + position + " '" + step.name() + "' declares onLimit '"
+                    + step.onLimit() + "' but no maxExecutions, so there is no limit to reach");
+        }
+    }
+
+    private static void checkTarget(List<String> problems, Map<String, Integer> keys, int position,
+                                    StepDefinition step, String field, String target) {
+        if (target == null) return;
+        if (keys.containsKey(target)) return;
+        String known = keys.isEmpty() ? "no step declares a key"
+                : "known keys: " + String.join(", ", keys.keySet());
+        problems.add("step " + position + " '" + step.name() + "' " + field + " jumps to '"
+                + target + "', which no step declares as its key (" + known + ")");
+    }
+
+    /** Position, not a declared number: it is what the run reports and what the author counts. */
+    private static String describe(int position, StepDefinition step, int locatorIndex) {
+        return "step " + position + " '" + step.name() + "' locator " + locatorIndex;
     }
 
     private static boolean isBlank(String s) {

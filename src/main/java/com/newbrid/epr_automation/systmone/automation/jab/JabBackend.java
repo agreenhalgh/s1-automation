@@ -59,15 +59,25 @@ public class JabBackend implements AutomationBackend {
         do {
             List<JabElementHandle> matches = new ArrayList<>();
             for (AcRef root : bridge.roots(windowTitleContains)) {
-                search(root, locator, 0, new int[]{0}, matches, new ArrayList<>());
+                search(root, SiblingLookup.NONE, locator, 0, new int[]{0}, matches, new ArrayList<>());
                 if (matches.size() > 1) break;
             }
             if (matches.size() == 1) {
                 return Optional.of(matches.get(0));
             }
             if (matches.size() > 1) {
-                log.debug("Ambiguous JAB locator {} matched {} elements — refusing to act",
-                        locator.name(), matches.size());
+                // Warn, not debug: this resolves to empty exactly like "nothing found", so without
+                // a message the two are indistinguishable from the outside — and the fix for each
+                // is the opposite of the fix for the other.
+                //
+                // "more than one" rather than a count: the search stops as soon as a second match
+                // appears, so it does not know whether there were two or twenty. Reporting
+                // matches.size() here claimed a number it had not counted.
+                log.warn("JAB locator {} matched more than one element, so the step will not act on "
+                                + "any of them (NFR-REL-04). The first two were {} and {}. Add "
+                                + "something that tells them apart — a name, a description, or an "
+                                + "ancestorPath naming the window or tab the intended one is in.",
+                        locator.describe(), describe(matches.get(0)), describe(matches.get(1)));
                 return Optional.empty(); // fail-safe
             }
             if (System.currentTimeMillis() >= deadline) break;
@@ -82,14 +92,14 @@ public class JabBackend implements AutomationBackend {
      *                  is how a step targets a control inside a modal dialog rather than the
      *                  identically named one in the window behind it
      */
-    private void search(AcRef node, LocatorDefinition locator, int depth, int[] visited,
-                        List<JabElementHandle> out, List<AccessibleInfo> ancestors) {
+    private void search(AcRef node, SiblingLookup siblings, LocatorDefinition locator, int depth,
+                        int[] visited, List<JabElementHandle> out, List<AccessibleInfo> ancestors) {
         if (node == null || depth > MAX_DEPTH || visited[0] > MAX_NODES || out.size() > 1) return;
         visited[0]++;
         AccessibleInfo info = bridge.info(node);
         if (info == null) return;
 
-        if (JabMatching.matches(info, ancestors, locator)) {
+        if (JabMatching.matches(info, ancestors, siblings, locator)) {
             out.add(new JabElementHandle(info.bounds(), node, describe(info)));
             if (out.size() > 1) return;
         }
@@ -97,12 +107,26 @@ public class JabBackend implements AutomationBackend {
         try {
             for (int i = 0; i < info.childCount(); i++) {
                 AcRef child = bridge.child(node, i);
-                search(child, locator, depth + 1, visited, out, ancestors);
+                search(child, siblingsOf(node, info, i), locator, depth + 1, visited, out, ancestors);
                 if (out.size() > 1) return;
             }
         } finally {
             ancestors.remove(ancestors.size() - 1);
         }
+    }
+
+    /**
+     * Reads the child either side of position {@code index} under {@code parent}, on demand — a
+     * locator that names no sibling never pays for one.
+     */
+    private SiblingLookup siblingsOf(AcRef parent, AccessibleInfo parentInfo, int index) {
+        return offset -> {
+            int wanted = index + offset;
+            // The native call takes an index on trust, so the range check happens here.
+            if (wanted < 0 || wanted >= parentInfo.childCount()) return null;
+            AcRef sibling = bridge.child(parent, wanted);
+            return sibling == null ? null : bridge.info(sibling);
+        };
     }
 
     @Override
@@ -167,6 +191,12 @@ public class JabBackend implements AutomationBackend {
 
     private static String describe(AccessibleInfo i) {
         return "JAB[" + i.role() + ":" + i.name() + "]";
+    }
+
+    /** A matched element with where it is, so two collisions can be told apart in a log. */
+    private static String describe(JabElementHandle handle) {
+        Rectangle b = handle.screenBounds();
+        return handle.description() + " at " + b.x + "," + b.y + " " + b.width + "x" + b.height;
     }
 
     private static void sleep(long ms) {

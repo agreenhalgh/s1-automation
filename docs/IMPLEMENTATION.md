@@ -85,6 +85,18 @@ com.newbrid.epr_automation.systmone
   per environment, including to fall back to in-memory H2, which is still on the runtime
   classpath: `JDBC_URL='jdbc:h2:mem:systmone;DB_CLOSE_DELAY=-1' JDBC_USER=sa JDBC_PASSWORD=`.
   Hibernate creates the schema on first boot (`ddl-auto: update`).
+- One schema change needs applying by hand to any database created before it, because
+  `ddl-auto: update` adds columns but never drops a constraint:
+
+  ```
+  docker exec -i systmone-postgres psql -U systmone -d systmone \
+    < docker/migrations/2026-08-21-step-result-per-execution.sql
+  ```
+
+  It swaps `step_result`'s unique constraint from `(run_id, step_index)` to
+  `(run_id, execution_seq)` so a conditional flow can visit a step more than once, and backfills
+  existing rows. Safe to run twice. A fresh database gets the right shape from `ddl-auto` and does
+  not need it.
 - The tests need neither container. Surefire layers `src/test/resources/test-datasource.yaml`
   over the main config through `spring.config.additional-location`, which swaps in H2 while
   leaving every other setting — including the default `controlplane` profile — in place.
@@ -201,6 +213,10 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
   matches (`TemplateMatcherTest`).
 - Results endpoint applies a terminal outcome once and ignores duplicates
   (`ResultServiceIdempotencyTest`, FR-CP-02a).
+- Step results are stored one row per execution: a reported run that visits step 1 twice keeps
+  both outcomes (`SKIPPED` then `SUCCEEDED`), a redelivered report for an execution updates its
+  own row rather than adding one, and the run page renders the repeats as "pass 1 of 2" /
+  "pass 2 of 2" in execution order.
 - Control plane boots against the compose PostgreSQL with all 7 repositories, Hibernate
   creating all 7 tables on first connection, and a template's PNG survives an upload/fetch
   round-trip byte-identically out of a `bytea` column; UI redirects unauthenticated users

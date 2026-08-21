@@ -21,7 +21,7 @@ key here is a hard error, not a silent no-op).
 
 ```jsonc
 {
-  "index": 0,                  // zero-based; steps run in list order
+  "key": "open-record",        // optional name; only needed if something jumps to this step
   "name": "Click Search",      // label for logs, the run UI and step reports
   "action": "CLICK",           // see ActionType below
   "locatorChain": [ ... ],     // ordered; first to resolve wins (FR-ENG-02)
@@ -31,9 +31,20 @@ key here is a hard error, not a silent no-op).
   "retry": { "maxAttempts": 2, "initialBackoffMs": 400, "multiplier": 2.0, "maxBackoffMs": 3000 },
   "continueOnFailure": false,  // true → step records SKIPPED and the run continues
   "clickOffsetX": 40,          // click-point offset, see below
-  "clickOffsetY": 0
+  "clickOffsetY": 0,
+  "onFound": "handle-dialog",  // jump here when the locator resolves (see Conditional flow)
+  "onMissing": "carry-on",     // jump here when nothing in the chain resolves
+  "maxExecutions": 10,         // this step may run at most 10 times in one run
+  "onLimit": "give-up"         // jump here once maxExecutions is used up
 }
 ```
+
+**Steps run in the order they appear in `steps`.** There is no positional field to keep in
+step with that order: an earlier version of this schema had one, and a definition whose numbers
+disagreed with its array order produced reports describing a run that never happened. Position
+is the engine's business — it is what a step report's `index`, the progress callback and the
+failure screenshot are filed under. `key` is yours, and only the steps something jumps to need
+one.
 
 `action` is one of `CLICK, DOUBLE_CLICK, RIGHT_CLICK, HOVER, FOCUS, SET_TEXT, GET_TEXT,
 SELECT, EXPAND, COLLAPSE, READ_STATE, KEYS, DRAG, ACTIVATE, WAIT`. `WAIT` asserts the
@@ -62,19 +73,126 @@ being listed. An unrecognised name fails the step rather than being skipped — 
 that silently does not happen leaves the rest of the bot acting on a screen it never
 reached. Because `,` separates presses, the comma key is named `COMMA`.
 
-Keystrokes go to whichever window owns the keyboard focus, not to the element the locator
-resolved; the chain only gates the step. Point a `KEYS` step at something cheap, such as
-the SystmOne frame, rather than an IMAGE locator that costs a full-screen match per step.
+**A `KEYS` step needs no locator chain.** Keystrokes go to whichever window owns the keyboard
+focus, never to the element a locator resolved — both backends discard it — so the chain was only
+ever a gate. Omit it and the keystrokes are simply sent:
+
+```jsonc
+{ "name": "Dismiss the dialog", "action": "KEYS", "inputValue": "ESCAPE" }
+```
+
+Keep a chain when you want the gate: "only send this if the grid is on screen" is a real thing to
+say, and a `WAIT`-like gate on a `KEYS` step says it. When you do, point it at something cheap such
+as the SystmOne frame rather than an IMAGE locator that costs a full-screen match per step.
+
+A `KEYS` step with no `inputValue` is rejected at registration: it would send nothing and report
+success.
+
+## Conditional flow
+
+A step can send the run somewhere else instead of to the next step in the list. `onFound` is
+taken when the step's locator chain resolves; `onMissing` when nothing in it does. Both name a
+step's `key`.
+
+```jsonc
+{
+  "name": "Did a duplicate-match dialog open?",
+  "action": "WAIT",                   // resolves the chain and acts on nothing: a pure question
+  "timeoutMs": 4000,
+  "onFound": "pick-first-match",      // the dialog is up — deal with it
+  "onMissing": "open-record",         // it is not — carry straight on
+  "locatorChain": [
+    { "type": "JAB", "role": "dialog", "name": "Multiple patients", "nameMatch": "CONTAINS" }
+  ]
+}
+```
+
+`WAIT` pairs naturally with a branch because it asserts and acts on nothing, but any action can
+carry one: `onFound` on a `CLICK` fires when the click landed.
+
+Four rules worth knowing:
+
+- **Declaring `onMissing` makes absence an outcome, not a failure.** The step records `SKIPPED`,
+  the run stays healthy, and it continues at the named step. Without `onMissing`, a chain that
+  does not resolve fails the step exactly as it always did — so a probe needs the branch, and
+  saying nothing still means "this must be here".
+- **Only absence branches.** A locator that resolves and whose action then throws is a fault, and
+  it fails the step rather than taking the `onMissing` path. Routing a broken `SET_TEXT` down the
+  "not there" road would bury the bug.
+- **A step with no branch for the outcome it got falls through** to the next step in the list. A
+  step with `onMissing` only, that does find its element, simply carries on.
+- **Jumps may go backwards**, which is how you loop — "page down, look again". Bound it with
+  `maxExecutions`, below. A loop with no bound of its own stops after 1000 step executions with a
+  `FlowLoop` error rather than running until the global timeout, which a bot is free not to
+  declare.
+
+### Bounding a loop
+
+`maxExecutions` caps how many times one step may run in a single run, which is what turns a
+backward jump into "try this a set number of times":
+
+```jsonc
+[
+  {
+    "key": "page-down",
+    "name": "Page down the results grid",
+    "action": "KEYS",
+    "inputValue": "PAGE_DOWN",
+    "maxExecutions": 10,        // ten pages is as far as this bot will look
+    "onLimit": "give-up",       // ...and then it takes this path
+    "locatorChain": [ { "type": "JAB", "role": "table", "name": "Results", "nameMatch": "CONTAINS" } ]
+  },
+  {
+    "name": "Is the row there yet?",
+    "action": "WAIT",
+    "onMissing": "page-down",   // not yet — go round again
+    "locatorChain": [ { "type": "JAB", "role": "table row", "name": "${patientName}", "nameMatch": "CONTAINS" } ]
+  },
+  { "name": "Select the row", "action": "CLICK", "locatorChain": [ ... ] },
+  { "key": "give-up", "name": "Record that the patient was not in the list", "action": "GET_TEXT",
+    "outputKey": "notFound", "locatorChain": [ ... ] }
+]
+```
+
+- The count is **per step, per run**, and it is checked *before* the step runs — `maxExecutions: 3`
+  means three executions, not four.
+- **Without `onLimit`, running out fails the run** with a `StepLimit` error. That is the right
+  default: a loop that was supposed to converge and did not is a failure, and silently carrying on
+  would leave the rest of the bot acting on a screen that never arrived. Declare `onLimit` when the
+  loop has a legitimate fallback, as above.
+- Hitting the limit **records a step row** either way — status `SKIPPED`, error type `StepLimit` —
+  so the run history shows where the loop gave up instead of simply ceasing to mention the step.
+- Registration rejects `maxExecutions` below 1, and rejects `onLimit` on a step with no
+  `maxExecutions`, since there would be no limit to reach.
+
+`maxExecutions` is also useful without a loop at all: on a step that several branches converge on,
+it caps how many times those paths may re-enter it.
+
+Registration rejects a jump to a key no step declares, and rejects two steps sharing a key,
+naming the step and the field. Both are the kind of typo that otherwise surfaces as a failed step
+on a worker long after the job was dispatched.
+
+Every execution is recorded, not every step. A step report carries a `sequence` — which
+execution of the run it is, counting from 1 — and results are stored per `(runId, sequence)`, so a
+step visited four times by a loop leaves four rows, each with its own status, duration and
+screenshot. The run page lists them in execution order and labels the repeats "pass 2 of 4", which
+is what makes a loop legible instead of looking like a step that ran once.
+
+Redelivery is still idempotent: the same execution reported twice updates its own row, because the
+sequence identifies the execution rather than the attempt.
+
+[`conditional-flow.json`](../bots/conditional-flow.json) is a worked example: probe for a dialog,
+handle it if present, and rejoin the main path either way.
 
 ## Activating the application
 
 `KEYS` and `SET_TEXT` ultimately go to whichever window owns the keyboard focus, so a bot
 that types before SystmOne is in front types into someone else's window. `ACTIVATE` brings
-it to the foreground first — and it is the one action that needs **no locator chain**:
+it to the foreground first — and it needs **no locator chain** (nor does `KEYS`, which acts on
+the focused window rather than an element):
 
 ```jsonc
 {
-  "index": 0,
   "name": "Activate SystmOne",
   "action": "ACTIVATE",
   "outputKey": "activatedWindow"   // optional: records the full window title
@@ -133,11 +251,47 @@ Every step other than `ACTIVATE` still requires a non-empty `locatorChain`.
 ## Locators
 
 **JAB** (preferred): `role`, `name` + `nameMatch` (`EXACT` | `CONTAINS` | `REGEX`),
-`description`, `index`, `ancestorPath`. (`value` is carried on the record but not matched on.)
+`description`, `index`, `ancestorPath`, `previousSibling`, `followingSibling`. (`value` is carried
+on the record but not matched on.)
+
+`index` is the element's position among **its own parent's children**, counting siblings of every
+role — labels, buttons, panels and all. It is not "the second text field", and it shifts the day
+the form gains a label, so prefer anything else that distinguishes the control.
 
 A locator resolving to more than one element is **ambiguous**, and the engine refuses to act on
 it rather than guess (NFR-REL-04). That is the usual reason a JAB step fails on a screen where
 the control is plainly visible.
+
+### Identifying a control by what sits next to it
+
+An unlabelled field has nothing to say about itself. `previousSibling` and `followingSibling`
+identify it by the neighbour that does:
+
+```jsonc
+{
+  "type": "JAB",
+  "role": "text",
+  "previousSibling": "label[Surname]"    // the field immediately after the Surname label
+}
+```
+
+Both take a single `role[name]` segment — the same grammar `ancestorPath` uses, so `label`,
+`[Surname]` and `label[Surname]` are all valid, and the bracketed name is a case-insensitive
+contains. Set both to pin a control between two known neighbours.
+
+**Immediately** adjacent, and this is where they differ from `ancestorPath`. A path skips
+intervening containers because panels and viewports are incidental; "the field after this label"
+is a claim about adjacency and nothing else. Searching further for a match could quietly pin the
+locator to a label two fields up and click the wrong control, which is worse than not resolving —
+so a layout strut between label and field defeats the selector, visibly, rather than sliding onto
+the wrong element. `index` or an `ancestorPath` is the fallback there.
+
+An element whose siblings are unknown does not match a sibling-scoped locator, the same fail-safe
+that applies to an unknown ancestor chain. Registration rejects a `>` in either field, since that
+is the chain syntax and no single element has a role containing an angle bracket.
+
+This is usually the better answer where an anchored image locator used to be needed: it survives a
+theme change, a resolution change and a re-skinned icon, none of which a template does.
 
 ### Targeting a modal dialog
 
@@ -253,7 +407,6 @@ the thing you need to *click* — a label beside a field, an icon beside its dro
 
 ```json
 {
-  "index": 0,
   "name": "Click 40px right of the Save icon",
   "action": "CLICK",
   "timeoutMs": 8000,
@@ -281,7 +434,6 @@ landmark:
 
 ```json
 {
-  "index": 1,
   "name": "Type into the box right of the 'NHS Number' label",
   "action": "SET_TEXT",
   "inputValue": "${nhsNumber}",
@@ -298,7 +450,6 @@ offset is measured to the corner of a control you have a template for:
 
 ```json
 {
-  "index": 2,
   "name": "Tick the consent checkbox",
   "action": "CLICK",
   "timeoutMs": 8000,
@@ -328,7 +479,6 @@ row number), the step offset walks across to the column.
 
 ```json
 {
-  "index": 4,
   "name": "Right-click row 4, Status column",
   "action": "RIGHT_CLICK",
   "timeoutMs": 10000,
