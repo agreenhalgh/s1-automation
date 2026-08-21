@@ -80,6 +80,79 @@ public final class FakeTree {
     }
 
     /**
+     * A bridge that tracks the lifetime of every reference it hands out, the way the target JVM
+     * does: a handle is live from the moment it is returned until it is released.
+     *
+     * <p>It fails loudly on the three ways this goes wrong — reading through a released handle,
+     * releasing one twice, and finishing with handles still live — because none of those show up
+     * as a test failure otherwise. They show up as SystmOne slowing down over a day.</p>
+     */
+    public static Tracking tracking(Node... windows) {
+        return new Tracking(new FakeBridge(windows));
+    }
+
+    /** Delegating bridge that accounts for every reference. */
+    public static final class Tracking implements AccessBridge {
+        private final AccessBridge delegate;
+        private final java.util.Set<AcRef> live = new java.util.LinkedHashSet<>();
+        private int opened;
+        private int released;
+
+        private Tracking(AccessBridge delegate) {
+            this.delegate = delegate;
+        }
+
+        public int opened() { return opened; }
+        public int released() { return released; }
+
+        /** Handles the caller obtained and never gave back. */
+        public java.util.Set<AcRef> leaked() { return live; }
+
+        private AcRef open(AcRef ref) {
+            if (ref != null) {
+                live.add(ref);
+                opened++;
+            }
+            return ref;
+        }
+
+        private void requireLive(AcRef ref, String what) {
+            if (ref != null && !live.contains(ref)) {
+                throw new IllegalStateException(what + " through a released handle " + ref
+                        + " — the target JVM no longer holds that object");
+            }
+        }
+
+        @Override public boolean isAvailable() { return delegate.isAvailable(); }
+
+        @Override public List<AcRef> roots(String titleContains) {
+            return delegate.roots(titleContains).stream().map(this::open).toList();
+        }
+
+        @Override public AccessibleInfo info(AcRef ref) {
+            requireLive(ref, "read attributes");
+            return delegate.info(ref);
+        }
+
+        @Override public AcRef child(AcRef ref, int index) {
+            requireLive(ref, "read a child");
+            return open(delegate.child(ref, index));
+        }
+
+        @Override public void release(AcRef ref) {
+            if (ref == null) return;
+            if (!live.remove(ref)) {
+                throw new IllegalStateException("released handle " + ref + " twice");
+            }
+            released++;
+        }
+
+        @Override public boolean doAction(AcRef ref, String action) { requireLive(ref, "act"); return false; }
+        @Override public boolean setText(AcRef ref, String text) { requireLive(ref, "set text"); return false; }
+        @Override public String getText(AcRef ref) { requireLive(ref, "read text"); return null; }
+    }
+
+    /**
      * A bridge that counts how many nodes were decoded. Each {@code info} is a native call on a
      * real host, so the count is the cost of a traversal and the measure of what pruning saves.
      */

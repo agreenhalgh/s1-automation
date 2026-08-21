@@ -213,6 +213,10 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
   matches (`TemplateMatcherTest`).
 - Results endpoint applies a terminal outcome once and ignores duplicates
   (`ResultServiceIdempotencyTest`, FR-CP-02a).
+- Every accessible-context reference the bridge hands out is released. A resolution finishes
+  holding exactly one handle — the matched element — and closing it releases that too; a failed or
+  ambiguous resolution finishes holding none. `JabHandleLifetimeTest` accounts for every reference
+  through a bridge that fails on a leak, a double release, or a read through a released handle.
 - JAB traversal skips subtrees that report themselves not showing: on a form of eight tabs with
   one selected, a locator sweep decodes 50 nodes instead of 330 (15% of the work), and a control
   on an unselected tab is neither matched nor counted as an ambiguity.

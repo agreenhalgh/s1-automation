@@ -216,7 +216,8 @@ class WindowActivationTest {
                 null, "SystmOne");
         ElementHandle handle = new com.newbrid.epr_automation.systmone.automation.jab.JabElementHandle(
                 new Rectangle(0, 0, 10, 10),
-                new com.newbrid.epr_automation.systmone.automation.jab.AcRef(1, 1L), "frame");
+                new com.newbrid.epr_automation.systmone.automation.jab.AcRef(1, 1L), "frame",
+                new com.newbrid.epr_automation.systmone.automation.jab.NullAccessBridge("test"));
 
         UnsupportedOperationException e = assertThrows(UnsupportedOperationException.class,
                 () -> jab.perform(ActionType.ACTIVATE, handle, ActionParams.NONE));

@@ -1,7 +1,6 @@
 package com.newbrid.epr_automation.systmone.automation.screen;
 
 import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
-import com.newbrid.epr_automation.systmone.common.model.LocatorType;
 import com.newbrid.epr_automation.systmone.sdk.locator.ElementHandle;
 import org.junit.jupiter.api.Test;
 

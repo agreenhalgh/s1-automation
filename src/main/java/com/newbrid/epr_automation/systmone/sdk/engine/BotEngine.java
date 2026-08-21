@@ -336,9 +336,13 @@ public class BotEngine {
             if (resolved.isEmpty()) {
                 continue; // fail-safe: not confident → next locator
             }
-            ElementHandle element = resolved.get();
-            String output = act(backend, step, element, ctx);
-            return new Attempt(true, describe(locator) + " → " + element.description(), output, null);
+            // The handle owns a native reference the target JVM is holding for us, so it is
+            // closed as soon as the step has acted — including on the paths that act on nothing,
+            // such as WAIT, which would otherwise pin one control per poll.
+            try (ElementHandle element = resolved.get()) {
+                String output = act(backend, step, element, ctx);
+                return new Attempt(true, describe(locator) + " → " + element.description(), output, null);
+            }
         }
 
         String reason = null;

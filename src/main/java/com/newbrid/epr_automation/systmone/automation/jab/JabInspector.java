@@ -57,24 +57,27 @@ public class JabInspector {
     public Optional<Inspection> inspect(int x, int y) {
         if (!bridge.isAvailable()) return Optional.empty();
         List<AcRef> roots = bridge.roots(windowTitleContains);
-
-        // Every window is asked, and the most specific answer wins. Taking the first window to
-        // merely contain the point would hand a modal's controls to the full-screen window
-        // behind it, which contains every point on the desktop and answers with itself.
-        Hit best = null;
-        for (AcRef root : roots) {
-            Hit hit = deepestAt(root, SiblingLookup.NONE, x, y, 0, new int[]{0});
-            if (hit != null && (best == null || area(leaf(hit)) < area(leaf(best)))) {
-                best = hit;
+        try {
+            // Every window is asked, and the most specific answer wins. Taking the first window to
+            // merely contain the point would hand a modal's controls to the full-screen window
+            // behind it, which contains every point on the desktop and answers with itself.
+            Hit best = null;
+            for (AcRef root : roots) {
+                Hit hit = deepestAt(root, SiblingLookup.NONE, x, y, 0, new int[]{0});
+                if (hit != null && (best == null || area(leaf(hit)) < area(leaf(best)))) {
+                    best = hit;
+                }
             }
-        }
-        if (best == null) {
-            log.debug("No accessible element at ({},{}) in any window matching '{}'",
-                    x, y, windowTitleContains);
-            return Optional.empty();
-        }
+            if (best == null) {
+                log.debug("No accessible element at ({},{}) in any window matching '{}'",
+                        x, y, windowTitleContains);
+                return Optional.empty();
+            }
 
-        return Optional.of(describe(roots, best));
+            return Optional.of(describe(roots, best));
+        } finally {
+            roots.forEach(bridge::release);
+        }
     }
 
     /**
@@ -91,23 +94,27 @@ public class JabInspector {
     public Optional<Inspection> focused() {
         if (!bridge.isAvailable()) return Optional.empty();
         List<AcRef> roots = bridge.roots(windowTitleContains);
-        Hit best = null;
-        int bestDepth = -1;
-        for (AcRef root : roots) {
-            Hit hit = deepestFocused(root, SiblingLookup.NONE, 0, new int[]{0}, new ArrayList<>());
-            if (hit == null) continue;
-            int depth = hit.path().size();
-            if (best == null || depth > bestDepth) {
-                best = hit;
-                bestDepth = depth;
+        try {
+            Hit best = null;
+            int bestDepth = -1;
+            for (AcRef root : roots) {
+                Hit hit = deepestFocused(root, SiblingLookup.NONE, 0, new int[]{0}, new ArrayList<>());
+                if (hit == null) continue;
+                int depth = hit.path().size();
+                if (best == null || depth > bestDepth) {
+                    best = hit;
+                    bestDepth = depth;
+                }
             }
+            if (best == null) {
+                log.debug("Nothing reports the focused state in any window matching '{}'",
+                        windowTitleContains);
+                return Optional.empty();
+            }
+            return Optional.of(describe(roots, best));
+        } finally {
+            roots.forEach(bridge::release);
         }
-        if (best == null) {
-            log.debug("Nothing reports the focused state in any window matching '{}'",
-                    windowTitleContains);
-            return Optional.empty();
-        }
-        return Optional.of(describe(roots, best));
     }
 
     /** The element, its containers and a locator for it, from the path that reached it. */
@@ -117,11 +124,9 @@ public class JabInspector {
         List<JabNode> ancestors = path.subList(0, path.size() - 1).stream()
                 .map(JabInspector::node)
                 .toList();
-        // Resolved once, here: the neighbours of the element that won, and nothing else.
-        AccessibleInfo previous = hit.siblings().at(-1);
-        AccessibleInfo following = hit.siblings().at(1);
-        Suggestion suggestion = suggest(roots, element, windowScope(roots, path), previous, following);
-        return new Inspection(node(element), ancestors, node(previous), node(following),
+        Suggestion suggestion = suggest(roots, element, windowScope(roots, path),
+                hit.previous(), hit.following());
+        return new Inspection(node(element), ancestors, node(hit.previous()), node(hit.following()),
                 suggestion.locator(), suggestion.matchCount());
     }
 
@@ -144,14 +149,19 @@ public class JabInspector {
         try {
             Hit best = null;
             if (info.hasState("focused") && info.width() > 0 && info.height() > 0) {
-                best = new Hit(List.copyOf(trail), siblings);
+                best = new Hit(List.copyOf(trail), siblings.at(-1), siblings.at(1));
             }
             for (int i = 0; i < info.childCount(); i++) {
-                Hit child = deepestFocused(bridge.child(ref, i), siblingsOf(ref, info, i),
-                        depth + 1, visited, trail);
+                AcRef child = bridge.child(ref, i);
+                Hit hit;
+                try {
+                    hit = deepestFocused(child, siblingsOf(ref, info, i), depth + 1, visited, trail);
+                } finally {
+                    bridge.release(child);
+                }
                 // Deeper wins: a focused panel is context, the focused field inside it is the answer.
-                if (child != null && (best == null || child.path().size() > best.path().size())) {
-                    best = child;
+                if (hit != null && (best == null || hit.path().size() > best.path().size())) {
+                    best = hit;
                 }
             }
             return best;
@@ -173,11 +183,14 @@ public class JabInspector {
     // ---------------------------------------------------------------- descent
 
     /**
-     * @param siblings reads the elements either side of the leaf. Carried rather than resolved
-     *                 because only the winning hit's neighbours are ever wanted, and each costs
-     *                 native calls
+     * @param previous the element immediately before the leaf, already decoded
+     * @param following the element immediately after it
+     *
+     * <p>The neighbours are resolved as the hit is made rather than looked up afterwards. A lazy
+     * lookup would outlive the handles it reads through: the walk gives every reference back as it
+     * unwinds, so by the time a caller asked, the parent it would ask through is gone.</p>
      */
-    private record Hit(List<AccessibleInfo> path, SiblingLookup siblings) {}
+    private record Hit(List<AccessibleInfo> path, AccessibleInfo previous, AccessibleInfo following) {}
 
     /**
      * The deepest node containing the point, with the path taken to reach it. Where several
@@ -198,10 +211,17 @@ public class JabInspector {
 
         Hit best = null;
         for (int i = 0; i < info.childCount(); i++) {
-            Hit child = deepestAt(bridge.child(ref, i), siblingsOf(ref, info, i), x, y,
-                    depth + 1, visited);
-            if (child != null && (best == null || area(leaf(child)) < area(leaf(best)))) {
-                best = child;
+            AcRef child = bridge.child(ref, i);
+            Hit hit;
+            try {
+                hit = deepestAt(child, siblingsOf(ref, info, i), x, y, depth + 1, visited);
+            } finally {
+                // The inspector returns attributes, never handles, so every reference it opens
+                // goes back on the way out.
+                bridge.release(child);
+            }
+            if (hit != null && (best == null || area(leaf(hit)) < area(leaf(best)))) {
+                best = hit;
             }
         }
 
@@ -210,14 +230,14 @@ public class JabInspector {
         if (best != null) {
             path.addAll(best.path());
             // The neighbours that matter are the leaf's, not this node's.
-            return new Hit(path, best.siblings());
+            return new Hit(path, best.previous(), best.following());
         }
         if (!sized) {
             // Entered only because its own bounds were unusable, and nothing inside claimed the
             // point: it is not an answer, just a container that could not rule itself out.
             return null;
         }
-        return new Hit(path, siblings);
+        return new Hit(path, siblings.at(-1), siblings.at(1));
     }
 
     private static AccessibleInfo leaf(Hit hit) {
@@ -371,6 +391,21 @@ public class JabInspector {
         return total;
     }
 
+    /** Same lazy sibling reader the engine's search uses, and the same immediate release. */
+    private SiblingLookup siblingsOf(AcRef parent, AccessibleInfo parentInfo, int index) {
+        return offset -> {
+            int wanted = index + offset;
+            if (wanted < 0 || wanted >= parentInfo.childCount()) return null;
+            AcRef sibling = bridge.child(parent, wanted);
+            if (sibling == null) return null;
+            try {
+                return bridge.info(sibling);
+            } finally {
+                bridge.release(sibling);
+            }
+        };
+    }
+
     private int count(AcRef ref, SiblingLookup siblings, LocatorDefinition locator, int depth,
                       int[] visited, List<AccessibleInfo> ancestors) {
         if (ref == null || depth > MAX_DEPTH || visited[0] > MAX_NODES) return 0;
@@ -384,23 +419,18 @@ public class JabInspector {
         ancestors.add(info);
         try {
             for (int i = 0; i < info.childCount(); i++) {
-                found += count(bridge.child(ref, i), siblingsOf(ref, info, i), locator,
-                        depth + 1, visited, ancestors);
+                AcRef child = bridge.child(ref, i);
+                try {
+                    found += count(child, siblingsOf(ref, info, i), locator, depth + 1, visited,
+                            ancestors);
+                } finally {
+                    bridge.release(child);
+                }
             }
         } finally {
             ancestors.remove(ancestors.size() - 1);
         }
         return found;
-    }
-
-    /** Same lazy sibling reader the engine's search uses, so a count means what a run will do. */
-    private SiblingLookup siblingsOf(AcRef parent, AccessibleInfo parentInfo, int index) {
-        return offset -> {
-            int wanted = index + offset;
-            if (wanted < 0 || wanted >= parentInfo.childCount()) return null;
-            AcRef sibling = bridge.child(parent, wanted);
-            return sibling == null ? null : bridge.info(sibling);
-        };
     }
 
     // ---------------------------------------------------------------- helpers

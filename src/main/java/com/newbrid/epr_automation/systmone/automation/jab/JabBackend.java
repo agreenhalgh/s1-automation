@@ -58,11 +58,20 @@ public class JabBackend implements AutomationBackend {
         long deadline = System.currentTimeMillis() + Math.max(0, timeout.toMillis());
         do {
             List<JabElementHandle> matches = new ArrayList<>();
-            for (AcRef root : bridge.roots(windowTitleContains)) {
-                search(root, SiblingLookup.NONE, locator, 0, new int[]{0}, matches, new ArrayList<>());
-                if (matches.size() > 1) break;
+            List<AcRef> roots = bridge.roots(windowTitleContains);
+            try {
+                for (AcRef root : roots) {
+                    search(root, SiblingLookup.NONE, locator, 0, new int[]{0}, matches, new ArrayList<>());
+                    if (matches.size() > 1) break;
+                }
+            } finally {
+                // Window handles are ours to give back, unless the match is a window itself.
+                for (AcRef root : roots) {
+                    if (!retains(matches, root)) bridge.release(root);
+                }
             }
             if (matches.size() == 1) {
+                // Ownership passes to the caller, which closes it once the step has acted.
                 return Optional.of(matches.get(0));
             }
             if (matches.size() > 1) {
@@ -78,6 +87,8 @@ public class JabBackend implements AutomationBackend {
                                 + "something that tells them apart — a name, a description, or an "
                                 + "ancestorPath naming the window or tab the intended one is in.",
                         locator.describe(), describe(matches.get(0)), describe(matches.get(1)));
+                // Nothing is returned, so nothing transfers: both candidates go back.
+                matches.forEach(JabElementHandle::close);
                 return Optional.empty(); // fail-safe
             }
             if (System.currentTimeMillis() >= deadline) break;
@@ -100,7 +111,7 @@ public class JabBackend implements AutomationBackend {
         if (info == null) return;
 
         if (JabMatching.matches(info, ancestors, siblings, locator)) {
-            out.add(new JabElementHandle(info.bounds(), node, describe(info)));
+            out.add(new JabElementHandle(info.bounds(), node, describe(info), bridge));
             if (out.size() > 1) return;
         }
         // Nothing inside a container that is not on screen can be acted on, so the whole subtree
@@ -113,7 +124,14 @@ public class JabBackend implements AutomationBackend {
         try {
             for (int i = 0; i < info.childCount(); i++) {
                 AcRef child = bridge.child(node, i);
-                search(child, siblingsOf(node, info, i), locator, depth + 1, visited, out, ancestors);
+                try {
+                    search(child, siblingsOf(node, info, i), locator, depth + 1, visited, out, ancestors);
+                } finally {
+                    // Released unless this exact handle is the match being returned. A handle for a
+                    // node deeper in the subtree is a separate reference, so releasing this one
+                    // does not invalidate it.
+                    if (!retains(out, child)) bridge.release(child);
+                }
                 if (out.size() > 1) return;
             }
         } finally {
@@ -131,8 +149,19 @@ public class JabBackend implements AutomationBackend {
             // The native call takes an index on trust, so the range check happens here.
             if (wanted < 0 || wanted >= parentInfo.childCount()) return null;
             AcRef sibling = bridge.child(parent, wanted);
-            return sibling == null ? null : bridge.info(sibling);
+            if (sibling == null) return null;
+            try {
+                // Only the decoded attributes are wanted, so the reference goes straight back.
+                return bridge.info(sibling);
+            } finally {
+                bridge.release(sibling);
+            }
         };
+    }
+
+    /** Whether one of these matches is this exact handle, and so owns it. */
+    private static boolean retains(List<JabElementHandle> matches, AcRef ref) {
+        return matches.stream().anyMatch(m -> m.ref().equals(ref));
     }
 
     @Override

@@ -8,7 +8,6 @@ import com.newbrid.epr_automation.systmone.common.dto.StepReport;
 import com.newbrid.epr_automation.systmone.common.model.RunStatus;
 import com.newbrid.epr_automation.systmone.controlplane.domain.RunEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.StepResultEntity;
-import com.newbrid.epr_automation.systmone.controlplane.domain.WorkerAgentEntity;
 import com.newbrid.epr_automation.systmone.controlplane.repo.RunRepository;
 import com.newbrid.epr_automation.systmone.controlplane.repo.StepResultRepository;
 import com.newbrid.epr_automation.systmone.controlplane.repo.WorkerAgentRepository;
