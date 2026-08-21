@@ -23,9 +23,13 @@ import java.util.Optional;
  * {@code info} and {@code child} — the two calls every locator resolution already depends on
  * — costs a few dozen more calls and inherits reliability that is already proven.
  *
- * <p>The descent is cheap because it prunes: a child is only entered if the point falls
- * inside its parent. A container that reports no bounds is entered anyway, since a wrong
- * zero from a layout node would otherwise hide everything beneath it.</p>
+ * <p>The walk descends into every container and lets the deepest node that covers the point win.
+ * It deliberately does <em>not</em> prune on a container's own bounds or state: a {@code page tab}
+ * reports the rectangle of its tab button, a viewport reports a clipped one, and some layout nodes
+ * omit {@code showing} altogether — so a container's own attributes are evidence about the
+ * container and not about what is inside it. Trusting them made the tool answer with the page tab
+ * instead of the control that was clicked. Only a childless node is ruled out by its own bounds or
+ * state, where the evidence really is about itself.</p>
  */
 public class JabInspector {
 
@@ -193,9 +197,20 @@ public class JabInspector {
     private record Hit(List<AccessibleInfo> path, AccessibleInfo previous, AccessibleInfo following) {}
 
     /**
-     * The deepest node containing the point, with the path taken to reach it. Where several
-     * children contain the point — overlapping panes, a label drawn over its container — the
-     * smallest wins, because that is the one the author was pointing at.
+     * The deepest node containing the point, with the path taken to reach it.
+     *
+     * <p><b>A container's own bounds never veto the descent.</b> They used to, as an obvious
+     * optimisation, and it made the tool answer with the page tab instead of the control the
+     * author clicked: a {@code page tab} reports the bounds of its tab <em>button</em> while its
+     * content lives elsewhere, and a scroll pane or viewport reports a clipped rectangle. Any
+     * container whose reported rectangle failed to cover its own children cut the walk off above
+     * them. Bounds now decide only whether a node is itself an answer, never whether to look
+     * inside it, so a container that misreports its extent costs a few more reads instead of the
+     * right answer.</p>
+     *
+     * <p>Deepest wins, then smallest. Depth is what "the control rather than the thing it sits in"
+     * means, and area only breaks ties between siblings at the same depth — a label drawn over its
+     * own container, overlapping panes.</p>
      */
     private Hit deepestAt(AcRef ref, SiblingLookup siblings, int x, int y, int depth, int[] visited) {
         if (ref == null || depth > MAX_DEPTH || visited[0] > MAX_NODES) return null;
@@ -204,10 +219,15 @@ public class JabInspector {
         if (info == null) return null;
 
         boolean sized = info.width() > 0 && info.height() > 0;
-        if (sized && !info.bounds().contains(x, y)) return null;
-        // A container that is not on screen holds nothing the author can have clicked on, even
-        // when it still reports bounds — an unselected tab often does.
-        if (info.hidesSubtree()) return null;
+        boolean coversPoint = sized && info.bounds().contains(x, y);
+        // A childless node that does not cover the point cannot be the answer and has nothing
+        // inside it to ask, so it is the one case where geometry still ends the walk early.
+        if (info.childCount() == 0 && !coversPoint) return null;
+        // Same principle for the state set: a container's own attributes are evidence about the
+        // container, not about what is inside it. A layout node that omits 'showing' — and some
+        // do — must not hide the control the author actually clicked. A childless node's own state
+        // is evidence about itself, so an unselected tab's controls are still ruled out there.
+        if (info.childCount() == 0 && info.hidesSubtree()) return null;
 
         Hit best = null;
         for (int i = 0; i < info.childCount(); i++) {
@@ -220,7 +240,7 @@ public class JabInspector {
                 // goes back on the way out.
                 bridge.release(child);
             }
-            if (hit != null && (best == null || area(leaf(hit)) < area(leaf(best)))) {
+            if (hit != null && deeperOrTighter(hit, best)) {
                 best = hit;
             }
         }
@@ -232,12 +252,21 @@ public class JabInspector {
             // The neighbours that matter are the leaf's, not this node's.
             return new Hit(path, best.previous(), best.following());
         }
-        if (!sized) {
-            // Entered only because its own bounds were unusable, and nothing inside claimed the
-            // point: it is not an answer, just a container that could not rule itself out.
+        if (!coversPoint) {
+            // Looked inside because a container's bounds are not to be trusted, and nothing inside
+            // claimed the point: it is not an answer, just a node that could not rule itself out.
             return null;
         }
         return new Hit(path, siblings.at(-1), siblings.at(1));
+    }
+
+    /** Deeper beats shallower; at equal depth, the smaller element beats the larger. */
+    private static boolean deeperOrTighter(Hit candidate, Hit best) {
+        if (best == null) return true;
+        int depth = candidate.path().size();
+        int bestDepth = best.path().size();
+        if (depth != bestDepth) return depth > bestDepth;
+        return area(leaf(candidate)) < area(leaf(best));
     }
 
     private static AccessibleInfo leaf(Hit hit) {

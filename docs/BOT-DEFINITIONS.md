@@ -47,7 +47,7 @@ failure screenshot are filed under. `key` is yours, and only the steps something
 one.
 
 `action` is one of `CLICK, DOUBLE_CLICK, RIGHT_CLICK, HOVER, FOCUS, SET_TEXT, GET_TEXT,
-SELECT, EXPAND, COLLAPSE, READ_STATE, KEYS, DRAG, ACTIVATE, WAIT`. `WAIT` asserts the
+SELECT, EXPAND, COLLAPSE, READ_STATE, GET_COUNT, KEYS, DRAG, ACTIVATE, WAIT`. `WAIT` asserts the
 locator resolves and acts on nothing. `GET_TEXT`, `READ_STATE`, `EXPAND` and `COLLAPSE`
 are JAB-only — the screen backend throws `UnsupportedOperationException` for them, which
 the engine treats as a step failure. `ACTIVATE` is described below.
@@ -251,8 +251,8 @@ Every step other than `ACTIVATE` still requires a non-empty `locatorChain`.
 ## Locators
 
 **JAB** (preferred): `role`, `name` + `nameMatch` (`EXACT` | `CONTAINS` | `REGEX`),
-`description`, `index`, `ancestorPath`, `previousSibling`, `followingSibling`. (`value` is carried
-on the record but not matched on.)
+`description`, `index`, `ancestorPath`, `parent`, `previousSibling`, `followingSibling`, `row`,
+`column`. (`value` is carried on the record but not matched on.)
 
 `index` is the element's position among **its own parent's children**, counting siblings of every
 role — labels, buttons, panels and all. It is not "the second text field", and it shifts the day
@@ -272,6 +272,74 @@ tab first (a `CLICK` on the tab, then the field) rather than trying to reach thr
 An application that reports no accessible states at all is traversed in full, exactly as before:
 silence is not evidence of being hidden.
 
+### Addressing a table cell
+
+`row` and `column` place an element within a grid:
+
+```jsonc
+{
+  "type": "JAB",
+  "role": "label",
+  "ancestorPath": "table[Appointments]",
+  "row": 3,
+  "column": 1
+}
+```
+
+Both are **zero-based**, and a header row normally occupies row 0 — so the first row of data is
+usually row 1. `row` on its own addresses the whole row (`role: "table row"`, no `column`), which
+is what you want for a click that selects it.
+
+Read from the tree rather than from a table API: `row` is the position of the nearest enclosing
+row among its siblings, and `column` is the position of whatever sits *directly* under that row —
+not of the element itself, since a cell that wraps its contents puts the element a level deeper.
+No extra calls into the application; the information is already in hand.
+
+Two limits worth knowing before you rely on it:
+
+- **It needs a grid that models rows as nodes** (`table` → `table row` → cells). A plain Swing
+  `JTable` exposes its cells as a flat list with no row nodes, and there a `row` locator matches
+  nothing — visibly, rather than by picking the wrong cell. Inspect a cell in the capture tool and
+  look at the `Inside:` chain to see which shape a grid has.
+- **A virtualised grid only exposes the rows it is showing.** Row numbers are positions among the
+  rows currently in the tree, so scrolling changes them.
+
+### Counting what is on screen
+
+`GET_COUNT` records how many elements a locator matches, into `outputKey`:
+
+```jsonc
+{
+  "name": "How many appointments are listed?",
+  "action": "GET_COUNT",
+  "outputKey": "rowCount",
+  "locatorChain": [
+    { "type": "JAB", "role": "table row", "ancestorPath": "table[Appointments]" }
+  ]
+}
+```
+
+Columns are the cells of the header row — the same action with `"role": "label", "row": 0`.
+
+It counts matches of a locator rather than rows of a table, so the same action counts search
+results, list items or open tabs. `${rowCount}` is then available to later steps, including as the
+bound on a loop.
+
+- **It is the one action for which several matches are the answer**, so it never resolves an
+  element and never meets the ambiguity fail-safe. A locator that `CLICK` would refuse to act on is
+  exactly the one `GET_COUNT` is for.
+- **Zero is an answer**: the step succeeds recording `0`. To branch on an empty grid, use a `WAIT`
+  with `onMissing`.
+- **Only JAB locators can be counted.** An image match reports a best score and a runner-up, not a
+  set, so an image locator declines rather than inventing a number.
+- The chain is "the first locator that can be counted", the counting analogue of "the first that
+  resolves". A count with no `outputKey` is rejected at registration: it would read the screen and
+  throw the answer away.
+
+Counts describe **what the accessibility tree currently exposes**. For a grid that virtualises its
+rows, that is the rows on screen, not the rows in the model — the latter needs the Access Bridge
+table API, which this build does not bind.
+
 ### Identifying a control by what sits next to it
 
 An unlabelled field has nothing to say about itself. `previousSibling` and `followingSibling`
@@ -286,8 +354,20 @@ identify it by the neighbour that does:
 ```
 
 Both take a single `role[name]` segment — the same grammar `ancestorPath` uses, so `label`,
-`[Surname]` and `label[Surname]` are all valid, and the bracketed name is a case-insensitive
+`[Surname]` and `label[Surname]` are all valid: **the bracketed name is optional**, a role on its
+own is a selector, and the name on its own works too. The bracketed name is a case-insensitive
 contains. Set both to pin a control between two known neighbours.
+
+`parent` takes the same segment and matches the element's **immediate** parent:
+
+```jsonc
+{ "type": "JAB", "role": "text", "parent": "panel[Address]" }
+```
+
+That is the narrower claim than a one-segment `ancestorPath`, which any ancestor at any depth
+satisfies. Use whichever is true of the screen: a path survives the layout gaining a wrapper, while
+a parent pins the level and stops matching if the structure moves — which is the honest outcome
+when it does. All four scoping fields combine, and every one set has to hold.
 
 **Immediately** adjacent, and this is where they differ from `ancestorPath`. A path skips
 intervening containers because panels and viewports are incidental; "the field after this label"

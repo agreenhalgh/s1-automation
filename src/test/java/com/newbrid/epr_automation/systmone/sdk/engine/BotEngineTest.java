@@ -36,6 +36,8 @@ class BotEngineTest {
         final LocatorType type;
         boolean available = true;
         boolean resolveEmpty = false;
+        int matchCount = 0;
+        String lastText;
         /** Resolve empty this many more times, then start resolving — a condition that changes. */
         int emptyResolvesRemaining = 0;
         int failResolvesRemaining = 0;
@@ -56,8 +58,16 @@ class BotEngineTest {
             });
         }
 
+        @Override public int count(LocatorDefinition locator, java.time.Duration timeout) {
+            if (type == LocatorType.IMAGE) {
+                throw new UnsupportedOperationException("IMAGE locators cannot count");
+            }
+            return matchCount;
+        }
+
         @Override public String perform(ActionType action, ElementHandle element, ActionParams params) {
             performCount++;
+            if (action == ActionType.SET_TEXT) lastText = params.text();
             return action == ActionType.GET_TEXT ? "value" : null;
         }
 
@@ -536,6 +546,79 @@ class BotEngineTest {
 
         assertEquals(RunStatus.FAILED, result.status());
         assertTrue(result.error().message().contains("has no locators"), result.error().message());
+    }
+
+    // ---- GET_COUNT ----
+
+    /** Several matches are the answer here, so counting must not go near the ambiguity fail-safe. */
+    @Test
+    void countsMatchesIntoTheRunOutputs() {
+        FakeBackend jab = new FakeBackend(LocatorType.JAB);
+        jab.matchCount = 12;
+        BackendRegistry reg = new BackendRegistry().register(jab);
+
+        RunResult result = new BotEngine(reg).run(bot(
+                TestSteps.step("How many rows?", ActionType.GET_COUNT,
+                                LocatorDefinition.jab("table row", null, null))
+                        .outputKey("rowCount").build()),
+                Map.of(), "run-count", RunListener.NOOP);
+
+        assertEquals(RunStatus.SUCCEEDED, result.status());
+        assertEquals("12", result.outputs().get("rowCount"));
+        assertEquals(0, jab.performCount, "counting acts on nothing");
+    }
+
+    /** Zero rows is a fact about the screen, not a failure to read it. */
+    @Test
+    void countingZeroSucceeds() {
+        FakeBackend jab = new FakeBackend(LocatorType.JAB);
+        jab.matchCount = 0;
+        BackendRegistry reg = new BackendRegistry().register(jab);
+
+        RunResult result = new BotEngine(reg).run(bot(
+                TestSteps.step("How many rows?", ActionType.GET_COUNT,
+                                LocatorDefinition.jab("table row", null, null))
+                        .outputKey("rowCount").build()),
+                Map.of(), "run-count-zero", RunListener.NOOP);
+
+        assertEquals(RunStatus.SUCCEEDED, result.status());
+        assertEquals("0", result.outputs().get("rowCount"));
+    }
+
+    /** The count feeds the next step, which is the point of putting it in the outputs. */
+    @Test
+    void aCountedValueIsAvailableToLaterSteps() {
+        FakeBackend jab = new FakeBackend(LocatorType.JAB);
+        jab.matchCount = 7;
+        BackendRegistry reg = new BackendRegistry().register(jab);
+
+        RunResult result = new BotEngine(reg).run(bot(
+                        TestSteps.step("How many rows?", ActionType.GET_COUNT,
+                                        LocatorDefinition.jab("table row", null, null))
+                                .outputKey("rowCount").build(),
+                        TestSteps.step("Say how many", ActionType.SET_TEXT,
+                                        LocatorDefinition.jab("text", null, null))
+                                .inputValue("${rowCount} rows").build()),
+                Map.of(), "run-count-then-use", RunListener.NOOP);
+
+        assertEquals(RunStatus.SUCCEEDED, result.status());
+        assertEquals("7 rows", jab.lastText, "the count reached the next step as a placeholder");
+    }
+
+    /** An image locator declines to be counted, and the step says which locator and why. */
+    @Test
+    void failsWhenNoLocatorInTheChainCanBeCounted() {
+        FakeBackend image = new FakeBackend(LocatorType.IMAGE);
+        BackendRegistry reg = new BackendRegistry().register(image);
+
+        RunResult result = new BotEngine(reg).run(bot(
+                TestSteps.step("How many?", ActionType.GET_COUNT,
+                                LocatorDefinition.image("row-strip", 0.9))
+                        .outputKey("rows").build()),
+                Map.of(), "run-count-image", RunListener.NOOP);
+
+        assertEquals(RunStatus.FAILED, result.status());
+        assertTrue(result.error().message().contains("cannot count"), result.error().message());
     }
 
     @Test

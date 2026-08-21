@@ -111,6 +111,13 @@ Three things about this panel are worth knowing:
 An element that reports no role, name or description has nothing to write a locator from — that is
 a control painted rather than built from accessible components, and it needs a template.
 
+A click selects the **deepest** control that covers the point, not the panel or tab it sits in.
+That is worth stating because the tree makes it harder than it sounds: a `page tab` reports the
+bounds of its tab *button* rather than its content, a viewport reports a clipped rectangle, and some
+layout nodes leave `showing` out of their state set. A container's own attributes are therefore not
+evidence about what is inside it, and the walk does not treat them as such. A control that is
+itself unbounded or not showing is still ruled out — the container is then the honest answer.
+
 **The neighbours are shown too.** Under the attributes, the panel names the elements immediately
 before and after — `before: label[Surname] · after: label[Forename]` — written exactly as a
 `previousSibling` or `followingSibling` selector would name them, so writing one by hand needs no

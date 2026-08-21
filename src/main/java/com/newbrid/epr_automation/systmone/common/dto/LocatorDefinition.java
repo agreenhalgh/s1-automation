@@ -11,7 +11,7 @@ import com.newbrid.epr_automation.systmone.common.model.NameMatch;
  * factories to build them.</p>
  *
  * <h4>JAB fields</h4> role, name (+ nameMatch), description, value, index, ancestorPath,
- * previousSibling, followingSibling.
+ * parent, previousSibling, followingSibling, row, column.
  * <h4>IMAGE fields</h4> templateRef, threshold, and optional anchor-relative locating
  * (anchorTemplateRef + offsetX/offsetY) per FR-SR-07.
  */
@@ -25,8 +25,11 @@ public record LocatorDefinition(
         String value,
         Integer index,
         String ancestorPath,
+        String parent,
         String previousSibling,
         String followingSibling,
+        Integer row,
+        Integer column,
         // --- IMAGE ---
         String templateRef,
         Double threshold,
@@ -38,6 +41,7 @@ public record LocatorDefinition(
         // Blank is not a constraint anyone means to express, and a blank sibling selector would
         // reject every element rather than be ignored.
         ancestorPath = blankToNull(ancestorPath);
+        parent = blankToNull(parent);
         previousSibling = blankToNull(previousSibling);
         followingSibling = blankToNull(followingSibling);
     }
@@ -64,8 +68,11 @@ public record LocatorDefinition(
         append(sb, "value", value);
         append(sb, "index", index);
         append(sb, "ancestorPath", ancestorPath);
+        append(sb, "parent", parent);
         append(sb, "previousSibling", previousSibling);
         append(sb, "followingSibling", followingSibling);
+        append(sb, "row", row);
+        append(sb, "column", column);
         append(sb, "templateRef", templateRef);
         append(sb, "threshold", threshold);
         append(sb, "anchorTemplateRef", anchorTemplateRef);
@@ -89,7 +96,7 @@ public record LocatorDefinition(
     public static LocatorDefinition jab(String role, String name, NameMatch nameMatch) {
         return new LocatorDefinition(LocatorType.JAB, role, name,
                 nameMatch == null ? NameMatch.EXACT : nameMatch,
-                null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public static LocatorDefinition jab(String role, String name, NameMatch nameMatch,
@@ -103,18 +110,40 @@ public record LocatorDefinition(
                                         String previousSibling, String followingSibling) {
         return new LocatorDefinition(LocatorType.JAB, role, name,
                 nameMatch == null ? NameMatch.EXACT : nameMatch,
-                description, null, index, ancestorPath, previousSibling, followingSibling,
-                null, null, null, null, null);
+                description, null, index, ancestorPath, null, previousSibling, followingSibling,
+                null, null, null, null, null, null, null);
+    }
+
+    /**
+     * The same locator, scoped to an immediate parent. A wither rather than another factory
+     * overload: the JAB fields are combinable, and a factory per combination is a factory per
+     * pair of them.
+     */
+    public LocatorDefinition withParent(String parent) {
+        return new LocatorDefinition(type, role, name, nameMatch, description, value, index,
+                ancestorPath, parent, previousSibling, followingSibling, row, column, templateRef,
+                threshold, anchorTemplateRef, offsetX, offsetY);
+    }
+
+    /**
+     * The same locator, addressed by position within a table. Both are zero-based, and a header
+     * row usually occupies row 0 — so the first row of data is normally row 1.
+     */
+    public LocatorDefinition withCell(Integer row, Integer column) {
+        return new LocatorDefinition(type, role, name, nameMatch, description, value, index,
+                ancestorPath, parent, previousSibling, followingSibling, row, column, templateRef,
+                threshold, anchorTemplateRef, offsetX, offsetY);
     }
 
     public static LocatorDefinition image(String templateRef, double threshold) {
         return new LocatorDefinition(LocatorType.IMAGE, null, null, null, null, null, null, null,
-                null, null, templateRef, threshold, null, null, null);
+                null, null, null, null, null, templateRef, threshold, null, null, null);
     }
 
     public static LocatorDefinition imageAnchored(String templateRef, double threshold,
                                                   String anchorTemplateRef, int offsetX, int offsetY) {
         return new LocatorDefinition(LocatorType.IMAGE, null, null, null, null, null, null, null,
-                null, null, templateRef, threshold, anchorTemplateRef, offsetX, offsetY);
+                null, null, null, null, null, templateRef, threshold, anchorTemplateRef,
+                offsetX, offsetY);
     }
 }

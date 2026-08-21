@@ -98,6 +98,51 @@ public class JabBackend implements AutomationBackend {
     }
 
     /**
+     * How many elements match, across every window the engine searches. Same predicate, same
+     * visibility pruning and same handle discipline as {@link #resolve}, so a count describes the
+     * elements a run could actually act on — one at a time.
+     */
+    @Override
+    public int count(LocatorDefinition locator, Duration timeout) {
+        List<AcRef> roots = bridge.roots(windowTitleContains);
+        try {
+            int[] visited = {0};
+            int total = 0;
+            for (AcRef root : roots) {
+                total += count(root, SiblingLookup.NONE, locator, 0, visited, new ArrayList<>());
+            }
+            return total;
+        } finally {
+            roots.forEach(bridge::release);
+        }
+    }
+
+    private int count(AcRef ref, SiblingLookup siblings, LocatorDefinition locator, int depth,
+                      int[] visited, List<AccessibleInfo> ancestors) {
+        if (ref == null || depth > MAX_DEPTH || visited[0] > MAX_NODES) return 0;
+        visited[0]++;
+        AccessibleInfo info = bridge.info(ref);
+        if (info == null) return 0;
+        int found = JabMatching.matches(info, ancestors, siblings, locator) ? 1 : 0;
+        if (info.hidesSubtree()) return found;
+        ancestors.add(info);
+        try {
+            for (int i = 0; i < info.childCount(); i++) {
+                AcRef child = bridge.child(ref, i);
+                try {
+                    found += count(child, siblingsOf(ref, info, i), locator, depth + 1, visited,
+                            ancestors);
+                } finally {
+                    bridge.release(child);
+                }
+            }
+        } finally {
+            ancestors.remove(ancestors.size() - 1);
+        }
+        return found;
+    }
+
+    /**
      * @param ancestors the containers above {@code node}, outermost first, maintained as the
      *                  walk descends so a locator can be scoped by {@code ancestorPath} — which
      *                  is how a step targets a control inside a modal dialog rather than the

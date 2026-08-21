@@ -47,4 +47,19 @@ public interface AutomationBackend {
 
     /** Capture a diagnostic screenshot (NFR-OBS-02); may return {@code null} if unavailable. */
     BufferedImage captureScreenshot();
+
+    /**
+     * How many elements this locator matches.
+     *
+     * <p>Deliberately not expressed through {@link #resolve}: that returns at most one element and
+     * treats several as ambiguous, which is the opposite of what a count wants.</p>
+     *
+     * @throws UnsupportedOperationException by default. An image locator has no meaningful count —
+     *         the matcher reports a best match and a runner-up, not a set — so a backend says so
+     *         rather than inventing a number.
+     */
+    default int count(LocatorDefinition locator, Duration timeout) {
+        throw new UnsupportedOperationException(handles()
+                + " locators cannot be counted, only matched. Count JAB elements instead.");
+    }
 }

@@ -199,6 +199,61 @@ class JabMatchingTest {
                 afterLabel("   ")), "blank normalises to absent rather than rejecting everything");
     }
 
+    // ---- parent ----
+
+    private static LocatorDefinition withParent(String parent) {
+        return LocatorDefinition.jab("push button", "Cancel", NameMatch.EXACT).withParent(parent);
+    }
+
+    @Test
+    void matchesTheImmediateParent() {
+        assertTrue(JabMatching.matches(BUTTON, IN_DIALOG, withParent("panel")),
+                "the last ancestor is the parent");
+    }
+
+    /** The bracketed name is optional here too: a role on its own is a selector. */
+    @Test
+    void acceptsAParentWithNoName() {
+        List<AccessibleInfo> named = List.of(node("dialog", "Confirm"), node("panel", "Buttons"));
+
+        assertTrue(JabMatching.matches(BUTTON, named, withParent("panel")), "role alone");
+        assertTrue(JabMatching.matches(BUTTON, named, withParent("panel[Buttons]")), "role and name");
+        assertTrue(JabMatching.matches(BUTTON, named, withParent("[buttons]")), "name alone");
+        assertFalse(JabMatching.matches(BUTTON, named, withParent("panel[Fields]")));
+    }
+
+    /**
+     * The narrower claim than a one-segment ancestorPath, which any ancestor satisfies. This is
+     * what makes the two worth having separately.
+     */
+    @Test
+    void doesNotMatchAGrandparent() {
+        assertFalse(JabMatching.matches(BUTTON, IN_DIALOG, withParent("dialog")),
+                "the dialog is an ancestor but not the parent");
+        assertTrue(JabMatching.matches(BUTTON, IN_DIALOG, scopedTo("dialog")),
+                "which ancestorPath does accept, being a subsequence");
+    }
+
+    @Test
+    void refusesAParentSelectorWhenTheChainIsUnknown() {
+        assertFalse(JabMatching.matches(BUTTON, List.of(), withParent("panel")),
+                "a window has no parent, and an unknown chain is not evidence of one");
+    }
+
+    @Test
+    void combinesWithTheOtherScopingFields() {
+        LocatorDefinition everything = LocatorDefinition.jab("text", null, null, null, null,
+                "dialog[Confirm deletion]", "label[Surname]", null).withParent("panel");
+        List<AccessibleInfo> chain = List.of(
+                node("dialog", "Confirm deletion of Mr Smith"), node("panel", null));
+        List<AccessibleInfo> row = List.of(node("label", "Surname"), node("text", null));
+
+        assertTrue(JabMatching.matches(row.get(1), chain, siblingsOf(row, 1), everything));
+        assertFalse(JabMatching.matches(row.get(1), chain, siblingsOf(row, 1),
+                        everything.withParent("scroll pane")),
+                "every scoping field has to hold, not just one of them");
+    }
+
     @Test
     void anUnscopedLocatorIsUnaffectedByAncestors() {
         LocatorDefinition plain = LocatorDefinition.jab("push button", "Cancel", NameMatch.EXACT);

@@ -56,6 +56,12 @@ public class BotDefinitionValidator {
             for (int i = 0; i < chain.size(); i++) {
                 checkSiblingSelectors(problems, describe(position, step, i), chain.get(i));
             }
+            // A count with nowhere to put the answer reads the screen and throws it away.
+            if (step.action() == com.newbrid.epr_automation.systmone.common.model.ActionType.GET_COUNT
+                    && (step.outputKey() == null || step.outputKey().isBlank())) {
+                problems.add("step " + position + " '" + step.name() + "' is a GET_COUNT step with "
+                        + "no outputKey, so the count it reads would go nowhere");
+            }
             // A KEYS step with nothing to send is a silent no-op at run time: the keystrokes are
             // simply not sent and the step reports success.
             if (step.action() == com.newbrid.epr_automation.systmone.common.model.ActionType.KEYS
@@ -138,12 +144,13 @@ public class BotDefinitionValidator {
                                               LocatorDefinition locator) {
         checkSiblingSelector(problems, where, "previousSibling", locator.previousSibling());
         checkSiblingSelector(problems, where, "followingSibling", locator.followingSibling());
+        checkSiblingSelector(problems, where, "parent", locator.parent());
     }
 
     private static void checkSiblingSelector(List<String> problems, String where, String field,
                                              String selector) {
         if (selector != null && selector.contains(">")) {
-            problems.add(where + ": " + field + " '" + selector + "' names one sibling, so it takes "
+            problems.add(where + ": " + field + " '" + selector + "' names one element, so it takes "
                     + "a single role[name] and not a '>' chain — use ancestorPath for a chain");
         }
     }

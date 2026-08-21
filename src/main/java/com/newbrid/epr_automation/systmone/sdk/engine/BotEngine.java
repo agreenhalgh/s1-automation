@@ -315,6 +315,11 @@ public class BotEngine {
             }
             throw new StepResolutionException("Step '" + step.name() + "' has no locators");
         }
+        // Counting is the one action for which several matches are the answer, so it never goes
+        // near the resolution path that treats a second match as ambiguous and refuses to act.
+        if (step.action() == ActionType.GET_COUNT) {
+            return count(step, chain, deadline);
+        }
         long stepBudget = Math.min(step.timeoutMs(), remaining(deadline));
         long perLocator = Math.max(200, stepBudget / chain.size());
         String lastDesc = null;
@@ -371,6 +376,39 @@ public class BotEngine {
                 action == ActionType.KEYS ? ctx.resolve(step.inputValue()) : null,
                 step.clickOffsetX(), step.clickOffsetY());
         return backend.perform(action, element, params);
+    }
+
+    /**
+     * How many elements the first countable locator in the chain matches.
+     *
+     * <p>The chain is "the first locator whose backend can answer", the counting analogue of
+     * "the first locator that resolves". Summing across locator types would be meaningless — an
+     * image match and an accessibility match are not the same kind of thing — and an image locator
+     * declines to be counted at all.</p>
+     *
+     * <p>Zero is a successful answer. A grid with no rows is a fact about the screen, not a
+     * failure to read it, and a step that failed on it could not be used to decide anything.</p>
+     */
+    private Attempt count(StepDefinition step, List<LocatorDefinition> chain, long deadline) {
+        long perLocator = Math.max(200, Math.min(step.timeoutMs(), remaining(deadline)) / chain.size());
+        List<String> declined = new ArrayList<>();
+        for (LocatorDefinition locator : chain) {
+            AutomationBackend backend = backends.get(locator.type());
+            if (backend == null || !backend.isAvailable()) {
+                declined.add(locator.type() + " (no backend available)");
+                continue;
+            }
+            try {
+                int matches = backend.count(locator, Duration.ofMillis(perLocator));
+                log.info("Step '{}' counted {} element(s) matching {}", step.name(), matches,
+                        locator.describe());
+                return new Attempt(true, describe(locator), String.valueOf(matches), null);
+            } catch (UnsupportedOperationException e) {
+                declined.add(locator.type() + " (" + e.getMessage() + ")");
+            }
+        }
+        throw new StepResolutionException("Step '" + step.name() + "' cannot count any locator in "
+                + "its chain: " + String.join("; ", declined));
     }
 
     /** {@code inputValue} names the window to raise; blank means the configured application. */

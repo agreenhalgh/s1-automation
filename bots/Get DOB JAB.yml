@@ -1,0 +1,69 @@
+info:
+  name: Get DOB JAB
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: http://localhost:8080/api/bots
+  headers:
+    - name: X-Worker-Token
+      value: changeit
+  body:
+    type: json
+    data: |-
+      {
+        "botId": "get-postcode-jab",
+        "name": "Retrieve the postcode for first matched patient",
+        "version": 1,
+        "s1Version": "DEMO",
+        "globalTimeoutMs": 60000,
+        "steps": [
+          {
+            "name": "Activate SystmOne",
+            "action": "ACTIVATE",
+            "outputKey": "activatedWindow",
+            "inputValue": "SystmOne A&E",
+            "timeoutMs": 10000,
+            "continueOnFailure": true
+          },
+          {
+            "name": "Get Matches",
+            "action": "GET_COUNT",
+            "timeoutMs": 10000,
+            "outputKey": "patient-matches",
+            "continueOnFailure": true,
+            "locatorChain": [
+              {
+                "type": "JAB",
+                "role": "table row",
+                "parent": "table",
+                "ancestorPath": "dialog[Patient Registration] > page tab[Patient Search]"
+              }
+            ]
+          },
+          {
+            "name": "Get postcode",
+            "action": "GET_TEXT",
+            "timeoutMs": 10000,
+            "outputKey": "postcode",
+            "locatorChain": [
+              {
+                "type": "JAB",
+                "parent": "table",
+                "role":"label",
+                "row": 1,
+                "column": 12,
+                "ancestorPath": "dialog[Patient Registration] > page tab[Patient Search]"
+              }
+            ]
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

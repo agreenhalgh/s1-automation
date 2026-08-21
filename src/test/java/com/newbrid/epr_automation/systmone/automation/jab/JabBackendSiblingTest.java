@@ -74,6 +74,30 @@ class JabBackendSiblingTest {
         assertEquals(60, hit.get().screenBounds().y, "the field between the two labels");
     }
 
+    /** Resolved through the engine's own traversal, since parent uses the ancestor chain it keeps. */
+    @Test
+    void resolvesByTheImmediateParent() {
+        JabBackend jab = backend(patientForm());
+
+        Optional<ElementHandle> hit = jab.resolve(
+                LocatorDefinition.jab("panel", null, null).withParent("dialog[Patient Registration]"),
+                Duration.ZERO);
+
+        assertTrue(hit.isPresent(), "the panel's parent is the dialog");
+        assertEquals(40, hit.get().screenBounds().y);
+    }
+
+    @Test
+    void findsNothingWhenTheParentIsOnlyAnAncestor() {
+        JabBackend jab = backend(patientForm());
+
+        assertEquals(Optional.empty(), jab.resolve(
+                        LocatorDefinition.jab("label", "Surname", null)
+                                .withParent("dialog[Patient Registration]"),
+                        Duration.ZERO),
+                "the label's parent is the panel; the dialog is its grandparent");
+    }
+
     /** Without the selector the same locator is ambiguous, which is why the selector exists. */
     @Test
     void theSameLocatorWithoutASiblingSelectorIsAmbiguous() {

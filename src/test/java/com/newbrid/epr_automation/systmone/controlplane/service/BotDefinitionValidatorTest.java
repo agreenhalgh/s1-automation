@@ -92,6 +92,26 @@ class BotDefinitionValidatorTest {
         assertTrue(ex.getMessage().contains("POST /api/templates"), ex.getMessage());
     }
 
+    // ---- GET_COUNT ----
+
+    @Test
+    void acceptsACountWithSomewhereToPutTheAnswer() {
+        assertDoesNotThrow(() -> validator.validate(bot(
+                TestSteps.step("How many rows?", ActionType.GET_COUNT,
+                                LocatorDefinition.jab("table row", null, null))
+                        .outputKey("rowCount").build())));
+    }
+
+    /** Reading the screen and discarding the answer is a step that does nothing. */
+    @Test
+    void rejectsACountWithNoOutputKey() {
+        RegistryValidationException ex = assertThrows(RegistryValidationException.class,
+                () -> validator.validate(bot(TestSteps.step("How many rows?", ActionType.GET_COUNT,
+                        LocatorDefinition.jab("table row", null, null)).build())));
+
+        assertTrue(ex.problems().getFirst().contains("no outputKey"), ex.problems().toString());
+    }
+
     // ---- KEYS ----
 
     @Test

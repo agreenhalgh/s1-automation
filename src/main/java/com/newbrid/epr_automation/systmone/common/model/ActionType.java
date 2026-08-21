@@ -18,6 +18,23 @@ public enum ActionType {
     EXPAND,
     COLLAPSE,
     READ_STATE,
+    /**
+     * How many elements the locator matches, recorded as the step's output.
+     *
+     * <p>The one action for which several matches are the answer rather than a problem, so it
+     * does not resolve an element at all — it never reaches the ambiguity fail-safe that would
+     * otherwise refuse to act. Counting matches of a locator rather than "rows of a table"
+     * generalises for free: rows are {@code role: table row} inside the grid, columns are the
+     * cells of row 0, and the same action counts search results or open tabs.</p>
+     *
+     * <p>Zero is an answer, not a failure: the step succeeds recording "0". To branch on a grid
+     * being empty, use a {@code WAIT} with {@code onMissing} instead.</p>
+     *
+     * <p>Counts what the accessibility tree currently exposes. A virtualised grid only
+     * materialises the rows it is showing, so this is "rows on screen", not "rows in the model" —
+     * the latter needs the Access Bridge table API, which this build does not bind.</p>
+     */
+    GET_COUNT,
     KEYS,
     DRAG,
     /**
