@@ -103,6 +103,12 @@ public class JabBackend implements AutomationBackend {
             out.add(new JabElementHandle(info.bounds(), node, describe(info)));
             if (out.size() > 1) return;
         }
+        // Nothing inside a container that is not on screen can be acted on, so the whole subtree
+        // is skipped rather than decoded. On a SystmOne form that is most of the tree: the tabs
+        // nobody selected, the cards nobody flipped to, the dialogs built but not shown. It also
+        // stops those consuming the MAX_NODES budget before the walk reaches the visible control
+        // the step was actually looking for.
+        if (info.hidesSubtree()) return;
         ancestors.add(info);
         try {
             for (int i = 0; i < info.childCount(); i++) {

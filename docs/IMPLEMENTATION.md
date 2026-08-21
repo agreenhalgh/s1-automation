@@ -213,6 +213,9 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
   matches (`TemplateMatcherTest`).
 - Results endpoint applies a terminal outcome once and ignores duplicates
   (`ResultServiceIdempotencyTest`, FR-CP-02a).
+- JAB traversal skips subtrees that report themselves not showing: on a form of eight tabs with
+  one selected, a locator sweep decodes 50 nodes instead of 330 (15% of the work), and a control
+  on an unselected tab is neither matched nor counted as an ambiguity.
 - Step results are stored one row per execution: a reported run that visits step 1 twice keeps
   both outcomes (`SKIPPED` then `SUCCEEDED`), a redelivered report for an execution updates its
   own row rather than adding one, and the run page renders the repeats as "pass 1 of 2" /

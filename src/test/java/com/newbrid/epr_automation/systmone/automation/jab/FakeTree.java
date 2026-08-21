@@ -20,7 +20,7 @@ public final class FakeTree {
         private final String name;
         private final String description;
         private final int x, y, w, h, indexInParent;
-        private String states = "enabled,visible";
+        private String states = "enabled,visible,showing";
         final List<Node> children = new ArrayList<>();
 
         private Node(String role, String name, String description,
@@ -42,7 +42,19 @@ public final class FakeTree {
 
         /** Mark this node as holding the keyboard focus, the way the real bridge reports it. */
         public Node focused() {
-            this.states = "enabled,visible,focused";
+            this.states = "enabled,visible,showing,focused";
+            return this;
+        }
+
+        /** Built but not on screen: an unselected tab, a card nobody flipped to. */
+        public Node hidden() {
+            this.states = "enabled";
+            return this;
+        }
+
+        /** A node the bridge tells us nothing about, which must not be mistaken for hidden. */
+        public Node statesUnknown() {
+            this.states = "";
             return this;
         }
 
@@ -65,6 +77,42 @@ public final class FakeTree {
 
     public static AccessBridge bridge(Node... windows) {
         return new FakeBridge(windows);
+    }
+
+    /**
+     * A bridge that counts how many nodes were decoded. Each {@code info} is a native call on a
+     * real host, so the count is the cost of a traversal and the measure of what pruning saves.
+     */
+    public static Counting counting(Node... windows) {
+        return new Counting(new FakeBridge(windows));
+    }
+
+    /** Delegating bridge that tallies decoded nodes. */
+    public static final class Counting implements AccessBridge {
+        private final AccessBridge delegate;
+        private int reads;
+
+        private Counting(AccessBridge delegate) {
+            this.delegate = delegate;
+        }
+
+        public int reads() {
+            return reads;
+        }
+
+        @Override public boolean isAvailable() { return delegate.isAvailable(); }
+        @Override public List<AcRef> roots(String titleContains) { return delegate.roots(titleContains); }
+
+        @Override public AccessibleInfo info(AcRef ref) {
+            reads++;
+            return delegate.info(ref);
+        }
+
+        @Override public AcRef child(AcRef ref, int index) { return delegate.child(ref, index); }
+        @Override public boolean doAction(AcRef ref, String action) { return false; }
+        @Override public boolean setText(AcRef ref, String text) { return false; }
+        @Override public String getText(AcRef ref) { return null; }
+        @Override public void release(AcRef ref) {}
     }
 
     private static final class FakeBridge implements AccessBridge {

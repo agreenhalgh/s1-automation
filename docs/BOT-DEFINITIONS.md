@@ -262,6 +262,16 @@ A locator resolving to more than one element is **ambiguous**, and the engine re
 it rather than guess (NFR-REL-04). That is the usual reason a JAB step fails on a screen where
 the control is plainly visible.
 
+**Only what is on screen is searched.** A container whose accessible state says it is not showing
+is skipped along with everything inside it, so a control on an unselected tab is neither matched
+nor counted towards ambiguity — it cannot be clicked, and its coordinates belong to whatever is
+drawn over it. This also means an unselected tab's fields no longer collide with the identical
+fields on the tab that is showing, which is a common cause of an ambiguous JAB locator. Select the
+tab first (a `CLICK` on the tab, then the field) rather than trying to reach through it.
+
+An application that reports no accessible states at all is traversed in full, exactly as before:
+silence is not evidence of being hidden.
+
 ### Identifying a control by what sits next to it
 
 An unlabelled field has nothing to say about itself. `previousSibling` and `followingSibling`

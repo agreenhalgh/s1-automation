@@ -136,6 +136,10 @@ public class JabInspector {
         AccessibleInfo info = bridge.info(ref);
         if (info == null) return null;
 
+        // The focus walk has no position to prune on, so this is the only thing keeping it off
+        // the parts of the tree that are built but not shown.
+        if (info.hidesSubtree()) return null;
+
         trail.add(info);
         try {
             Hit best = null;
@@ -188,6 +192,9 @@ public class JabInspector {
 
         boolean sized = info.width() > 0 && info.height() > 0;
         if (sized && !info.bounds().contains(x, y)) return null;
+        // A container that is not on screen holds nothing the author can have clicked on, even
+        // when it still reports bounds — an unselected tab often does.
+        if (info.hidesSubtree()) return null;
 
         Hit best = null;
         for (int i = 0; i < info.childCount(); i++) {
@@ -371,6 +378,9 @@ public class JabInspector {
         AccessibleInfo info = bridge.info(ref);
         if (info == null) return 0;
         int found = JabMatching.matches(info, ancestors, siblings, locator) ? 1 : 0;
+        // Pruned exactly as the engine prunes: a count that included hidden elements would report
+        // an ambiguity a run would never meet, and vice versa.
+        if (info.hidesSubtree()) return found;
         ancestors.add(info);
         try {
             for (int i = 0; i < info.childCount(); i++) {
