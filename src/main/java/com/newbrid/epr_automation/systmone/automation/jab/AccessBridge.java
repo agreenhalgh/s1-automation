@@ -34,6 +34,23 @@ public interface AccessBridge {
     /** Read the text contents of a component. */
     String getText(AcRef ref);
 
+    /**
+     * How big this table is, or null if the node is not a table or the application will not say.
+     *
+     * <p>Separate from the tree because a table's contents are frequently not in the tree at all: a
+     * Swing {@code JTable} exposes no row or cell children, so walking finds an empty table however
+     * many rows it has.</p>
+     */
+    TableGeometry tableGeometry(AcRef table);
+
+    /**
+     * The cell at a row and column of a table, or null.
+     *
+     * <p>Zero-based, as the table API counts. The returned handle belongs to the caller and must be
+     * released like any other.</p>
+     */
+    AcRef tableCell(AcRef table, int row, int column);
+
     /** Release a native handle obtained from this bridge. */
     void release(AcRef ref);
 }

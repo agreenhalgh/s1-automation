@@ -354,6 +354,78 @@ public class JnaAccessBridge implements AccessBridge {
         }, null);
     }
 
+    /**
+     * Reads the table's geometry and hands back every reference the call produced.
+     *
+     * <p>{@code getAccessibleTableInfo} returns four handles — caption, summary, the table's own
+     * context and the {@code AccessibleTable} — and each is a reference the target JVM holds until
+     * released. Only the counts are wanted here, so all four go straight back; a cell lookup asks
+     * again rather than keeping one alive between calls, which trades a native call for having no
+     * way to leak the handle.</p>
+     */
+    @Override
+    public TableGeometry tableGeometry(AcRef table) {
+        if (table == null) return null;
+        return onBridgeThread("getAccessibleTableInfo", l -> {
+            WindowsAccessBridgeLib.AccessibleTableInfo info =
+                    new WindowsAccessBridgeLib.AccessibleTableInfo();
+            try {
+                if (!l.getAccessibleTableInfo(table.vmId(), table.ac(), info)) return null;
+                if (info.rowCount <= 0 && info.columnCount <= 0) return null;
+                return new TableGeometry(info.rowCount, info.columnCount);
+            } catch (Throwable t) {
+                // A node that is not a table is the common case, not an error: every traversal asks
+                // every node. Only the unexpected is worth a line in the log.
+                log.trace("getAccessibleTableInfo failed: {}", t.toString());
+                return null;
+            } finally {
+                releaseAll(l, table.vmId(), info.caption, info.summary, info.accessibleContext,
+                        info.accessibleTable);
+            }
+        }, null);
+    }
+
+    @Override
+    public AcRef tableCell(AcRef table, int row, int column) {
+        if (table == null || row < 0 || column < 0) return null;
+        return onBridgeThread("getAccessibleTableCellInfo", l -> {
+            WindowsAccessBridgeLib.AccessibleTableInfo tableInfo =
+                    new WindowsAccessBridgeLib.AccessibleTableInfo();
+            try {
+                if (!l.getAccessibleTableInfo(table.vmId(), table.ac(), tableInfo)) return null;
+                if (tableInfo.accessibleTable == 0) return null;
+                WindowsAccessBridgeLib.AccessibleTableCellInfo cell =
+                        new WindowsAccessBridgeLib.AccessibleTableCellInfo();
+                // The AccessibleTable handle, not the table's context: they are different handles
+                // and the context returns nothing here.
+                if (!l.getAccessibleTableCellInfo(table.vmId(), tableInfo.accessibleTable,
+                        row, column, cell)) {
+                    return null;
+                }
+                return cell.accessibleContext == 0
+                        ? null : new AcRef(table.vmId(), cell.accessibleContext);
+            } catch (Throwable t) {
+                log.debug("getAccessibleTableCellInfo({},{}) failed: {}", row, column, t.toString());
+                return null;
+            } finally {
+                releaseAll(l, table.vmId(), tableInfo.caption, tableInfo.summary,
+                        tableInfo.accessibleContext, tableInfo.accessibleTable);
+            }
+        }, null);
+    }
+
+    /** Hands back every non-zero handle, whatever happened to the call that produced them. */
+    private static void releaseAll(WindowsAccessBridgeLib l, int vmId, long... handles) {
+        for (long handle : handles) {
+            if (handle == 0) continue;
+            try {
+                l.releaseJavaObject(vmId, handle);
+            } catch (Throwable ignored) {
+                // Best-effort: a failed release must not mask the result of the call itself.
+            }
+        }
+    }
+
     @Override
     public void release(AcRef ref) {
         if (ref == null) return;

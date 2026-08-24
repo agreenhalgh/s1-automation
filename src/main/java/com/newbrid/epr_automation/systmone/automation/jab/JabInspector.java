@@ -67,7 +67,8 @@ public class JabInspector {
             // behind it, which contains every point on the desktop and answers with itself.
             Hit best = null;
             for (AcRef root : roots) {
-                Hit hit = deepestAt(root, SiblingLookup.NONE, x, y, 0, new int[]{0});
+                Hit hit = deepestAt(root, SiblingLookup.NONE, ScreenSpace.SCREEN, null, x, y, 0,
+                        new int[]{0});
                 if (hit != null && (best == null || area(leaf(hit)) < area(leaf(best)))) {
                     best = hit;
                 }
@@ -102,7 +103,8 @@ public class JabInspector {
             Hit best = null;
             int bestDepth = -1;
             for (AcRef root : roots) {
-                Hit hit = deepestFocused(root, SiblingLookup.NONE, 0, new int[]{0}, new ArrayList<>());
+                Hit hit = deepestFocused(root, SiblingLookup.NONE, ScreenSpace.SCREEN, null, 0,
+                        new int[]{0}, new ArrayList<>());
                 if (hit == null) continue;
                 int depth = hit.path().size();
                 if (best == null || depth > bestDepth) {
@@ -130,20 +132,22 @@ public class JabInspector {
                 .toList();
         Suggestion suggestion = suggest(roots, element, windowScope(roots, path),
                 hit.previous(), hit.following());
-        return new Inspection(node(element), ancestors, node(hit.previous()), node(hit.following()),
-                suggestion.locator(), suggestion.matchCount());
+        return new Inspection(node(element, hit.bounds()), ancestors, node(hit.previous()),
+                node(hit.following()), suggestion.locator(), suggestion.matchCount());
     }
 
     /**
      * The deepest node carrying the {@code focused} state, with the path to it. Unlike the
      * point lookup this cannot prune — focus is not a position, so every branch has to be asked.
      */
-    private Hit deepestFocused(AcRef ref, SiblingLookup siblings, int depth, int[] visited,
+    private Hit deepestFocused(AcRef ref, SiblingLookup siblings, ScreenSpace inherited,
+                               java.awt.Rectangle parentBounds, int depth, int[] visited,
                                List<AccessibleInfo> trail) {
         if (ref == null || depth > MAX_DEPTH || visited[0] > MAX_NODES) return null;
         visited[0]++;
         AccessibleInfo info = bridge.info(ref);
         if (info == null) return null;
+        ScreenSpace space = inherited.forChild(info, parentBounds);
 
         // The focus walk has no position to prune on, so this is the only thing keeping it off
         // the parts of the tree that are built but not shown.
@@ -153,13 +157,15 @@ public class JabInspector {
         try {
             Hit best = null;
             if (info.hasState("focused") && info.width() > 0 && info.height() > 0) {
-                best = new Hit(List.copyOf(trail), siblings.at(-1), siblings.at(1));
+                best = new Hit(List.copyOf(trail), siblings.at(-1), siblings.at(1),
+                        space.absolute(info));
             }
             for (int i = 0; i < info.childCount(); i++) {
                 AcRef child = bridge.child(ref, i);
                 Hit hit;
                 try {
-                    hit = deepestFocused(child, siblingsOf(ref, info, i), depth + 1, visited, trail);
+                    hit = deepestFocused(child, siblingsOf(ref, info, i), space,
+                            space.absolute(info), depth + 1, visited, trail);
                 } finally {
                     bridge.release(child);
                 }
@@ -194,7 +200,8 @@ public class JabInspector {
      * lookup would outlive the handles it reads through: the walk gives every reference back as it
      * unwinds, so by the time a caller asked, the parent it would ask through is gone.</p>
      */
-    private record Hit(List<AccessibleInfo> path, AccessibleInfo previous, AccessibleInfo following) {}
+    private record Hit(List<AccessibleInfo> path, AccessibleInfo previous, AccessibleInfo following,
+                       java.awt.Rectangle bounds) {}
 
     /**
      * The deepest node containing the point, with the path taken to reach it.
@@ -212,14 +219,24 @@ public class JabInspector {
      * means, and area only breaks ties between siblings at the same depth — a label drawn over its
      * own container, overlapping panes.</p>
      */
-    private Hit deepestAt(AcRef ref, SiblingLookup siblings, int x, int y, int depth, int[] visited) {
+    private Hit deepestAt(AcRef ref, SiblingLookup siblings, ScreenSpace inherited,
+                          java.awt.Rectangle parentBounds, int x, int y, int depth, int[] visited) {
         if (ref == null || depth > MAX_DEPTH || visited[0] > MAX_NODES) return null;
         visited[0]++;
         AccessibleInfo info = bridge.info(ref);
         if (info == null) return null;
+        ScreenSpace space = inherited.forChild(info, parentBounds);
 
-        boolean sized = info.width() > 0 && info.height() > 0;
-        boolean coversPoint = sized && info.bounds().contains(x, y);
+        // Two readings of where this node is: as corrected for the coordinate space inherited
+        // from its ancestors, and exactly as reported. Either covering the point makes it a
+        // candidate, because both mistakes this guards against — a cell measuring from its table,
+        // a container misreporting its own extent — lose the deeper node, and accepting either
+        // reading can only ever find more candidates, never fewer.
+        java.awt.Rectangle corrected = space.absolute(info);
+        java.awt.Rectangle asReported = info.bounds();
+        java.awt.Rectangle bounds = corrected.contains(x, y) ? corrected : asReported;
+        boolean coversPoint = (!corrected.isEmpty() && corrected.contains(x, y))
+                || (!asReported.isEmpty() && asReported.contains(x, y));
         // A childless node that does not cover the point cannot be the answer and has nothing
         // inside it to ask, so it is the one case where geometry still ends the walk early.
         if (info.childCount() == 0 && !coversPoint) return null;
@@ -229,12 +246,20 @@ public class JabInspector {
         // is evidence about itself, so an unselected tab's controls are still ruled out there.
         if (info.childCount() == 0 && info.hidesSubtree()) return null;
 
+        // A table that keeps its cells out of the tree cannot be walked into, so it is asked.
+        // Without this a click in a Swing JTable can only ever answer with the table itself.
+        if (info.childCount() == 0) {
+            Hit inCell = cellAt(ref, info, space, corrected, x, y);
+            if (inCell != null) return inCell;
+        }
+
         Hit best = null;
         for (int i = 0; i < info.childCount(); i++) {
             AcRef child = bridge.child(ref, i);
             Hit hit;
             try {
-                hit = deepestAt(child, siblingsOf(ref, info, i), x, y, depth + 1, visited);
+                hit = deepestAt(child, siblingsOf(ref, info, i), space, corrected, x, y,
+                        depth + 1, visited);
             } finally {
                 // The inspector returns attributes, never handles, so every reference it opens
                 // goes back on the way out.
@@ -249,15 +274,99 @@ public class JabInspector {
         path.add(info);
         if (best != null) {
             path.addAll(best.path());
-            // The neighbours that matter are the leaf's, not this node's.
-            return new Hit(path, best.previous(), best.following());
+            // The neighbours and the bounds that matter are the leaf's, not this node's.
+            return new Hit(path, best.previous(), best.following(), best.bounds());
         }
         if (!coversPoint) {
             // Looked inside because a container's bounds are not to be trusted, and nothing inside
             // claimed the point: it is not an answer, just a node that could not rule itself out.
             return null;
         }
-        return new Hit(path, siblings.at(-1), siblings.at(1));
+        return new Hit(path, siblings.at(-1), siblings.at(1), bounds);
+    }
+
+    /**
+     * The cell of a table containing the point, found through the table API.
+     *
+     * <p>Rows are found by bisection rather than by scanning: a grid lays its rows out in order
+     * down the screen, so the row containing a y can be found in about a dozen probes even in a
+     * table of thousands. Scanning would mean a native call per row, which on a real grid is the
+     * difference between a click that answers and one that appears to hang.</p>
+     *
+     * <p>If the bisection lands nowhere — a grid that does not lay rows out in order, or one whose
+     * cells report no bounds — the table itself remains the answer, which is what it was before.</p>
+     */
+    private Hit cellAt(AcRef tableRef, AccessibleInfo tableInfo, ScreenSpace space,
+                       java.awt.Rectangle tableBounds, int x, int y) {
+        TableGeometry geometry = bridge.tableGeometry(tableRef);
+        if (geometry == null || geometry.isEmpty()) return null;
+
+        int row = rowAt(tableRef, geometry, space, tableBounds, y);
+        if (row < 0) return null;
+        for (int column = 0; column < geometry.columns(); column++) {
+            AcRef cell = bridge.tableCell(tableRef, row, column);
+            if (cell == null) continue;
+            try {
+                AccessibleInfo cellInfo = bridge.info(cell);
+                if (cellInfo == null) continue;
+                java.awt.Rectangle bounds = space.forChild(cellInfo, tableBounds).absolute(cellInfo);
+                if (!bounds.contains(x, y)) continue;
+                List<AccessibleInfo> path = new ArrayList<>();
+                path.add(tableInfo);
+                path.add(cellInfo);
+                // The neighbours of a cell are the cells either side of it in its own row, which is
+                // what an author writing a sibling selector against a grid would mean.
+                return new Hit(path, cellBeside(tableRef, geometry, row, column - 1),
+                        cellBeside(tableRef, geometry, row, column + 1), bounds);
+            } finally {
+                bridge.release(cell);
+            }
+        }
+        return null;
+    }
+
+    /** The row whose cells span this y, by bisection over column 0, or -1. */
+    private int rowAt(AcRef tableRef, TableGeometry geometry, ScreenSpace space,
+                      java.awt.Rectangle tableBounds, int y) {
+        int low = 0;
+        int high = geometry.rows() - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            java.awt.Rectangle bounds = cellBounds(tableRef, space, tableBounds, mid, 0);
+            if (bounds == null) return -1;
+            if (y < bounds.y) {
+                high = mid - 1;
+            } else if (y >= bounds.y + bounds.height) {
+                low = mid + 1;
+            } else {
+                return mid;
+            }
+        }
+        return -1;
+    }
+
+    private java.awt.Rectangle cellBounds(AcRef tableRef, ScreenSpace space,
+                                          java.awt.Rectangle tableBounds, int row, int column) {
+        AcRef cell = bridge.tableCell(tableRef, row, column);
+        if (cell == null) return null;
+        try {
+            AccessibleInfo info = bridge.info(cell);
+            return info == null ? null : space.forChild(info, tableBounds).absolute(info);
+        } finally {
+            bridge.release(cell);
+        }
+    }
+
+    /** A neighbouring cell's attributes, or null at the ends of the row. */
+    private AccessibleInfo cellBeside(AcRef tableRef, TableGeometry geometry, int row, int column) {
+        if (column < 0 || column >= geometry.columns()) return null;
+        AcRef cell = bridge.tableCell(tableRef, row, column);
+        if (cell == null) return null;
+        try {
+            return bridge.info(cell);
+        } finally {
+            bridge.release(cell);
+        }
     }
 
     /** Deeper beats shallower; at equal depth, the smaller element beats the larger. */
@@ -465,9 +574,17 @@ public class JabInspector {
     // ---------------------------------------------------------------- helpers
 
     private static JabNode node(AccessibleInfo i) {
+        return i == null ? null : node(i, i.bounds());
+    }
+
+    /**
+     * @param bounds where the element really is, which is not always where it says it is — a table
+     *               cell often reports its rectangle relative to the table
+     */
+    private static JabNode node(AccessibleInfo i, java.awt.Rectangle bounds) {
         if (i == null) return null;
         return new JabNode(i.role(), i.name(), i.description(), i.states(),
-                i.x(), i.y(), i.width(), i.height(), i.indexInParent(), i.childCount());
+                bounds.x, bounds.y, bounds.width, bounds.height, i.indexInParent(), i.childCount());
     }
 
     private static String blankToNull(String s) {

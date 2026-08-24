@@ -58,6 +58,22 @@ public final class FakeTree {
             return this;
         }
 
+        int tableRows;
+        int tableColumns;
+        java.util.function.BiFunction<Integer, Integer, Node> cells;
+
+        /**
+         * Make this a table whose cells are reachable <em>only</em> through the table API, with no
+         * children in the tree — which is what a Swing {@code JTable} looks like from outside.
+         */
+        public Node asTable(int rows, int columns,
+                            java.util.function.BiFunction<Integer, Integer, Node> cells) {
+            this.tableRows = rows;
+            this.tableColumns = columns;
+            this.cells = cells;
+            return this;
+        }
+
         /** childCount reflects the children actually attached, as the native struct does. */
         AccessibleInfo info() {
             return new AccessibleInfo(role, name, description, states, x, y, w, h,
@@ -147,6 +163,16 @@ public final class FakeTree {
             released++;
         }
 
+        @Override public TableGeometry tableGeometry(AcRef ref) {
+            requireLive(ref, "read table geometry");
+            return delegate.tableGeometry(ref);
+        }
+
+        @Override public AcRef tableCell(AcRef ref, int row, int column) {
+            requireLive(ref, "read a table cell");
+            return open(delegate.tableCell(ref, row, column));
+        }
+
         @Override public boolean doAction(AcRef ref, String action) { requireLive(ref, "act"); return false; }
         @Override public boolean setText(AcRef ref, String text) { requireLive(ref, "set text"); return false; }
         @Override public String getText(AcRef ref) { requireLive(ref, "read text"); return null; }
@@ -182,6 +208,10 @@ public final class FakeTree {
         }
 
         @Override public AcRef child(AcRef ref, int index) { return delegate.child(ref, index); }
+        @Override public TableGeometry tableGeometry(AcRef ref) { return delegate.tableGeometry(ref); }
+        @Override public AcRef tableCell(AcRef ref, int row, int column) {
+            return delegate.tableCell(ref, row, column);
+        }
         @Override public boolean doAction(AcRef ref, String action) { return false; }
         @Override public boolean setText(AcRef ref, String text) { return false; }
         @Override public String getText(AcRef ref) { return null; }
@@ -211,6 +241,22 @@ public final class FakeTree {
         }
 
         @Override public AccessibleInfo info(AcRef ref) { return handles.get((int) ref.ac()).info(); }
+
+        /** Only a node declared with {@code asTable} answers, as only a real table does. */
+        @Override public TableGeometry tableGeometry(AcRef ref) {
+            Node node = handles.get((int) ref.ac());
+            return node.cells == null ? null : new TableGeometry(node.tableRows, node.tableColumns);
+        }
+
+        @Override public AcRef tableCell(AcRef ref, int row, int column) {
+            Node node = handles.get((int) ref.ac());
+            if (node.cells == null) return null;
+            if (row < 0 || column < 0 || row >= node.tableRows || column >= node.tableColumns) {
+                return null;
+            }
+            Node cell = node.cells.apply(row, column);
+            return cell == null ? null : new AcRef(ref.vmId(), handleFor(cell));
+        }
 
         @Override public AcRef child(AcRef ref, int index) {
             List<Node> children = handles.get((int) ref.ac()).children;

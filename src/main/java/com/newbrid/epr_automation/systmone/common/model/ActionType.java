@@ -35,6 +35,16 @@ public enum ActionType {
      * the latter needs the Access Bridge table API, which this build does not bind.</p>
      */
     GET_COUNT,
+    /**
+     * The size of a table, as the application itself reports it, written to two outputs:
+     * {@code <outputKey>.rows} and {@code <outputKey>.columns}.
+     *
+     * <p>Different from {@code GET_COUNT} on a row locator, and better wherever the two disagree.
+     * A Swing {@code JTable} exposes no row or cell children, so counting the tree says a table is
+     * empty however many rows it has; a virtualised grid exposes only what it is showing. This
+     * asks the table API, which answers from the model.</p>
+     */
+    GET_TABLE_SIZE,
     KEYS,
     DRAG,
     /**

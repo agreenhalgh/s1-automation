@@ -47,7 +47,7 @@ failure screenshot are filed under. `key` is yours, and only the steps something
 one.
 
 `action` is one of `CLICK, DOUBLE_CLICK, RIGHT_CLICK, HOVER, FOCUS, SET_TEXT, GET_TEXT,
-SELECT, EXPAND, COLLAPSE, READ_STATE, GET_COUNT, KEYS, DRAG, ACTIVATE, WAIT`. `WAIT` asserts the
+SELECT, EXPAND, COLLAPSE, READ_STATE, GET_COUNT, GET_TABLE_SIZE, KEYS, DRAG, ACTIVATE, WAIT`. `WAIT` asserts the
 locator resolves and acts on nothing. `GET_TEXT`, `READ_STATE`, `EXPAND` and `COLLAPSE`
 are JAB-only — the screen backend throws `UnsupportedOperationException` for them, which
 the engine treats as a step failure. `ACTIVATE` is described below.
@@ -295,14 +295,171 @@ row among its siblings, and `column` is the position of whatever sits *directly*
 not of the element itself, since a cell that wraps its contents puts the element a level deeper.
 No extra calls into the application; the information is already in hand.
 
-Two limits worth knowing before you rely on it:
+Where the grid keeps its cells out of the tree entirely — a Swing `JTable` exposes no row or cell
+children at all, so the tree shows a table with nothing in it — the cell is fetched through the
+Access Bridge **table API** instead, by row and column. That is a direct lookup rather than a
+search, so addressing row 3,000 costs the same as row 0. Nothing changes in the definition: the
+same `row`/`column` locator works whether the cells are walkable or not, and a grid that does
+expose its rows is still walked.
 
-- **It needs a grid that models rows as nodes** (`table` → `table row` → cells). A plain Swing
-  `JTable` exposes its cells as a flat list with no row nodes, and there a `row` locator matches
-  nothing — visibly, rather than by picking the wrong cell. Inspect a cell in the capture tool and
-  look at the `Inside:` chain to see which shape a grid has.
+One limit worth knowing before you rely on it:
 - **A virtualised grid only exposes the rows it is showing.** Row numbers are positions among the
   rows currently in the tree, so scrolling changes them.
+
+A cell that reports its bounds relative to its table — which Swing's synthetic cell objects commonly
+do — is corrected before the mouse is driven to it, so a resolved cell is clicked where it actually
+is rather than near the corner of the screen.
+
+### Reading data out of a table
+
+A worked grid, as SystmOne's appointment book might expose it — row 0 the header, three
+appointments below it, three columns:
+
+| row | column 0 | column 1 | column 2 |
+|-----|----------|----------|----------|
+| 0   | Time     | Patient  | Status   |
+| 1   | 09:00    | Ada Lovelace | Booked |
+| 2   | 09:20    | Alan Turing  | Arrived |
+| 3   | 09:40    | Grace Hopper | Cancelled |
+
+**One cell.** `GET_TEXT` on a cell locator puts the cell's text into an output:
+
+```jsonc
+{
+  "name": "Read the patient in row 2",
+  "action": "GET_TEXT",
+  "outputKey": "patient",
+  "locatorChain": [
+    { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 2, "column": 1 }
+  ]
+}
+```
+
+`${patient}` is then `Alan Turing`. This works whether the cells are in the tree or reachable only
+through the table API — the definition is the same either way.
+
+**A whole row** is one step per column, each with its own `outputKey`:
+
+```jsonc
+[
+  { "name": "Time",    "action": "GET_TEXT", "outputKey": "time",
+    "locatorChain": [ { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 3, "column": 0 } ] },
+  { "name": "Patient", "action": "GET_TEXT", "outputKey": "patient",
+    "locatorChain": [ { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 3, "column": 1 } ] },
+  { "name": "Status",  "action": "GET_TEXT", "outputKey": "status",
+    "locatorChain": [ { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 3, "column": 2 } ] }
+]
+```
+
+Those three outputs come back as `09:40`, `Grace Hopper` and `Cancelled`.
+
+**The headings** are row 0, which is how a bot can check the grid is the one it expects before
+trusting a column number:
+
+```jsonc
+{ "name": "Confirm column 1 is the patient column", "action": "GET_TEXT", "outputKey": "heading1",
+  "locatorChain": [ { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 0, "column": 1 } ] }
+```
+
+**How big the grid is**, from the application rather than from the tree:
+
+```jsonc
+{
+  "name": "How big is the appointments grid?",
+  "action": "GET_TABLE_SIZE",
+  "outputKey": "grid",
+  "locatorChain": [ { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" } ]
+}
+```
+
+`${grid.rows}` is `4` and `${grid.columns}` is `3` — the header counts as a row, because the
+application counts it as one. Both are ordinary outputs, so they work anywhere a placeholder does.
+
+For the same grid, `GET_COUNT` on `role: "table row"` returns **0**: the cells are not children, so
+a walk of the tree finds no rows at all. That difference is the whole reason `GET_TABLE_SIZE`
+exists, and it is worth checking both when a count surprises you.
+
+#### Reading every row
+
+`row` and `column` accept a `${placeholder}` as well as a number, and the engine publishes a
+counter for the step it is running — so a bounded loop can walk a grid:
+
+```jsonc
+[
+  {
+    "name": "How big is the appointments grid?",
+    "action": "GET_TABLE_SIZE",
+    "outputKey": "grid",
+    "locatorChain": [ { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" } ]
+  },
+  {
+    "key": "read-row",
+    "name": "Read the patient in the next row",
+    "action": "GET_TEXT",
+    "outputKey": "patient",
+    "maxExecutions": 50,
+    "onLimit": "finished",
+    "onFound": "read-row",
+    "locatorChain": [
+      { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]",
+        "row": "${step.iteration}", "column": 1 }
+    ]
+  },
+  { "key": "finished", "name": "Done", "action": "WAIT",
+    "locatorChain": [ { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" } ] }
+]
+```
+
+The step reads row 0 on its first pass, row 1 on its second, and so on. It stops on the pass where
+the row does not exist — `onFound` is not taken when nothing resolves, so the flow falls through —
+or at `maxExecutions`, whichever comes first. Each pass overwrites `${patient}`, so a bot that needs
+every value must act on each one inside the loop rather than collecting them.
+
+**The counters.** Set before each step runs, and describing *that step's* own executions:
+
+| variable | meaning |
+|----------|---------|
+| `${step.iteration}`  | how many times this step has run before this one — 0 on the first pass |
+| `${step.executions}` | how many times it has run including this one — 1 on the first pass |
+| `${run.sequence}`    | which execution this is in the whole run, counting from 1 |
+
+Both forms of the step counter exist because placeholders do no arithmetic: a zero-based row number
+and a one-based "attempt 3 of 5" are both wanted, and neither can be derived from the other in a
+definition.
+
+The counter belongs to the step, not to a loop — there is no loop construct to belong to. In a loop
+whose body is several steps each runs the same number of times, so they agree; a step reached by only
+one branch has its own lower count, which is what it means.
+
+**Placeholders now work throughout a locator**, not only in `row` and `column`: `name`,
+`description`, `ancestorPath`, `parent`, the sibling selectors and `templateRef` all substitute.
+
+```jsonc
+{ "type": "JAB", "role": "table row", "name": "${patientName}", "nameMatch": "CONTAINS" }
+```
+
+Before this, only a step's `inputValue` was substituted, so a placeholder in a locator silently
+looked for a control literally named `${patientName}`.
+
+Values resolve from an earlier step's `outputKey` first, then the run input, then the engine's
+counters — so a bot's own output wins over a counter of the same name rather than being quietly
+replaced by it.
+
+**A row that resolves to nothing fails the step**, naming the field and what was left unresolved:
+
+```
+Step 'Read the patient' asks for row '${missing}', which is not a number.
+```
+
+That is deliberate. A locator whose `row` could not be resolved would otherwise be a locator with no
+row constraint at all, and would act on whichever cell happened to match first. Registration also
+rejects a `row` or `column` that is neither a number nor a `${placeholder}`.
+
+Still true: a bot that needs *all* the values out of a grid must do something with each one as it
+goes. There is no list-valued output and no way to accumulate across passes.
+
+[`read-appointments.json`](../bots/read-appointments.json) reads fixed rows;
+[`walk-appointments.json`](../bots/walk-appointments.json) walks the grid with the counter.
 
 ### Counting what is on screen
 
@@ -336,9 +493,25 @@ bound on a loop.
   resolves". A count with no `outputKey` is rejected at registration: it would read the screen and
   throw the answer away.
 
-Counts describe **what the accessibility tree currently exposes**. For a grid that virtualises its
-rows, that is the rows on screen, not the rows in the model — the latter needs the Access Bridge
-table API, which this build does not bind.
+`GET_COUNT` describes **what the accessibility tree currently exposes**: for a virtualised grid
+that is the rows on screen, and for a table that exposes no cell children it is zero however many
+rows the grid has.
+
+For the count in the model, ask the table itself:
+
+```jsonc
+{
+  "name": "How big is the appointments grid?",
+  "action": "GET_TABLE_SIZE",
+  "outputKey": "grid",
+  "locatorChain": [ { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" } ]
+}
+```
+
+That writes two outputs — `${grid.rows}` and `${grid.columns}` — from one call, because a bot that
+needs the row count usually needs the column count in the same breath. The locator must resolve to
+a table, and only JAB can answer: an image match knows nothing about rows. A `GET_TABLE_SIZE` with
+no `outputKey` is rejected at registration, since its two outputs are named after it.
 
 ### Identifying a control by what sits next to it
 

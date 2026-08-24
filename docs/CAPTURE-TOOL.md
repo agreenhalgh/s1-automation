@@ -111,12 +111,29 @@ Three things about this panel are worth knowing:
 An element that reports no role, name or description has nothing to write a locator from — that is
 a control painted rather than built from accessible components, and it needs a template.
 
-A click selects the **deepest** control that covers the point, not the panel or tab it sits in.
+A click selects the **deepest** control that covers the point, not the panel, tab or table it sits
+in.
 That is worth stating because the tree makes it harder than it sounds: a `page tab` reports the
 bounds of its tab *button* rather than its content, a viewport reports a clipped rectangle, and some
 layout nodes leave `showing` out of their state set. A container's own attributes are therefore not
 evidence about what is inside it, and the walk does not treat them as such. A control that is
 itself unbounded or not showing is still ruled out — the container is then the honest answer.
+
+Table cells that are not in the tree at all — which is what a Swing `JTable` produces — are found
+through the Access Bridge table API instead of by walking: the row containing the click is located
+by bisecting the table's rows, then the cells of that row are checked. A click in a grid of thousands
+of rows costs about a dozen probes rather than one per row. If the bisection lands nowhere, because
+a grid does not lay its rows out in order or its cells report no bounds, the table itself remains
+the answer as before.
+
+Table cells get one further correction. A Swing table exposes each cell through a synthetic
+accessible object, and those routinely report a rectangle measured from the table's own top-left
+rather than from the screen; read literally, a cell appears to be near the top of the desktop. Where
+a node's rectangle cannot be inside its parent as reported but can be once shifted by the parent's
+origin, it is read that way — so a click lands on the cell, the highlight is drawn over the cell,
+and a run drives the mouse to the cell rather than to the corner of the screen. A node that fits
+neither reading is left exactly as reported, since an overlay or a stale rectangle is not a
+coordinate-space problem and translating it would only move the error.
 
 **The neighbours are shown too.** Under the attributes, the panel names the elements immediately
 before and after — `before: label[Surname] · after: label[Forename]` — written exactly as a

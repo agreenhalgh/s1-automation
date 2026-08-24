@@ -55,6 +55,14 @@ public class BotDefinitionValidator {
             }
             for (int i = 0; i < chain.size(); i++) {
                 checkSiblingSelectors(problems, describe(position, step, i), chain.get(i));
+                checkCellAddress(problems, describe(position, step, i), chain.get(i));
+            }
+            // A table size with nowhere to put the answer reads the screen and throws it away, and
+            // its two outputs are derived from the key, so a blank one makes ".rows" and ".columns".
+            if (step.action() == com.newbrid.epr_automation.systmone.common.model.ActionType.GET_TABLE_SIZE
+                    && (step.outputKey() == null || step.outputKey().isBlank())) {
+                problems.add("step " + position + " '" + step.name() + "' is a GET_TABLE_SIZE step "
+                        + "with no outputKey, so there is nothing to name its .rows and .columns");
             }
             // A count with nowhere to put the answer reads the screen and throws it away.
             if (step.action() == com.newbrid.epr_automation.systmone.common.model.ActionType.GET_COUNT
@@ -140,6 +148,27 @@ public class BotDefinitionValidator {
      * author expected {@code ancestorPath}'s chain syntax, and it would silently match nothing:
      * no single element has a role containing an angle bracket.
      */
+    /**
+     * A row or column must be a number or a {@code ${placeholder}}. Anything else is a typo that
+     * would otherwise reach a worker and fail there, one dispatched job later.
+     */
+    private static void checkCellAddress(List<String> problems, String where,
+                                         LocatorDefinition locator) {
+        checkCellNumber(problems, where, "row", locator.row());
+        checkCellNumber(problems, where, "column", locator.column());
+    }
+
+    private static void checkCellNumber(List<String> problems, String where, String field,
+                                        String value) {
+        if (value == null || value.contains("${")) return;
+        try {
+            Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            problems.add(where + ": " + field + " '" + value + "' is neither a number nor a "
+                    + "${placeholder}");
+        }
+    }
+
     private static void checkSiblingSelectors(List<String> problems, String where,
                                               LocatorDefinition locator) {
         checkSiblingSelector(problems, where, "previousSibling", locator.previousSibling());

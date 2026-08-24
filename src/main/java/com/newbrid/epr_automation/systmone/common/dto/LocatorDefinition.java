@@ -28,8 +28,8 @@ public record LocatorDefinition(
         String parent,
         String previousSibling,
         String followingSibling,
-        Integer row,
-        Integer column,
+        String row,
+        String column,
         // --- IMAGE ---
         String templateRef,
         Double threshold,
@@ -126,10 +126,57 @@ public record LocatorDefinition(
     }
 
     /**
+     * The row this locator asks for, as a number, or null when it asks for none — and also null
+     * when it asks for one that is not a number, which happens when a {@code ${var}} was never
+     * resolved. Matching treats that as no match rather than as no constraint: a locator that
+     * meant "row 4" must not quietly become "any row".
+     */
+    public Integer rowValue() {
+        return asNumber(row);
+    }
+
+    public Integer columnValue() {
+        return asNumber(column);
+    }
+
+    private static Integer asNumber(String value) {
+        if (value == null) return null;
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The same locator with every string field passed through {@code substitute} — how
+     * {@code ${var}} placeholders reach a locator.
+     *
+     * <p>Every string field, not a chosen few: an author who can write {@code ${patientName}} as a
+     * name will reasonably expect it to work in a description or an ancestor path too, and a
+     * substitution that applies to some fields and not others is the kind of rule nobody
+     * remembers.</p>
+     */
+    public LocatorDefinition resolvedWith(java.util.function.UnaryOperator<String> substitute) {
+        return new LocatorDefinition(type, substitute.apply(role), substitute.apply(name), nameMatch,
+                substitute.apply(description), substitute.apply(value), index,
+                substitute.apply(ancestorPath), substitute.apply(parent),
+                substitute.apply(previousSibling), substitute.apply(followingSibling),
+                substitute.apply(row), substitute.apply(column), substitute.apply(templateRef),
+                threshold, substitute.apply(anchorTemplateRef), offsetX, offsetY);
+    }
+
+    /**
      * The same locator, addressed by position within a table. Both are zero-based, and a header
      * row usually occupies row 0 — so the first row of data is normally row 1.
      */
     public LocatorDefinition withCell(Integer row, Integer column) {
+        return withCellText(row == null ? null : row.toString(),
+                column == null ? null : column.toString());
+    }
+
+    /** As above, but with the raw text — which may be a {@code ${var}} rather than a number. */
+    public LocatorDefinition withCellText(String row, String column) {
         return new LocatorDefinition(type, role, name, nameMatch, description, value, index,
                 ancestorPath, parent, previousSibling, followingSibling, row, column, templateRef,
                 threshold, anchorTemplateRef, offsetX, offsetY);

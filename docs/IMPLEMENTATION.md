@@ -274,6 +274,9 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
 Called out so they are not mistaken as done: OAuth2 provider wiring (the hook is present —
 `SecurityConfig` activates `oauth2Login` when a client registration is configured);
 secrets manager integration; TLS for AMQP/HTTP (NFR-SEC-04); PID redaction/encryption and
-retention for screenshots and JAB snapshots (NFR-SEC-03); OCR (FR-SR-05); a Postgres
+retention for screenshots and JAB snapshots (NFR-SEC-03); OCR (FR-SR-05); validation of the
+Access Bridge **table API** binding (`getAccessibleTableInfo`, `getAccessibleTableCellInfo`) against
+a live SystmOne host — it is written to the documented struct layouts, guarded so a failure degrades
+to the tree walk, and exercised only against a scripted bridge so far; a Postgres
 schema migration (Flyway/Liquibase) in place of `ddl-auto`; and reclaiming runs from dead
 workers via heartbeat timeout.

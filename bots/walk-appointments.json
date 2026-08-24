@@ -1,0 +1,51 @@
+{
+  "botId": "walk-appointments",
+  "name": "Walk every row of the appointment grid, reading the patient in each",
+  "version": 1,
+  "s1Version": "2024",
+  "globalTimeoutMs": 180000,
+  "steps": [
+    {
+      "name": "Activate SystmOne",
+      "action": "ACTIVATE",
+      "timeoutMs": 10000
+    },
+    {
+      "name": "How big is the appointments grid?",
+      "action": "GET_TABLE_SIZE",
+      "outputKey": "grid",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "key": "read-row",
+      "name": "Read the patient in the next row",
+      "action": "GET_TEXT",
+      "outputKey": "patient",
+      "timeoutMs": 5000,
+      "maxExecutions": 200,
+      "onLimit": "finished",
+      "onFound": "read-row",
+      "locatorChain": [
+        {
+          "type": "JAB",
+          "role": "label",
+          "ancestorPath": "table[Appointments]",
+          "row": "${step.iteration}",
+          "column": 1
+        }
+      ]
+    },
+    {
+      "key": "finished",
+      "name": "Ran out of rows, or hit the limit",
+      "action": "WAIT",
+      "timeoutMs": 5000,
+      "locatorChain": [
+        { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" }
+      ]
+    }
+  ]
+}

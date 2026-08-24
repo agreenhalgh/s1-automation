@@ -26,7 +26,7 @@ import java.util.Optional;
  * <p>Fail-safe (NFR-REL-04): if a locator matches more than one element in a single
  * traversal it is treated as ambiguous and resolves to empty — the engine never guesses.</p>
  */
-public class JabBackend implements AutomationBackend {
+public class JabBackend implements AutomationBackend, com.newbrid.epr_automation.systmone.sdk.locator.TableAware {
 
     private static final Logger log = LoggerFactory.getLogger(JabBackend.class);
     private static final int MAX_DEPTH = 40;
@@ -61,7 +61,8 @@ public class JabBackend implements AutomationBackend {
             List<AcRef> roots = bridge.roots(windowTitleContains);
             try {
                 for (AcRef root : roots) {
-                    search(root, SiblingLookup.NONE, locator, 0, new int[]{0}, matches, new ArrayList<>());
+                    search(root, SiblingLookup.NONE, ScreenSpace.SCREEN, null, locator, 0,
+                            new int[]{0}, matches, new ArrayList<>());
                     if (matches.size() > 1) break;
                 }
             } finally {
@@ -98,6 +99,56 @@ public class JabBackend implements AutomationBackend {
     }
 
     /**
+     * Resolve one cell through the table API, for a grid that keeps its cells out of the tree.
+     *
+     * <p>Addressed rather than searched: the row and column are known, so this is one lookup
+     * instead of a walk, and it reaches cells no walk could find. The cell's own attributes are
+     * then held to the rest of the locator exactly as a walked node would be — a locator naming a
+     * role the cell does not have still does not match.</p>
+     */
+    private void searchTableCell(AcRef node, AccessibleInfo tableInfo, ScreenSpace space,
+                                 java.awt.Rectangle tableBounds, LocatorDefinition locator,
+                                 List<JabElementHandle> out, List<AccessibleInfo> ancestors) {
+        TableGeometry geometry = bridge.tableGeometry(node);
+        if (geometry == null || geometry.isEmpty()) return;
+        Integer wantedRow = locator.rowValue();
+        if (wantedRow == null) return;   // an unresolved ${var} addresses no cell
+        int row = wantedRow;
+        int column = locator.columnValue() == null ? 0 : locator.columnValue();
+        if (row >= geometry.rows() || column >= geometry.columns()) {
+            log.debug("Table is {}x{}, so there is no cell at row {} column {}",
+                    geometry.rows(), geometry.columns(), row, column);
+            return;
+        }
+
+        AcRef cell = bridge.tableCell(node, row, column);
+        if (cell == null) return;
+        boolean keep = false;
+        try {
+            AccessibleInfo cellInfo = bridge.info(cell);
+            if (cellInfo == null) return;
+            // The cell's ancestors are the table's plus the table: it is a child of the table in
+            // every sense except being in the tree, so ancestorPath and parent still mean what
+            // they say.
+            List<AccessibleInfo> cellAncestors = new ArrayList<>(ancestors);
+            cellAncestors.add(tableInfo);
+            // Row and column are known to be right, and are not re-derived from a chain that has
+            // no row node in it.
+            LocatorDefinition withoutPosition = locator.withCellText(null, null);
+            if (!JabMatching.matches(cellInfo, cellAncestors, SiblingLookup.NONE, withoutPosition)) {
+                return;
+            }
+            java.awt.Rectangle cellBounds = space.forChild(cellInfo, tableBounds).absolute(cellInfo);
+            out.add(new JabElementHandle(cellBounds, cell, describe(cellInfo), bridge));
+            keep = true;
+            log.debug("Resolved row {} column {} of a {}x{} table through the table API",
+                    row, column, geometry.rows(), geometry.columns());
+        } finally {
+            if (!keep) bridge.release(cell);
+        }
+    }
+
+    /**
      * How many elements match, across every window the engine searches. Same predicate, same
      * visibility pruning and same handle discipline as {@link #resolve}, so a count describes the
      * elements a run could actually act on — one at a time.
@@ -114,6 +165,25 @@ public class JabBackend implements AutomationBackend {
             return total;
         } finally {
             roots.forEach(bridge::release);
+        }
+    }
+
+    /**
+     * How many rows or columns a table has, as the application counts them.
+     *
+     * <p>Different from counting matches in the tree, and better where the two disagree: a table
+     * that exposes no cell children reports zero rows by traversal however many it has, and a
+     * virtualised grid reports only the rows it is showing. This asks the model.</p>
+     *
+     * @return null when the locator does not resolve to a table, or the application will not say —
+     *         the caller then falls back to counting what the tree exposes
+     */
+    @Override
+    public TableGeometry tableGeometry(LocatorDefinition locator, Duration timeout) {
+        Optional<ElementHandle> table = resolve(locator, timeout);
+        if (table.isEmpty()) return null;
+        try (ElementHandle handle = table.get()) {
+            return handle instanceof JabElementHandle jab ? bridge.tableGeometry(jab.ref()) : null;
         }
     }
 
@@ -148,15 +218,23 @@ public class JabBackend implements AutomationBackend {
      *                  is how a step targets a control inside a modal dialog rather than the
      *                  identically named one in the window behind it
      */
-    private void search(AcRef node, SiblingLookup siblings, LocatorDefinition locator, int depth,
+    private void search(AcRef node, SiblingLookup siblings, ScreenSpace inherited,
+                        java.awt.Rectangle parentBounds, LocatorDefinition locator, int depth,
                         int[] visited, List<JabElementHandle> out, List<AccessibleInfo> ancestors) {
         if (node == null || depth > MAX_DEPTH || visited[0] > MAX_NODES || out.size() > 1) return;
         visited[0]++;
         AccessibleInfo info = bridge.info(node);
         if (info == null) return;
+        // Read once, here: deciding the coordinate space from inside the node keeps the walk to
+        // one decode per node, where reading each child from its parent's loop doubled it.
+        ScreenSpace space = inherited.forChild(info, parentBounds);
 
+        // Corrected bounds, because these are the coordinates the mouse is driven to. A table cell
+        // that reports its rectangle relative to the table would otherwise be clicked near the top
+        // of the desktop.
+        java.awt.Rectangle bounds = space.absolute(info);
         if (JabMatching.matches(info, ancestors, siblings, locator)) {
-            out.add(new JabElementHandle(info.bounds(), node, describe(info), bridge));
+            out.add(new JabElementHandle(bounds, node, describe(info), bridge));
             if (out.size() > 1) return;
         }
         // Nothing inside a container that is not on screen can be acted on, so the whole subtree
@@ -165,12 +243,20 @@ public class JabBackend implements AutomationBackend {
         // stops those consuming the MAX_NODES budget before the walk reaches the visible control
         // the step was actually looking for.
         if (info.hidesSubtree()) return;
+        // A table's cells are often not in the tree at all — a Swing JTable exposes none — so
+        // when the locator asks for one by position, the table itself is asked. Only then: the call
+        // costs nothing on a grid whose cells are already walkable, because it is not made.
+        if (locator.row() != null && info.childCount() == 0) {
+            searchTableCell(node, info, space, bounds, locator, out, ancestors);
+            if (!out.isEmpty()) return;
+        }
         ancestors.add(info);
         try {
             for (int i = 0; i < info.childCount(); i++) {
                 AcRef child = bridge.child(node, i);
                 try {
-                    search(child, siblingsOf(node, info, i), locator, depth + 1, visited, out, ancestors);
+                    search(child, siblingsOf(node, info, i), space, bounds, locator, depth + 1,
+                            visited, out, ancestors);
                 } finally {
                     // Released unless this exact handle is the match being returned. A handle for a
                     // node deeper in the subtree is a separate reference, so releasing this one

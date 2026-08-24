@@ -54,6 +54,28 @@ public interface WindowsAccessBridgeLib extends Library {
 
     boolean setTextContents(int vmID, long ac, char[] text);
 
+    // ---- tables ----
+
+    /**
+     * Table geometry: row and column counts, plus the {@code AccessibleTable} handle that cell
+     * lookups are made against.
+     *
+     * <p>Needed because a Swing {@code JTable} does not expose its cells as accessible children —
+     * the tree shows a table with nothing in it, and no amount of walking finds a row. The table
+     * API is the only way in.</p>
+     */
+    boolean getAccessibleTableInfo(int vmID, long ac, AccessibleTableInfo info);
+
+    /**
+     * One cell of a table, by row and column.
+     *
+     * @param accessibleTable the {@code accessibleTable} field of {@link AccessibleTableInfo} — not
+     *                        the table's {@code AccessibleContext}. They are different handles and
+     *                        passing the context here returns nothing.
+     */
+    boolean getAccessibleTableCellInfo(int vmID, long accessibleTable, int row, int column,
+                                       AccessibleTableCellInfo info);
+
     // ---- resource management ----
     void releaseJavaObject(int vmID, long object);
 
@@ -87,6 +109,48 @@ public interface WindowsAccessBridgeLib extends Library {
                     "indexInParent", "childrenCount", "x", "y", "width", "height",
                     "accessibleComponent", "accessibleAction", "accessibleSelection",
                     "accessibleText", "accessibleInterfaces");
+        }
+    }
+
+    /**
+     * Mirrors {@code AccessibleTableInfo}. Field order is the struct's, not a tidier one: JNA lays
+     * the fields out in declaration order and a rearrangement reads the wrong bytes.
+     */
+    class AccessibleTableInfo extends Structure {
+        /** AccessibleContext of the caption, or 0. */
+        public long caption;
+        /** AccessibleContext of the summary, or 0. */
+        public long summary;
+        public int rowCount;
+        public int columnCount;
+        /** The table's own AccessibleContext. */
+        public long accessibleContext;
+        /** The AccessibleTable handle, which is what cell lookups take. */
+        public long accessibleTable;
+
+        @Override
+        protected List<String> getFieldOrder() {
+            return List.of("caption", "summary", "rowCount", "columnCount", "accessibleContext",
+                    "accessibleTable");
+        }
+    }
+
+    /** Mirrors {@code AccessibleTableCellInfo}. */
+    class AccessibleTableCellInfo extends Structure {
+        /** AccessibleContext of the cell itself — the handle a click ultimately acts on. */
+        public long accessibleContext;
+        public int index;
+        public int row;
+        public int column;
+        public int rowExtent;
+        public int columnExtent;
+        /** {@code jboolean}, one byte. */
+        public byte isSelected;
+
+        @Override
+        protected List<String> getFieldOrder() {
+            return List.of("accessibleContext", "index", "row", "column", "rowExtent",
+                    "columnExtent", "isSelected");
         }
     }
 

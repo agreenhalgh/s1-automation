@@ -1,0 +1,67 @@
+{
+  "botId": "read-appointments",
+  "name": "Read the appointment grid: its size, its headings, and one row",
+  "version": 1,
+  "s1Version": "2024",
+  "globalTimeoutMs": 120000,
+  "steps": [
+    {
+      "name": "Activate SystmOne",
+      "action": "ACTIVATE",
+      "timeoutMs": 10000
+    },
+    {
+      "name": "How big is the appointments grid?",
+      "action": "GET_TABLE_SIZE",
+      "outputKey": "grid",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "table", "name": "Appointments", "nameMatch": "CONTAINS" }
+      ]
+    },
+    {
+      "name": "Confirm column 1 is the patient column before trusting it",
+      "action": "GET_TEXT",
+      "outputKey": "heading1",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 0, "column": 1 }
+      ]
+    },
+    {
+      "name": "Time of the first appointment",
+      "action": "GET_TEXT",
+      "outputKey": "firstTime",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 1, "column": 0 }
+      ]
+    },
+    {
+      "name": "Patient in the first appointment",
+      "action": "GET_TEXT",
+      "outputKey": "firstPatient",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 1, "column": 1 }
+      ]
+    },
+    {
+      "name": "Status of the first appointment",
+      "action": "GET_TEXT",
+      "outputKey": "firstStatus",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 1, "column": 2 }
+      ]
+    },
+    {
+      "name": "Open the first appointment",
+      "action": "DOUBLE_CLICK",
+      "timeoutMs": 8000,
+      "locatorChain": [
+        { "type": "JAB", "role": "label", "ancestorPath": "table[Appointments]", "row": 1, "column": 1 }
+      ]
+    }
+  ]
+}

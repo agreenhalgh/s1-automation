@@ -11,6 +11,8 @@ import com.newbrid.epr_automation.systmone.common.model.LocatorType;
 import com.newbrid.epr_automation.systmone.common.model.RunStatus;
 import com.newbrid.epr_automation.systmone.common.model.StepStatus;
 import com.newbrid.epr_automation.systmone.sdk.locator.ActionParams;
+import com.newbrid.epr_automation.systmone.automation.jab.TableGeometry;
+import com.newbrid.epr_automation.systmone.sdk.locator.TableAware;
 import com.newbrid.epr_automation.systmone.sdk.locator.AutomationBackend;
 import com.newbrid.epr_automation.systmone.sdk.locator.BackendRegistry;
 import com.newbrid.epr_automation.systmone.sdk.locator.ElementHandle;
@@ -150,6 +152,12 @@ public class BotEngine {
 
             listener.onProgress(position);
             executionsAt[position]++;
+            // What pass this is, for a step a conditional flow keeps coming back to. Both forms
+            // exist because placeholders do no arithmetic: a bot walking a grid needs a zero-based
+            // row number, and one counting attempts for a human needs a one-based count.
+            ctx.putImplicit("step.iteration", String.valueOf(executionsAt[position] - 1));
+            ctx.putImplicit("step.executions", String.valueOf(executionsAt[position]));
+            ctx.putImplicit("run.sequence", String.valueOf(executed));
             StepOutcome outcome = executeStep(bot, step, position, executed, ctx, runId, deadline, aborted);
             StepReport report = outcome.report();
             reports.add(report);
@@ -291,7 +299,7 @@ public class BotEngine {
 
     /** Try each locator in the chain in turn; act on the first that resolves. */
     private Attempt tryResolveAndAct(StepDefinition step, ExecutionContext ctx, long deadline) {
-        List<LocatorDefinition> chain = step.locatorChain();
+        List<LocatorDefinition> chain = resolvePlaceholders(step, ctx);
         if (chain.isEmpty()) {
             // ACTIVATE targets a window, not an element, so it needs nothing to resolve.
             // Requiring a locator here would also make the step that repairs focus depend
@@ -319,6 +327,9 @@ public class BotEngine {
         // near the resolution path that treats a second match as ambiguous and refuses to act.
         if (step.action() == ActionType.GET_COUNT) {
             return count(step, chain, deadline);
+        }
+        if (step.action() == ActionType.GET_TABLE_SIZE) {
+            return tableSize(step, chain, ctx, deadline);
         }
         long stepBudget = Math.min(step.timeoutMs(), remaining(deadline));
         long perLocator = Math.max(200, stepBudget / chain.size());
@@ -379,6 +390,40 @@ public class BotEngine {
     }
 
     /**
+     * The step's locators with their {@code ${var}} placeholders substituted.
+     *
+     * <p>Done here, once, before anything reads them: the backends then never see a placeholder,
+     * and a locator naming {@code ${patientName}} finds the patient rather than a control called
+     * "${patientName}". Only {@code inputValue} used to be substituted, which made a placeholder in
+     * a locator look supported and silently not be.</p>
+     *
+     * @throws StepResolutionException if a row or column is left as something that is not a number.
+     *         Failing beats matching: a locator that meant "row ${i}" with no {@code i} would
+     *         otherwise be a locator with no row constraint at all, and would act on the wrong cell
+     *         rather than on none.
+     */
+    private static List<LocatorDefinition> resolvePlaceholders(StepDefinition step,
+                                                               ExecutionContext ctx) {
+        List<LocatorDefinition> resolved = new ArrayList<>(step.locatorChain().size());
+        for (LocatorDefinition locator : step.locatorChain()) {
+            LocatorDefinition substituted = locator.resolvedWith(ctx::resolve);
+            requireNumeric(step, substituted, "row", substituted.row(), substituted.rowValue());
+            requireNumeric(step, substituted, "column", substituted.column(), substituted.columnValue());
+            resolved.add(substituted);
+        }
+        return resolved;
+    }
+
+    private static void requireNumeric(StepDefinition step, LocatorDefinition locator, String field,
+                                       String text, Integer parsed) {
+        if (text == null || parsed != null) return;
+        throw new StepResolutionException("Step '" + step.name() + "' asks for " + field + " '" + text
+                + "', which is not a number. A ${placeholder} there resolves from the run input, an "
+                + "earlier step's outputKey, or a loop counter such as ${step.iteration} — and this "
+                + "one resolved to nothing. Locator: " + locator.describe());
+    }
+
+    /**
      * How many elements the first countable locator in the chain matches.
      *
      * <p>The chain is "the first locator whose backend can answer", the counting analogue of
@@ -409,6 +454,34 @@ public class BotEngine {
         }
         throw new StepResolutionException("Step '" + step.name() + "' cannot count any locator in "
                 + "its chain: " + String.join("; ", declined));
+    }
+
+    /**
+     * A table's size from the application itself, written to {@code <outputKey>.rows} and
+     * {@code <outputKey>.columns}.
+     *
+     * <p>Two outputs from one step, because one call answers both and a bot that needs the row
+     * count usually needs the column count in the same breath. They are ordinary output keys, so
+     * {@code ${grid.rows}} works anywhere a placeholder does.</p>
+     */
+    private Attempt tableSize(StepDefinition step, List<LocatorDefinition> chain,
+                              ExecutionContext ctx, long deadline) {
+        long perLocator = Math.max(200, Math.min(step.timeoutMs(), remaining(deadline)) / chain.size());
+        for (LocatorDefinition locator : chain) {
+            AutomationBackend backend = backends.get(locator.type());
+            if (!(backend instanceof TableAware tables) || !backend.isAvailable()) continue;
+            TableGeometry size = tables.tableGeometry(locator, Duration.ofMillis(perLocator));
+            if (size == null) continue;
+            String key = step.outputKey();
+            ctx.putOutput(key + ".rows", String.valueOf(size.rows()));
+            ctx.putOutput(key + ".columns", String.valueOf(size.columns()));
+            log.info("Step '{}' read a {}x{} table", step.name(), size.rows(), size.columns());
+            return new Attempt(true, describe(locator),
+                    size.rows() + "x" + size.columns(), null);
+        }
+        throw new StepResolutionException("Step '" + step.name() + "' found no table to size: "
+                + describeChain(step) + ". A locator must resolve to a table, and the backend must "
+                + "be able to read one — only JAB can.");
     }
 
     /** {@code inputValue} names the window to raise; blank means the configured application. */

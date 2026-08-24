@@ -29,15 +29,14 @@ http:
           },
           {
             "name": "Get Matches",
-            "action": "GET_COUNT",
+            "action": "GET_TABLE_SIZE",
             "timeoutMs": 10000,
-            "outputKey": "patient-matches",
+            "outputKey": "grid",
             "continueOnFailure": true,
             "locatorChain": [
               {
                 "type": "JAB",
-                "role": "table row",
-                "parent": "table",
+                "role": "table",
                 "ancestorPath": "dialog[Patient Registration] > page tab[Patient Search]"
               }
             ]
@@ -50,8 +49,7 @@ http:
             "locatorChain": [
               {
                 "type": "JAB",
-                "parent": "table",
-                "role":"label",
+                "role":"panel",
                 "row": 1,
                 "column": 12,
                 "ancestorPath": "dialog[Patient Registration] > page tab[Patient Search]"

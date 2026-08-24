@@ -26,5 +26,7 @@ public class NullAccessBridge implements AccessBridge {
     @Override public boolean doAction(AcRef ref, String action) { return false; }
     @Override public boolean setText(AcRef ref, String text) { return false; }
     @Override public String getText(AcRef ref) { return null; }
+    @Override public TableGeometry tableGeometry(AcRef table) { return null; }
+    @Override public AcRef tableCell(AcRef table, int row, int column) { return null; }
     @Override public void release(AcRef ref) { }
 }

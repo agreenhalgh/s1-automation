@@ -46,8 +46,10 @@ public final class JabMatching {
         if (l.name() != null && !nameMatches(l, info.name())) return false;
         if (l.ancestorPath() != null && !ancestorPathMatches(l.ancestorPath(), ancestors)) return false;
         if (l.parent() != null && !parentMatches(l.parent(), ancestors)) return false;
-        if (l.row() != null && l.row() != rowOf(info, ancestors)) return false;
-        if (l.column() != null && l.column() != columnOf(info, ancestors)) return false;
+        // Compared as numbers, and an unresolved ${var} is no match rather than no constraint: a
+        // locator that meant "row 4" must never quietly widen to "any row".
+        if (l.row() != null && !numberIs(l.rowValue(), rowOf(info, ancestors))) return false;
+        if (l.column() != null && !numberIs(l.columnValue(), columnOf(info, ancestors))) return false;
         if (l.previousSibling() != null && !siblingMatches(l.previousSibling(), siblings, -1)) return false;
         if (l.followingSibling() != null && !siblingMatches(l.followingSibling(), siblings, 1)) return false;
         // Visible/rendered guard: an element with no bounds cannot be acted on, so it must not
@@ -175,6 +177,11 @@ public final class JabMatching {
      */
     private static boolean isRow(AccessibleInfo info) {
         return "table row".equalsIgnoreCase(info.role()) || "row".equalsIgnoreCase(info.role());
+    }
+
+    /** True only when the locator's value is a number and the element's position equals it. */
+    private static boolean numberIs(Integer wanted, int actual) {
+        return wanted != null && wanted == actual;
     }
 
     private static boolean parentMatches(String segment, List<AccessibleInfo> ancestors) {
