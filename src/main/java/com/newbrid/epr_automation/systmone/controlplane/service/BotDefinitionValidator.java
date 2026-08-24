@@ -144,11 +144,6 @@ public class BotDefinitionValidator {
     }
 
     /**
-     * A sibling selector names <em>one</em> element, not a path. A {@code >} in it means the
-     * author expected {@code ancestorPath}'s chain syntax, and it would silently match nothing:
-     * no single element has a role containing an angle bracket.
-     */
-    /**
      * A row or column must be a number or a {@code ${placeholder}}. Anything else is a typo that
      * would otherwise reach a worker and fail there, one dispatched job later.
      */
@@ -169,6 +164,11 @@ public class BotDefinitionValidator {
         }
     }
 
+    /**
+     * A sibling selector names <em>one</em> element, not a path. A {@code >} in it means the
+     * author expected {@code ancestorPath}'s chain syntax, and it would silently match nothing:
+     * no single element has a role containing an angle bracket.
+     */
     private static void checkSiblingSelectors(List<String> problems, String where,
                                               LocatorDefinition locator) {
         checkSiblingSelector(problems, where, "previousSibling", locator.previousSibling());

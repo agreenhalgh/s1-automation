@@ -97,35 +97,6 @@ public final class JabMatching {
     }
 
     /**
-     * Whether the element immediately before or after this one matches a {@code role[name]}
-     * segment — the same syntax {@code ancestorPath} uses, for one element rather than a chain.
-     *
-     * <p>This is what identifies a control that has nothing to say about itself by the thing next
-     * to it that does: the unlabelled field after the "Surname" label. Without it the only
-     * options were {@code index}, which counts every sibling of every kind and shifts whenever
-     * the form gains one, or an image anchor.</p>
-     *
-     * <p><b>Immediately</b> adjacent, deliberately. Unlike {@code ancestorPath}, which skips
-     * intervening containers because they are incidental, "the field after this label" is a claim
-     * about adjacency and nothing else — searching further for a match could silently pin the
-     * locator to a label two fields up and click the wrong control, which is worse than not
-     * resolving. A layout strut between label and field will defeat it; {@code index} or an
-     * {@code ancestorPath} is the fallback there.</p>
-     */
-    /**
-     * Whether the element's <em>immediate</em> parent matches a {@code role[name]} segment — the
-     * same grammar the sibling selectors and each {@code ancestorPath} segment use, with the
-     * bracketed name optional.
-     *
-     * <p>Distinct from a one-segment {@code ancestorPath}, which is satisfied by any ancestor at
-     * any depth. This is the narrower claim: "the field whose parent is the Address panel", not
-     * "somewhere inside it". Use whichever is true — a path survives the layout gaining a wrapper,
-     * a parent pins the level and says so when the structure moves.</p>
-     *
-     * <p>An element with no known ancestors does not match, the same fail-safe the other scoping
-     * fields take: a window has no parent, and an unknown chain is not evidence of one.</p>
-     */
-    /**
      * Which row of a table this element is in, or -1 if it is not in one.
      *
      * <p>Read from the ancestor chain the walk already carries: the nearest ancestor that is a row
@@ -184,11 +155,40 @@ public final class JabMatching {
         return wanted != null && wanted == actual;
     }
 
+    /**
+     * Whether the element's <em>immediate</em> parent matches a {@code role[name]} segment — the
+     * same grammar the sibling selectors and each {@code ancestorPath} segment use, with the
+     * bracketed name optional.
+     *
+     * <p>Distinct from a one-segment {@code ancestorPath}, which is satisfied by any ancestor at
+     * any depth. This is the narrower claim: "the field whose parent is the Address panel", not
+     * "somewhere inside it". Use whichever is true — a path survives the layout gaining a wrapper,
+     * a parent pins the level and says so when the structure moves.</p>
+     *
+     * <p>An element with no known ancestors does not match, the same fail-safe the other scoping
+     * fields take: a window has no parent, and an unknown chain is not evidence of one.</p>
+     */
     private static boolean parentMatches(String segment, List<AccessibleInfo> ancestors) {
         if (ancestors == null || ancestors.isEmpty()) return false;
         return segmentMatches(segment, ancestors.get(ancestors.size() - 1));
     }
 
+    /**
+     * Whether the element immediately before or after this one matches a {@code role[name]}
+     * segment — the same syntax {@code ancestorPath} uses, for one element rather than a chain.
+     *
+     * <p>This is what identifies a control that has nothing to say about itself by the thing next
+     * to it that does: the unlabelled field after the "Surname" label. Without it the only
+     * options were {@code index}, which counts every sibling of every kind and shifts whenever
+     * the form gains one, or an image anchor.</p>
+     *
+     * <p><b>Immediately</b> adjacent, deliberately. Unlike {@code ancestorPath}, which skips
+     * intervening containers because they are incidental, "the field after this label" is a claim
+     * about adjacency and nothing else — searching further for a match could silently pin the
+     * locator to a label two fields up and click the wrong control, which is worse than not
+     * resolving. A layout strut between label and field will defeat it; {@code index} or an
+     * {@code ancestorPath} is the fallback there.</p>
+     */
     private static boolean siblingMatches(String segment, SiblingLookup siblings, int offset) {
         if (siblings == null) return false;
         AccessibleInfo sibling = siblings.at(offset);
