@@ -1,0 +1,20 @@
+# Loads every dashboard JSON in docker/grafana/dashboards into a "SystmOne" folder.
+apiVersion: 1
+
+providers:
+  - name: systmone
+    folder: SystmOne
+    type: file
+    # Dashboards are checked into the repo, so a fresh grafana-data volume comes up with
+    # them already there rather than needing an import by hand.
+    updateIntervalSeconds: 30
+    # Panels can be edited and saved in the UI, which is the only practical way to iterate
+    # on a graph. Those saves live in Grafana's own database, so export the JSON back into
+    # docker/grafana/dashboards to keep anything worth keeping — `docker compose down -v`
+    # discards the volume and provisioning wins again.
+    allowUiUpdates: true
+    options:
+      # Outside /var/lib/grafana on purpose: that path is the grafana-data volume, and a
+      # read-only bind mount nested inside a named volume is a needless thing to rely on.
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

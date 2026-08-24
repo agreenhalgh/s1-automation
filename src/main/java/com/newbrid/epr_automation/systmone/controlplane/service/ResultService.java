@@ -36,14 +36,16 @@ public class ResultService {
     private final WorkerAgentRepository workers;
     private final AuditService audit;
     private final ObjectMapper mapper;
+    private final RunMetrics metrics;
 
     public ResultService(RunRepository runs, StepResultRepository steps, WorkerAgentRepository workers,
-                         AuditService audit, ObjectMapper mapper) {
+                         AuditService audit, ObjectMapper mapper, RunMetrics metrics) {
         this.runs = runs;
         this.steps = steps;
         this.workers = workers;
         this.audit = audit;
         this.mapper = mapper;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -98,6 +100,10 @@ public class ResultService {
             }
             releaseWorker(workerId);
             audit.record(workerId, "RUN_" + incoming, run.getBotId(), runId, null);
+            // Counted here rather than anywhere else for the same reason the audit entry is:
+            // this is the one place a run becomes terminal, and the idempotency guard above
+            // has already turned a redelivered duplicate away, so neither can double-count.
+            metrics.finished(run.getBotId(), incoming, run.getStartedAt(), run.getFinishedAt());
         } else if (incoming != null) {
             run.setStatus(incoming);
         }

@@ -1,17 +1,29 @@
 # Backing services for the SystmOne RPA framework: RabbitMQ, the job transport from the
 # control plane (publisher) to the workers (competing consumers, FR-CP-01 / FR-WRK-01),
 # PostgreSQL, the control plane's store for run history, audit and the element registry
-# (NFR-CMP-03), and pgAdmin for looking at that database. The control plane, workers and
-# capture tool all run on the host, not in here.
+# (NFR-CMP-03), pgAdmin for looking at that database, and Prometheus scraping the lot
+# (NFR-OBS-03), and Grafana drawing that. The control plane, workers and capture tool all
+# run on the host, not in here — Prometheus reaches them back over host.docker.internal.
 #
 #   docker compose up -d --wait          # start everything, waiting until each is healthy
 #   docker compose logs -f rabbitmq      # watch the broker
 #   docker compose down                  # stop them (state survives in the named volumes)
 #   docker compose down -v               # stop them and discard all queue and database state
 #
-# Web UIs, both loopback-only by default:
+# Web UIs, all loopback-only by default:
 #   RabbitMQ management  http://localhost:15672
 #   pgAdmin              http://localhost:5050
+#   Prometheus           http://localhost:9090   (/targets shows what is being scraped)
+#   Grafana              http://localhost:3000   (admin/systmone; two provisioned dashboards)
+#
+# What Prometheus scrapes, and where the metrics come from:
+#   rabbitmq            systmone-rabbit:15692     rabbitmq_prometheus, on by default here
+#   postgres            systmone-pg-exporter:9187 postgres-exporter over pg_stat_*
+#   controlplane        host.docker.internal:8080 /actuator/prometheus (Micrometer)
+#   authoring           host.docker.internal:8081 /actuator/prometheus
+#   workers             docker/prometheus/targets/workers.yml — one entry per workstation
+# The application endpoints need HTTP Basic (prometheus/prometheus by default); see
+# docker/prometheus/prometheus.yml and config/MetricsSecurityConfig.
 #
 # The application declares its own topology through RabbitAdmin — exchange
 # systmone.jobs.exchange, durable queue systmone.jobs.q, and the DLX/DLQ pair, see
@@ -102,6 +114,128 @@ services:
       retries: 10
       start_period: 20s
 
+  # PostgreSQL exposes no metrics endpoint of its own, so this translates pg_stat_* into
+  # one for Prometheus: connection counts and saturation against max_connections, commit
+  # and rollback rates, deadlocks, cache hit ratio, and per-table row and size counts —
+  # enough to see the control plane's store filling up or blocking before a run does.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    container_name: systmone-pg-exporter
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Same credentials as the control plane. A real deployment gives the exporter its own
+      # login with pg_monitor granted and nothing else, so a scrape can never read run data.
+      DATA_SOURCE_NAME: >-
+        postgresql://${JDBC_USER:-systmone}:${JDBC_PASSWORD:-systmone}@postgres:5432/${JDBC_DATABASE:-systmone}?sslmode=disable
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "false"
+    # No published port: Prometheus reaches it by service name on the compose network, and
+    # the metrics include table sizes, which is more than a database console needs to leak
+    # to the host. Debug it through the collector instead:
+    #   docker exec systmone-prometheus wget -qO - http://systmone-pg-exporter:9187/metrics
+    expose:
+      - "9187"
+
+  # Scrapes everything in this file plus the Spring applications running on the host, and
+  # keeps 15 days of it (NFR-OBS-03). Scrape config lives in docker/prometheus/prometheus.yml;
+  # the worker list, which changes as workstations come and go, in docker/prometheus/targets.
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    container_name: systmone-prometheus
+    restart: unless-stopped
+    depends_on:
+      # Only so the first scrape lands on something; Prometheus retries forever regardless,
+      # and a target that is down is a data point rather than a startup failure.
+      rabbitmq:
+        condition: service_healthy
+      postgres-exporter:
+        condition: service_started
+    ports:
+      # Loopback-only, like the other consoles. Prometheus has no authentication of its own
+      # and its API can delete series, so it stays off the network.
+      - "${PROMETHEUS_BIND:-127.0.0.1}:${PROMETHEUS_PORT:-9090}:9090"
+    extra_hosts:
+      # The control plane, capture tool and workers run on the host, not in here. Docker
+      # Desktop already resolves host.docker.internal; this is what makes the same config
+      # work on Linux, where it otherwise resolves to nothing.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/targets:/etc/prometheus/targets:ro
+      # The time series. Discardable — losing it loses history, not state any application
+      # depends on — but a named volume means a restart does not reset every graph.
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      # Lets `curl -X POST http://localhost:9090/-/reload` pick up a config edit without
+      # restarting the container and re-reading 15 days of blocks.
+      - --web.enable-lifecycle
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Dashboards over the Prometheus data (NFR-OBS-03). Datasource and dashboards are both
+  # provisioned from docker/grafana, so a fresh volume comes up with the two SystmOne
+  # dashboards already in place rather than needing an import by hand.
+  grafana:
+    image: grafana/grafana:12.3.0
+    container_name: systmone-grafana
+    restart: unless-stopped
+    depends_on:
+      # Waiting means the datasource health check passes on first load instead of showing a
+      # connection error until someone reloads the page.
+      prometheus:
+        condition: service_healthy
+    ports:
+      # Loopback-only, like the other consoles. 3000 is Grafana's own default and collides
+      # with nothing else here.
+      - "${GRAFANA_BIND:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
+    environment:
+      # Login for the console itself. Grafana forces a password change on first login when
+      # left at its own admin/admin default, which is not something a provisioned dev stack
+      # should make someone click through.
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-systmone}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Anonymous access is deliberately NOT enabled. These dashboards name bots and report
+      # their failure rates against a clinical system; that is operational data, and the fact
+      # that the port is bound to loopback is not a reason to also drop the login.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # No outbound calls. Version checks and usage reporting are the two things a container
+      # in an NHS-facing environment should not be doing on its own initiative.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Separate setting from the one above, and it is the one that actually reaches
+      # grafana.com on every start — CHECK_FOR_UPDATES alone leaves the plugin update
+      # checker running.
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_ANALYTICS_FEEDBACK_LINKS_ENABLED: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Land on the bot dashboard rather than Grafana's own welcome page.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/systmone-runs.json
+    volumes:
+      # Datasource + dashboard providers, read at startup.
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      # The dashboard JSON itself. Read-only: the file is the source of truth, and a panel
+      # edited in the UI is saved to Grafana's own database (allowUiUpdates), not back here.
+      - ./docker/grafana/dashboards:/etc/grafana/dashboards:ro
+      # Grafana's own database: users, preferences, and any dashboard edits made in the UI.
+      # Discardable — everything that matters is provisioned from the two paths above.
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   pgadmin:
     image: dpage/pgadmin4:9
     container_name: systmone-pgadmin
@@ -143,3 +277,5 @@ volumes:
   rabbit-data:
   pg-data:
   pgadmin-data:
+  prometheus-data:
+  grafana-data:

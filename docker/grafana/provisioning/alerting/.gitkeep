@@ -1,0 +1,6 @@
+# Intentionally empty. The compose file mounts docker/grafana/provisioning over Grafana's
+# whole provisioning directory, so a subdirectory that is missing here is missing in the
+# container too — and Grafana logs a scary "can't read provisioning files" error at every
+# start for each one. Nothing in this stack provisions alerting; the directory exists so that
+# error does not, because a log line that looks like a failure and is not costs someone
+# an investigation.

@@ -1,0 +1,96 @@
+# Scrape configuration for the SystmOne stack (NFR-OBS-03).
+#
+# Two kinds of target live here, and they are reached differently:
+#   * the containers in docker-compose.yaml, by service name on the compose network
+#     (systmone-rabbit, systmone-pg-exporter) — no published port needed;
+#   * the Spring applications, which run on the *host*, not in Docker, so they are reached
+#     through host.docker.internal (mapped to host-gateway in the compose file).
+#
+# Reload after editing, without dropping the time series:
+#   docker exec systmone-prometheus kill -HUP 1
+#   curl -X POST http://localhost:9090/-/reload      # --web.enable-lifecycle is on
+# Check what is actually up: http://localhost:9090/targets
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    stack: systmone
+
+scrape_configs:
+
+  # ---- Prometheus itself -------------------------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ---- RabbitMQ ----------------------------------------------------------------------
+  # rabbitmq_prometheus is enabled by default in the -management images, so the broker
+  # needs no configuration to be scraped — only the port (15692).
+  - job_name: rabbitmq
+    static_configs:
+      - targets: ["systmone-rabbit:15692"]
+
+  # /metrics is aggregated across all queues, which cannot answer the two questions that
+  # actually matter here: how deep systmone.jobs.q is, and how much history is parked in
+  # systmone.jobs.dlq (FR-WRK-05). The detailed endpoint breaks those out per queue, and
+  # asking for only these families keeps it cheap.
+  - job_name: rabbitmq-queues
+    metrics_path: /metrics/detailed
+    params:
+      family:
+        - queue_coarse_metrics
+        - queue_consumer_count
+    static_configs:
+      - targets: ["systmone-rabbit:15692"]
+
+  # ---- PostgreSQL --------------------------------------------------------------------
+  # PostgreSQL has no metrics endpoint of its own; postgres-exporter turns pg_stat_* into
+  # one. Reached inside the compose network, so no host port is published for it.
+  - job_name: postgres
+    static_configs:
+      - targets: ["systmone-pg-exporter:9187"]
+
+  # ---- The Spring applications -------------------------------------------------------
+  # /actuator/prometheus sits behind HTTP Basic on its own security perimeter
+  # (config/MetricsSecurityConfig), because these processes hold clinical run data and the
+  # endpoint is the one place that would otherwise be open. The defaults below match the
+  # applications' own defaults (systmone.metrics.username / .password), so a developer
+  # stack needs no configuration. For anything real, set those in the app and swap the
+  # literal below for `password_file: /etc/prometheus/scrape-password` over a mounted
+  # secret, rather than committing a password here.
+  - job_name: systmone-controlplane
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password: prometheus
+    static_configs:
+      # No `role` label here: the application publishes one itself as a Micrometer common
+      # tag, and a target label of the same name does not override it — Prometheus keeps
+      # both and renames the app's to exported_role, which is a worse version of what was
+      # already there. Every series from this job already carries role=controlplane.
+      - targets: ["host.docker.internal:8080"]
+
+  - job_name: systmone-authoring
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password: prometheus
+    static_configs:
+      # No `role` label, as above: it already arrives as role=authoring from the app.
+      - targets: ["host.docker.internal:8081"]
+
+  # Workers are the one target list that changes: one per SystmOne workstation, added and
+  # removed as machines come and go. They are read from a separate file so adding a worker
+  # is an edit to targets/workers.yml that Prometheus picks up on its own — no restart, no
+  # reload signal, and no risk of a typo in this file taking the whole stack's monitoring
+  # down with it.
+  - job_name: systmone-workers
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password: prometheus
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/workers.yml
+        refresh_interval: 30s

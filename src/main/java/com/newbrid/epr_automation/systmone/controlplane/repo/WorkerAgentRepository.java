@@ -7,4 +7,7 @@ import java.util.List;
 
 public interface WorkerAgentRepository extends JpaRepository<WorkerAgentEntity, String> {
     List<WorkerAgentEntity> findAllByOrderByLastSeenAtDesc();
+
+    /** Backs the agent-health gauges in {@code service.RunMetrics} (IDLE / BUSY). */
+    long countByStatus(String status);
 }

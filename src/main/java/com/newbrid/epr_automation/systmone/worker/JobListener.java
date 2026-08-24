@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -40,12 +41,15 @@ public class JobListener {
     private final ControlPlaneClient client;
     private final ObjectMapper mapper;
     private final WorkerProperties props;
+    private final WorkerMetrics metrics;
 
-    public JobListener(BotEngine engine, ControlPlaneClient client, ObjectMapper mapper, WorkerProperties props) {
+    public JobListener(BotEngine engine, ControlPlaneClient client, ObjectMapper mapper,
+                       WorkerProperties props, WorkerMetrics metrics) {
         this.engine = engine;
         this.client = client;
         this.mapper = mapper;
         this.props = props;
+        this.metrics = metrics;
     }
 
     @RabbitListener(queues = "#{@jobsQueue.name}", containerFactory = "workerListenerFactory")
@@ -53,6 +57,10 @@ public class JobListener {
         long tag = message.getMessageProperties().getDeliveryTag();
         String runId = null;
         StatusReport terminal;
+        // Started before the body is even parsed: an unparseable job still occupied this
+        // worker, and a job counted only on the happy path measures the wrong thing.
+        long startedAt = System.nanoTime();
+        metrics.jobStarted();
         try {
             RunJobMessage job = mapper.readValue(new String(message.getBody(), StandardCharsets.UTF_8),
                     RunJobMessage.class);
@@ -60,13 +68,21 @@ public class JobListener {
             log.info("Worker {} picked up run {} (bot {})", client.workerId(), runId, job.bot().botId());
 
             safePostRunning(runId);
-            PostingRunListener listener = new PostingRunListener(client, runId, client.workerId());
+            PostingRunListener listener = new PostingRunListener(client, runId, client.workerId(), metrics);
             RunResult result = engine.run(job.bot(), job.input(), runId, listener, () -> false);
             terminal = new StatusReport(result.status(), result.error(), result.outputs());
         } catch (Exception e) {
             log.error("Run {} failed in the worker: {}", runId, e.toString(), e);
             terminal = new StatusReport(RunStatus.FAILED, ExceptionInfo.from(e, "worker execution"), Map.of());
+        } finally {
+            // In a finally so that an Error escaping the run — which the catch above
+            // deliberately does not swallow — cannot leave this workstation reading as
+            // permanently busy for as long as the process lives.
+            metrics.jobEnded();
         }
+        // Outside it, because naming the outcome needs an outcome, and both branches above
+        // set one.
+        metrics.jobOutcome(terminal.status(), Duration.ofNanos(System.nanoTime() - startedAt));
 
         // Ack only once the terminal outcome is durably recorded by the control plane.
         boolean delivered = runId != null && postTerminalWithRetry(runId, terminal);

@@ -1,0 +1,14 @@
+# Worker scrape targets, read by the systmone-workers job in prometheus.yml and re-read
+# every 30s — add or remove a machine here and Prometheus follows without a restart.
+#
+# A worker exposes only /actuator/health, /actuator/info and /actuator/prometheus, on
+# WORKER_METRICS_PORT (8082 by default). Use the host name or IP the *Prometheus
+# container* can reach: host.docker.internal for a worker on this machine, the real host
+# name for one on another workstation.
+#
+# Targets only, no labels: the worker tags its own series with role=worker and with its
+# worker id, so anything added here would only shadow those under an exported_ prefix.
+#
+#   - targets: ["ward-pc-04:8082", "ward-pc-07:8082"]
+
+- targets: ["host.docker.internal:8082"]

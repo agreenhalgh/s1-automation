@@ -15,6 +15,9 @@ import java.util.Map;
  * each progress ping is reported as it happens. Step/heartbeat posts are best-effort —
  * the authoritative, ack-gating terminal POST is handled by {@link JobListener}
  * (FR-WRK-04).
+ *
+ * <p>Each step is also counted locally ({@link WorkerMetrics}) before it is posted, so the
+ * numbers survive a control plane this worker cannot reach.
  */
 public class PostingRunListener implements RunListener {
 
@@ -23,11 +26,14 @@ public class PostingRunListener implements RunListener {
     private final ControlPlaneClient client;
     private final String runId;
     private final String workerId;
+    private final WorkerMetrics metrics;
 
-    public PostingRunListener(ControlPlaneClient client, String runId, String workerId) {
+    public PostingRunListener(ControlPlaneClient client, String runId, String workerId,
+                              WorkerMetrics metrics) {
         this.client = client;
         this.runId = runId;
         this.workerId = workerId;
+        this.metrics = metrics;
     }
 
     @Override
@@ -41,6 +47,7 @@ public class PostingRunListener implements RunListener {
 
     @Override
     public void onStepComplete(StepReport report) {
+        metrics.stepCompleted(report);
         try {
             client.postStep(runId, report);
         } catch (Exception e) {

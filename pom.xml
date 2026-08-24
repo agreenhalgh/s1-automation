@@ -66,6 +66,14 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!-- Renders those metrics at /actuator/prometheus for the Prometheus container in
+		     docker-compose.yaml to scrape. Runtime only: nothing compiles against it, the
+		     registry is picked up by Boot's autoconfiguration from the classpath. -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 
 		<!-- Java Native Access: binding to WindowsAccessBridge-64.dll (JAB adapter) -->
 		<dependency>

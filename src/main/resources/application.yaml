@@ -47,12 +47,35 @@ spring:
 # environment.
 systmone:
   worker-token: ${SYSTMONE_WORKER_TOKEN:changeit}
+  # Credentials Prometheus presents to scrape /actuator/prometheus, on every role. The
+  # defaults match docker/prometheus/prometheus.yml so a developer stack works unconfigured;
+  # set both in every real environment and give Prometheus the same values via password_file.
+  metrics:
+    username: ${METRICS_USER:prometheus}
+    password: ${METRICS_PASSWORD:prometheus}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        # prometheus is the scrape endpoint the Prometheus container reads (NFR-OBS-03). It
+        # is the one actuator endpoint reachable without an operator session, so it has its
+        # own perimeter and its own credentials — config/MetricsSecurityConfig.
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      # Stamped on every series this process publishes, so one Prometheus can hold the
+      # control plane, the capture tool and a dozen workers without their JVM and HTTP
+      # metrics blurring into one. The profile yamls override `role`.
+      application: ${spring.application.name}
+      role: controlplane
+    distribution:
+      # Buckets, not just a count and a mean: "how long does a run take" is a question about
+      # the tail, and an average hides the run that sat for four minutes waiting on a locator.
+      percentiles-histogram:
+        http.server.requests: true
+        systmone.run.duration: true
+        systmone.step.duration: true
 
 logging:
   level:

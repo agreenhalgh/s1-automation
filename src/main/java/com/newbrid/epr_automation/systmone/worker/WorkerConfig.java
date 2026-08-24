@@ -15,6 +15,7 @@ import com.newbrid.epr_automation.systmone.sdk.engine.BotEngine;
 import com.newbrid.epr_automation.systmone.sdk.engine.KeyboardControl;
 import com.newbrid.epr_automation.systmone.sdk.engine.ScreenshotSink;
 import com.newbrid.epr_automation.systmone.sdk.locator.BackendRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -25,6 +26,7 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.micrometer.metrics.autoconfigure.MeterRegistryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -131,6 +133,19 @@ public class WorkerConfig {
     public Binding controlBinding(@Qualifier("controlExchange") DirectExchange controlExchange,
                                   WorkerProperties props) {
         return BindingBuilder.bind(controlQueue(props)).to(controlExchange).with(props.resolveWorkerId());
+    }
+
+    /**
+     * Stamps this workstation's id on every metric the worker publishes, including the JVM and
+     * Rabbit ones Boot registers on its own (NFR-OBS-03). Prometheus already labels a series
+     * with the address it scraped, but that is a host and port — a worker that moves machine, or
+     * two workers sharing one, would break the history of the agent rather than of the box. The
+     * id is the same one used to register with the control plane and to address this worker's
+     * command queue, so a graph and a run record name the agent identically.
+     */
+    @Bean
+    public MeterRegistryCustomizer<MeterRegistry> workerMetricsTags(WorkerProperties props) {
+        return registry -> registry.config().commonTags("worker", props.resolveWorkerId());
     }
 
     @Bean

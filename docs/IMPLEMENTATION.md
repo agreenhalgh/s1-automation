@@ -36,10 +36,13 @@ com.newbrid.epr_automation.systmone
 │   │                    via JNA) + NullAccessBridge; JabBackend; WindowsAccessBridgeLib
 │   └── screen           TemplateMatcher (pure-Java NCC), ScreenBackend, RobotInput,
 │                        TemplateStore, MatchResult
-├── config               RabbitTopologyConfig (queues, DLX/DLQ)
-├── controlplane         domain (JPA), repo, service, amqp, web (api + ui), security
+├── config               RabbitTopologyConfig (queues, DLX/DLQ),
+│                        MetricsSecurityConfig (the scrape perimeter, every role)
+├── controlplane         domain (JPA), repo, service (incl. RunMetrics), amqp,
+│                        web (api + ui), security
 └── worker               WorkerConfig, JobListener, ControlPlaneClient, PostingRunListener,
-                         HttpTemplateStore, LocalScreenshotSink, WorkerRegistrationRunner
+                         HttpTemplateStore, LocalScreenshotSink, WorkerRegistrationRunner,
+                         WorkerMetrics, WorkerSecurityConfig
 ```
 
 ## 3. Requirement → code map (highlights)
@@ -63,6 +66,7 @@ com.newbrid.epr_automation.systmone
 | FR-WRK-08 Self-registration | `worker.WorkerRegistrationRunner` |
 | NFR-SEC-01 OAuth2 + RBAC + worker token | `controlplane.security.SecurityConfig`, `WorkerTokenFilter` |
 | NFR-SEC-05 Audit trail | `service.AuditService`, `AuditEntity` |
+| NFR-OBS-03 Metrics | `service.RunMetrics`, `worker.WorkerMetrics`, `config.MetricsSecurityConfig`, `docker/prometheus/`, `docker/grafana/` |
 
 ## 4. Running it locally
 
@@ -70,12 +74,16 @@ com.newbrid.epr_automation.systmone
 - JDK 25, the bundled Maven wrapper (`./mvnw`).
 - The backing services, all from [`docker-compose.yaml`](../docker-compose.yaml):
   `docker compose up -d --wait`. That is RabbitMQ for the dispatch→worker→results loop,
-  PostgreSQL for the control plane's store (NFR-CMP-03), and pgAdmin for looking at that
-  database. All bind to loopback only; set `RABBITMQ_BIND=0.0.0.0` / `POSTGRES_BIND=0.0.0.0`
-  plus real credentials when workers connect from other hosts.
+  PostgreSQL for the control plane's store (NFR-CMP-03), pgAdmin for looking at that
+  database, and Prometheus, a postgres-exporter and Grafana for metrics (NFR-OBS-03, see
+  [Metrics](#metrics) below). All bind to loopback only; set `RABBITMQ_BIND=0.0.0.0` /
+  `POSTGRES_BIND=0.0.0.0` plus real credentials when workers connect from other hosts.
 - Consoles: RabbitMQ management on <http://localhost:15672> (guest/guest), pgAdmin on
   <http://localhost:5050> (`admin@systmone.dev` / `systmone`, override with
-  `PGADMIN_EMAIL`/`PGADMIN_PASSWORD`). pgAdmin arrives with the control-plane database
+  `PGADMIN_EMAIL`/`PGADMIN_PASSWORD`), Grafana on <http://localhost:3000>
+  (`admin`/`systmone`, override with `GRAFANA_USER`/`GRAFANA_PASSWORD`), Prometheus on
+  <http://localhost:9090> (`/targets` is the first place to look when a graph is empty).
+  pgAdmin arrives with the control-plane database
   already registered from [`docker/pgadmin-servers.json`](../docker/pgadmin-servers.json) —
   it prompts once for the database password. Queue inspection without a browser:
   `docker exec systmone-rabbit rabbitmqadmin list queues` (rabbitmqadmin v2 ships with the
@@ -110,6 +118,7 @@ is the default in `application.yaml`.
 # UI:   http://localhost:8080  (dev login: operator/operator, developer/developer, auditor/auditor, admin/admin)
 # API:  http://localhost:8080/api/**  (header  X-Worker-Token: changeit)
 # Health: http://localhost:8080/actuator/health
+# Metrics: http://localhost:8080/actuator/prometheus  (HTTP Basic, prometheus/prometheus)
 ```
 
 ### Start one or more workers (each on a SystmOne workstation)
@@ -129,9 +138,146 @@ Start the command again on another host to add a second competing consumer — n
 change is needed (NFR-PERF-04). Each worker needs the Access Bridge enabled once per JRE
 (`jabswitch -enable`, then restart the JVM) and an **interactive desktop session**:
 `java.awt.Robot` is unavailable headless, so a worker run as a service silently loses the
-screen-recognition backend. A worker runs no web server, so confirm it through the broker
-instead — `docker exec systmone-rabbit rabbitmqctl list_queues name messages consumers`
-shows one consumer per live worker.
+screen-recognition backend. Two ways to confirm a worker is alive: the broker —
+`docker exec systmone-rabbit rabbitmqctl list_queues name messages consumers` shows one
+consumer per live worker — or its own actuator, `http://<worker-host>:8082/actuator/health`.
+
+A worker listens on `WORKER_METRICS_PORT` (8082) for one reason: to be scraped. Only
+`/actuator/health`, `/actuator/info` and `/actuator/prometheus` are mapped and everything
+else is refused outright (`worker.WorkerSecurityConfig`). Two workers on one machine need
+two ports. Add each workstation to
+[`docker/prometheus/targets/workers.yml`](../docker/prometheus/targets/workers.yml) to have
+it scraped — Prometheus re-reads that file every 30s, so no restart is involved. Set
+`WORKER_WEB_TYPE=none` to go back to a worker with no listener at all, at the cost of it
+disappearing from Prometheus.
+
+### Metrics
+Prometheus (in `docker-compose.yaml`) scrapes five things: itself, RabbitMQ, PostgreSQL via
+a postgres-exporter, and the Spring applications. The first three run in Docker and are
+reached by service name; the applications run on the host, so Prometheus reaches back over
+`host.docker.internal` — which is why the container declares
+`host.docker.internal:host-gateway`. Scrape config is
+[`docker/prometheus/prometheus.yml`](../docker/prometheus/prometheus.yml); worker addresses
+are in [`targets/workers.yml`](../docker/prometheus/targets/workers.yml), re-read every 30s.
+
+`/actuator/prometheus` is authenticated, unlike `/actuator/health`: it names bots and
+reports their failure rates, and it is the one actuator endpoint reachable from off the
+host. It sits on its own perimeter (`config.MetricsSecurityConfig`) with HTTP Basic and a
+`ROLE_METRICS` account — `METRICS_USER`/`METRICS_PASSWORD`, defaulting to
+`prometheus`/`prometheus` to match the committed scrape config. That credential is
+deliberately not the worker token and not an operator login; none can be used in place of
+another. Check it by hand with:
+
+```powershell
+curl.exe -u prometheus:prometheus http://localhost:8080/actuator/prometheus
+```
+
+Beyond what Boot registers on its own (JVM, HTTP, Hikari, Rabbit), NFR-OBS-03's own list:
+
+| Metric | Where from | Answers |
+| --- | --- | --- |
+| `systmone_runs_dispatched_total{bot}` | control plane, `RunMetrics` | how much work is being asked for |
+| `systmone_runs_finished_total{bot,status}` | control plane | success/failure rate per bot |
+| `systmone_run_duration_seconds{bot,status}` | control plane | run durations, with a histogram |
+| `systmone_runs_inflight{status}` | control plane, gauge over the run table | queue backing up, or a run stuck RUNNING |
+| `systmone_workers{status}` / `systmone_workers_registered` | control plane, gauge | agent health (FR-CP-06) |
+| `systmone_steps_total{status}` | worker, `WorkerMetrics` | step-level success/failure |
+| `systmone_step_duration_seconds{status}` | worker | which steps are slow |
+| `systmone_locator_attempts_total{strategy,outcome}` | worker | locator-fallback rate — see below |
+| `systmone_worker_jobs_total{outcome}` / `_active` | worker | what this workstation did, and whether it is busy now |
+| `rabbitmq_detailed_queue_messages{queue}` | broker | depth of `systmone.jobs.q`, backlog in the DLQ |
+
+Every application series carries `application` and `role`; worker series also carry
+`worker`, the same id used to register with the control plane and to address that worker's
+command queue, so a graph and a run record name the agent identically.
+
+The locator-fallback rate is `strategy="IMAGE"` as a share of all resolutions. A chain
+normally leads with a JAB locator and falls back to template matching, so a rising IMAGE
+share is a SystmOne upgrade moving the accessibility tree out from under the definitions —
+visible as a trend well before it becomes a failed run, which is the point of measuring it
+rather than the failures.
+
+Counters appear only once they have been incremented, so a freshly started control plane
+publishes the gauges but not `systmone_runs_finished_total` until the first run ends. An
+empty graph after a restart is that, not a broken scrape; `/targets` settles which.
+
+One name collision to know about: `rabbitmq_connections` and `rabbitmq_channels` are
+published **both** by the broker and by Spring AMQP inside each application, and they do not
+mean the same thing. Always qualify — `{job="rabbitmq"}` for the broker's view,
+`{role="controlplane"}` or `{role="worker"}` for a client's.
+
+#### Grafana
+Grafana is provisioned, not configured by hand: the Prometheus datasource comes from
+[`docker/grafana/provisioning`](../docker/grafana/provisioning) and two dashboards from
+[`docker/grafana/dashboards`](../docker/grafana/dashboards), so a fresh `grafana-data`
+volume comes up with both already in the **SystmOne** folder. It opens on the first one.
+
+| Dashboard | What it answers |
+| --- | --- |
+| **SystmOne — Bot runs** | Are the bots working? Dispatch and outcome per bot, run and step durations, the locator-fallback rate, and what is in flight right now. Filterable by bot and by workstation. |
+| **SystmOne — Platform** | If they are not, is it the platform? Queue depths and broker message rates, PostgreSQL connections and transactions, and per-role heap, HTTP and connection pools. |
+
+Every panel carries a description — the ⓘ in its corner — saying what it measures and how to
+read it, including the ones where an empty panel is the correct answer rather than a fault.
+Dashboards are set to **UTC** deliberately: Hibernate writes run timestamps in UTC and the
+postgres container runs with `PGTZ=UTC`, so a graph read next to a run record lines up.
+
+Panels can be edited and saved in the UI (`allowUiUpdates: true`), which is the only
+practical way to iterate on a graph. Those saves live in Grafana's own database, so export
+the JSON back into `docker/grafana/dashboards` to keep anything worth keeping —
+`docker compose down -v` discards the volume and provisioning wins again.
+
+Two deliberate non-defaults: anonymous access is **off**, because these dashboards name bots
+and report their failure rates against a clinical system and a loopback binding is not a
+reason to also drop the login; and the update checker, usage reporting, news feed and
+feedback links are all disabled, so the container makes no outbound calls of its own.
+
+#### Queries worth having
+```promql
+# Success rate per bot over the last day
+sum by (bot) (increase(systmone_runs_finished_total{status="SUCCEEDED"}[1d]))
+  / sum by (bot) (increase(systmone_runs_finished_total[1d]))
+
+# p95 run duration per bot (the histogram is enabled for this timer, and for step duration)
+histogram_quantile(0.95, sum by (bot, le) (rate(systmone_run_duration_seconds_bucket[30m])))
+
+# Work dispatched and not moving for ten minutes — nothing is consuming the queue
+systmone_runs_inflight{status=~"PENDING|DISPATCHED"} > 0
+  and min_over_time(systmone_runs_inflight{status=~"PENDING|DISPATCHED"}[10m]) > 0
+
+# Runs sitting in RUNNING while nothing reaches a terminal state — workers gone quiet
+systmone_runs_inflight{status="RUNNING"} > 0
+  and on() sum(rate(systmone_runs_finished_total[15m])) == 0
+
+# Locator-fallback rate: how much of the work JAB is no longer resolving (NFR-OBS-03)
+sum(rate(systmone_locator_attempts_total{strategy="IMAGE",outcome="resolved"}[1h]))
+  / sum(rate(systmone_locator_attempts_total{outcome="resolved"}[1h]))
+
+# ...and per workstation, which is how one machine drifting shows up separately
+sum by (worker) (rate(systmone_locator_attempts_total{strategy="IMAGE",outcome="resolved"}[6h]))
+  / sum by (worker) (rate(systmone_locator_attempts_total{outcome="resolved"}[6h]))
+
+# Chains exhausting — nothing in the chain resolved at all, by strategy
+sum by (strategy) (rate(systmone_locator_attempts_total{outcome="unresolved"}[15m]))
+
+# Something was dead-lettered in the last hour (delta, not increase — it is a gauge)
+delta(rabbitmq_detailed_queue_messages{queue="systmone.jobs.dlq"}[1h]) > 0
+
+# Jobs queued with no consumer to take them
+rabbitmq_detailed_queue_messages_ready{queue="systmone.jobs.q"} > 0
+  and on(queue) rabbitmq_detailed_queue_consumers == 0
+
+# Control-plane connection pool saturation, and the database behind it
+hikaricp_connections_pending{role="controlplane"} > 0
+sum(pg_stat_activity_count{datname="systmone"}) / scalar(pg_settings_max_connections)
+
+# Workers reporting results into a failing endpoint
+sum(rate(http_server_requests_seconds_count{role="controlplane",uri=~"/api/.*",status=~"5.."}[5m]))
+  / sum(rate(http_server_requests_seconds_count{role="controlplane",uri=~"/api/.*"}[5m]))
+
+# Anything not answering a scrape
+up == 0
+```
 
 ### Example: capture a template, register a bot, dispatch
 Templates come first: registration rejects a definition whose image locators name templates
@@ -278,5 +424,10 @@ retention for screenshots and JAB snapshots (NFR-SEC-03); OCR (FR-SR-05); valida
 Access Bridge **table API** binding (`getAccessibleTableInfo`, `getAccessibleTableCellInfo`) against
 a live SystmOne host — it is written to the documented struct layouts, guarded so a failure degrades
 to the tree walk, and exercised only against a scripted bridge so far; a Postgres
-schema migration (Flyway/Liquibase) in place of `ddl-auto`; and reclaiming runs from dead
-workers via heartbeat timeout.
+schema migration (Flyway/Liquibase) in place of `ddl-auto`; reclaiming runs from dead
+workers via heartbeat timeout; and, on the metrics side, **alerting** — the series are
+scraped and drawn (NFR-OBS-03) but nothing yet pages anyone about a DLQ that is filling or a
+locator-fallback rate that has doubled. `docker/grafana/provisioning/alerting/` is where
+those rules would go, and is empty for that reason. Prometheus and Grafana are both
+loopback-only, and Prometheus has no authentication of its own, so neither is ready to be
+exposed beyond a developer machine as configured.

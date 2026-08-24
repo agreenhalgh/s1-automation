@@ -10,6 +10,7 @@ import com.newbrid.epr_automation.systmone.controlplane.repo.RunRepository;
 import com.newbrid.epr_automation.systmone.controlplane.repo.StepResultRepository;
 import com.newbrid.epr_automation.systmone.controlplane.repo.WorkerAgentRepository;
 import com.newbrid.epr_automation.systmone.controlplane.web.dto.WebDtos.StepRow;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -55,7 +56,8 @@ class StepExecutionRecordingTest {
             return e;
         });
         return new ResultService(runs, steps, workers, mock(AuditService.class),
-                mock(tools.jackson.databind.ObjectMapper.class));
+                mock(tools.jackson.databind.ObjectMapper.class),
+                new RunMetrics(new SimpleMeterRegistry(), runs, workers));
     }
 
     private static StepReport report(int position, int sequence, StepStatus status) {

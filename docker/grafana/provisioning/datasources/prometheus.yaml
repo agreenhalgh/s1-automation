@@ -1,0 +1,25 @@
+# The one datasource, wired to the Prometheus container by service name on the compose
+# network — not through localhost:9090, which inside this container is Grafana itself.
+#
+# The uid is pinned rather than generated because the dashboards in docker/grafana/dashboards
+# reference it by uid. A generated one would differ on every fresh volume and every panel
+# would come up asking which datasource it meant.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    # Provisioned, so the UI does not offer to edit it: an edit here would be silently
+    # reverted the next time the container starts, which is a worse outcome than not being
+    # allowed to make it. Change the file instead.
+    editable: false
+    jsonData:
+      # Matches global.scrape_interval in docker/prometheus/prometheus.yml. Grafana uses it
+      # as the floor for $__rate_interval, which is what stops a rate() over a window
+      # shorter than the scrape interval from rendering as a flat line of nothing.
+      timeInterval: 15s
+      httpMethod: POST

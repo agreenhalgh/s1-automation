@@ -8,6 +8,7 @@ import com.newbrid.epr_automation.systmone.controlplane.domain.WorkerAgentEntity
 import com.newbrid.epr_automation.systmone.controlplane.repo.RunRepository;
 import com.newbrid.epr_automation.systmone.controlplane.repo.StepResultRepository;
 import com.newbrid.epr_automation.systmone.controlplane.repo.WorkerAgentRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -39,7 +40,8 @@ class ResultServiceIdempotencyTest {
         when(runs.findById("r1")).thenReturn(Optional.of(run));
         when(workers.findById(anyString())).thenReturn(Optional.<WorkerAgentEntity>empty());
 
-        ResultService svc = new ResultService(runs, steps, workers, audit, mapper);
+        ResultService svc = new ResultService(runs, steps, workers, audit, mapper,
+                new RunMetrics(new SimpleMeterRegistry(), runs, workers));
 
         // First terminal report wins.
         svc.recordStatus("r1", "w1", new StatusReport(RunStatus.SUCCEEDED, null, Map.of()));

@@ -31,14 +31,16 @@ public class DispatchService {
     private final JobPublisher publisher;
     private final AuditService audit;
     private final ObjectMapper mapper;
+    private final RunMetrics metrics;
 
     public DispatchService(BotRepository bots, RunRepository runs, JobPublisher publisher,
-                           AuditService audit, ObjectMapper mapper) {
+                           AuditService audit, ObjectMapper mapper, RunMetrics metrics) {
         this.bots = bots;
         this.runs = runs;
         this.publisher = publisher;
         this.audit = audit;
         this.mapper = mapper;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -61,6 +63,7 @@ public class DispatchService {
         runs.save(run);
 
         audit.record(principal, "DISPATCH", botId, runId, "capabilityTag=" + capabilityTag);
+        metrics.dispatched(botId);
         return runId;
     }
 

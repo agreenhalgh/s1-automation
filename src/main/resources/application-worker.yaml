@@ -1,8 +1,15 @@
 # Worker profile: consumes jobs from RabbitMQ and POSTs results to the control plane.
-# A worker needs no database and no web server of its own.
+# A worker needs no database of its own.
 spring:
   main:
-    web-application-type: none
+    # A worker serves no pages and takes no commands over HTTP — the only reason it listens
+    # at all is that Prometheus has to come to it: a scrape is a pull, and there is nowhere
+    # else to read a worker's JVM health, step outcomes or locator fallback rates from
+    # (NFR-OBS-03). Only /actuator/health, /actuator/info and /actuator/prometheus are
+    # mapped, and the scrape endpoint needs credentials (worker/WorkerSecurityConfig).
+    # Set WORKER_WEB_TYPE=none to go back to no listener at all, at the cost of the worker
+    # disappearing from Prometheus.
+    web-application-type: ${WORKER_WEB_TYPE:servlet}
     # Spring Boot sets java.awt.headless=true by default, which disables Robot outright — and
     # with it every IMAGE locator, failure screenshot and authoring capture. A worker's whole
     # job needs the desktop, so it opts out here rather than relying on a JVM flag being
@@ -33,3 +40,21 @@ systmone:
     window-title: ${S1_WINDOW_TITLE:SystmOne A&E}
     s1-version: ${S1_VERSION:DEMO}
     screenshot-dir: ${WORKER_SCREENSHOT_DIR:./worker-screenshots}
+
+# Actuator only, on its own port so it never collides with the control plane (8080) or the
+# capture tool (8081). Two workers on one machine need two ports — override per process.
+server:
+  port: ${WORKER_METRICS_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # No `metrics`: the browse API is a convenience for a human with a browser, and on a
+        # worker there is no operator surface to reach it from — WorkerSecurityConfig denies
+        # everything but these three, and an endpoint that is exposed and then refused is
+        # only a way to make someone think they have found a problem.
+        include: health,info,prometheus
+  metrics:
+    tags:
+      role: worker
