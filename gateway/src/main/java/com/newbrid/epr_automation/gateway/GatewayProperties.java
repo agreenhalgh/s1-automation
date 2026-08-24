@@ -10,11 +10,13 @@ public class GatewayProperties {
     private final ControlPlane controlPlane = new ControlPlane();
     private final Run run = new Run();
     private final Audit audit = new Audit();
+    private final Document document = new Document();
 
     public Inbound getInbound() { return inbound; }
     public ControlPlane getControlPlane() { return controlPlane; }
     public Run getRun() { return run; }
     public Audit getAudit() { return audit; }
+    public Document getDocument() { return document; }
 
     /** The gateway's own front door. */
     public static class Inbound {
@@ -98,5 +100,32 @@ public class GatewayProperties {
 
         public String getPseudonymKey() { return pseudonymKey; }
         public void setPseudonymKey(String v) { this.pseudonymKey = v; }
+    }
+
+    /** Where submitted PDFs are stored. */
+    public static class Document {
+
+        /**
+         * Root of the document store. Everything written lands under a dated folder inside it,
+         * and a resolved path that escapes it is a rejected request rather than a sanitised one.
+         *
+         * <p>A local directory by default so a developer stack needs nothing mounted. In a real
+         * deployment this is a share the file is safe to sit on: the documents are clinical
+         * correspondence, so it wants the same encryption-at-rest and retention treatment as the
+         * failure screenshots (NFR-SEC-03).
+         */
+        private String root = "./gateway-documents";
+
+        /**
+         * Largest PDF accepted, after decoding. Checked on the decoded bytes rather than on the
+         * base64, because the base64 length only bounds it to within a third and the number that
+         * matters is what goes to disk.
+         */
+        private long maxBytes = 15L * 1024 * 1024;
+
+        public String getRoot() { return root; }
+        public void setRoot(String v) { this.root = v; }
+        public long getMaxBytes() { return maxBytes; }
+        public void setMaxBytes(long v) { this.maxBytes = v; }
     }
 }

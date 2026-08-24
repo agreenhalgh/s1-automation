@@ -10,10 +10,12 @@ import com.newbrid.epr_automation.gateway.audit.GatewayAuditService;
 import com.newbrid.epr_automation.gateway.controlplane.ControlPlaneWire.DispatchResponse;
 import com.newbrid.epr_automation.gateway.controlplane.ControlPlaneWire.RunLookup;
 import com.newbrid.epr_automation.gateway.controlplane.ControlPlaneWire.RunView;
+import com.newbrid.epr_automation.gateway.route.DocumentStore.StoredDocument;
 import org.apache.camel.Exchange;
 import org.apache.camel.Predicate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.bean.validator.BeanValidationException;
+import org.apache.camel.component.file.GenericFileOperationFailedException;
 import org.apache.camel.http.base.HttpOperationFailedException;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.apache.camel.model.rest.RestBindingMode;
@@ -68,19 +70,25 @@ public class RunGatewayRoute extends RouteBuilder {
     static final String ROUTE_DISPATCH = "gateway-dispatch";
     static final String ROUTE_AWAIT = "gateway-await";
     static final String ROUTE_POLL = "gateway-poll";
+    static final String ROUTE_STORE_DOCUMENT = "gateway-store-document";
 
     /** Why the most recent read of the run failed, if it did. Reported if the wait then expires. */
     private static final String LAST_POLL_ERROR = "GwLastPollError";
 
+    /** The document written for this request, once there is one. */
+    private static final String STORED_DOCUMENT = "GwStoredDocument";
+
     private final GatewayProperties properties;
     private final GatewayAuditService audit;
     private final SubmissionTransformer transformer;
+    private final DocumentStore documents;
 
     public RunGatewayRoute(GatewayProperties properties, GatewayAuditService audit,
-                           SubmissionTransformer transformer) {
+                           SubmissionTransformer transformer, DocumentStore documents) {
         this.properties = properties;
         this.audit = audit;
         this.transformer = transformer;
+        this.documents = documents;
     }
 
     @Override
@@ -99,6 +107,7 @@ public class RunGatewayRoute extends RouteBuilder {
                 .to("direct:" + ROUTE_SUBMIT);
 
         submitRoute();
+        storeDocumentRoute();
         dispatchRoute();
         awaitRoutes();
     }
@@ -116,11 +125,37 @@ public class RunGatewayRoute extends RouteBuilder {
                 .process(this::auditReceived)
                 .to("bean-validator:runSubmission")
                 .process(this::validateBeyondConstraints)
-                .bean(transformer, "toDispatchRequest")
+                // Stored before the run is dispatched, because the run is told where the file is
+                // and cannot be told about a file that does not exist yet.
+                .choice()
+                    .when(this::hasDocument)
+                        .to("direct:" + ROUTE_STORE_DOCUMENT)
+                .end()
+                .process(this::transform)
                 .to("direct:" + ROUTE_DISPATCH)
                 .to("direct:" + ROUTE_AWAIT)
                 .process(this::settle)
                 .marshal().json(JsonLibrary.Jackson);
+    }
+
+    /**
+     * Writes a submitted PDF to the document store.
+     *
+     * <p>The endpoint is the storage <b>root</b> and never varies; the dated folder and filename
+     * travel as {@code CamelFileName}, which Camel treats as a path relative to it. That is not
+     * only tidier than building a dynamic endpoint per request — it means the one part of the path
+     * that comes from the caller can never replace the part that does not.
+     *
+     * <p>{@code fileExist=Fail} rather than the default of overwriting. The filename already
+     * carries a correlation id, so a collision means something is badly wrong; failing loudly on
+     * one is much better than silently replacing a clinical document that has already been filed.
+     */
+    private void storeDocumentRoute() {
+        from("direct:" + ROUTE_STORE_DOCUMENT)
+                .routeId(ROUTE_STORE_DOCUMENT)
+                .process(this::prepareDocument)
+                .to("file:" + uriPath(documents.storageRoot()) + "?fileExist=Fail&autoCreate=true")
+                .process(this::afterDocumentStored);
     }
 
     private void dispatchRoute() {
@@ -247,6 +282,57 @@ public class RunGatewayRoute extends RouteBuilder {
             throw new SubmissionRejectedException(400, "Submission failed validation",
                     List.of("subject.nhsNumber: fails the NHS number check digit"));
         }
+    }
+
+    /** Whether this submission carries a document at all */
+    private boolean hasDocument(Exchange exchange) {
+        RunSubmission submission =
+                exchange.getProperty(GatewayExchange.SUBMISSION, RunSubmission.class);
+        return submission != null && submission.hasDocument();
+    }
+
+    /**
+     * Validate the document, decide where it goes, and put the bytes in the body for the file
+     * component to write. The submission is already parked in an exchange property, so replacing
+     * the body costs nothing and {@link #afterDocumentStored} puts it back.
+     */
+    private void prepareDocument(Exchange exchange) throws SubmissionRejectedException {
+        RunSubmission submission =
+                exchange.getProperty(GatewayExchange.SUBMISSION, RunSubmission.class);
+        String correlationId = exchange.getProperty(GatewayExchange.CORRELATION_ID, String.class);
+
+        StoredDocument document = documents.prepare(submission, correlationId);
+        exchange.setProperty(STORED_DOCUMENT, document);
+
+        exchange.getMessage().setBody(document.content());
+        // Relative to the endpoint's root: "<yyyy-MM-dd>/<user._id>-<correlationId>.pdf".
+        exchange.getMessage().setHeader(Exchange.FILE_NAME,
+                uriPath(documents.storageRoot().relativize(document.path())));
+    }
+
+    /** Audit the write and restore the submission as the body for the transform step. */
+    private void afterDocumentStored(Exchange exchange) {
+        StoredDocument document = exchange.getProperty(STORED_DOCUMENT, StoredDocument.class);
+        RunSubmission submission =
+                exchange.getProperty(GatewayExchange.SUBMISSION, RunSubmission.class);
+
+        audit.documentStored(exchange.getProperty(GatewayExchange.CORRELATION_ID, String.class),
+                submission.requestId(), submission.bot(), submission.user().id(),
+                document.fileName(), document.path().toString(), document.bytes(),
+                document.sha256(), elapsedMs(exchange));
+
+        exchange.getMessage().setBody(submission);
+    }
+
+    /**
+     * The transform step. A processor rather than {@code .bean()} because the transform needs the
+     * stored document as well as the submission, and only the exchange knows about both.
+     */
+    private void transform(Exchange exchange) {
+        RunSubmission submission =
+                exchange.getProperty(GatewayExchange.SUBMISSION, RunSubmission.class);
+        StoredDocument document = exchange.getProperty(STORED_DOCUMENT, StoredDocument.class);
+        exchange.getMessage().setBody(transformer.toDispatchRequest(submission, document));
     }
 
     private void afterDispatch(Exchange exchange) {
@@ -377,6 +463,17 @@ public class RunGatewayRoute extends RouteBuilder {
                 })
                 .marshal().json(JsonLibrary.Jackson);
 
+        // The document could not be written — no space, no permission, or a name collision that
+        // fileExist=Fail refused to overwrite. Distinct from the control-plane failures below
+        // because the caller has to know the document was not stored: they must not assume it has
+        // been filed, and the generic message would have told them the wrong thing.
+        onException(GenericFileOperationFailedException.class)
+                .handled(true)
+                .process(exchange -> reject(exchange, 500,
+                        "The document could not be stored, so no run was dispatched",
+                        List.of(rootMessage(exchange))))
+                .marshal().json(JsonLibrary.Jackson);
+
         onException(Exception.class)
                 .handled(true)
                 .process(exchange -> reject(exchange, 502,
@@ -428,6 +525,15 @@ public class RunGatewayRoute extends RouteBuilder {
             cause = cause.getCause();
         }
         return cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
+    }
+
+    /**
+     * Forward slashes, whatever the platform. A Windows path goes into a Camel endpoint URI and
+     * into a file name header, and a backslash is an escape in the first and merely unportable in
+     * the second. Both Camel and the JDK accept forward slashes on Windows.
+     */
+    private static String uriPath(java.nio.file.Path path) {
+        return path.toString().replace(java.io.File.separatorChar, '/');
     }
 
     private static long elapsedMs(Exchange exchange) {

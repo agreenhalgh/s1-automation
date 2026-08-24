@@ -1,6 +1,7 @@
 package com.newbrid.epr_automation.gateway.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -38,6 +39,11 @@ import java.util.Map;
  *                   definitive outcome. Bounded at both ends: too small and no run could ever
  *                   finish in time, too large and a caller could pin a request thread for an
  *                   hour. Absent means the server default
+ * @param user       who is submitting. Required when a document is attached, because the stored
+ *                   file is named after them
+ * @param pdfBase64  an optional PDF to store alongside the run, base64-encoded. Stored before
+ *                   the run is dispatched and its path passed to the run, so a bot that files a
+ *                   document has something to file
  */
 @JsonIgnoreProperties(ignoreUnknown = false)
 public record RunSubmission(
@@ -64,7 +70,20 @@ public record RunSubmission(
 
         @Min(value = 5, message = "waitSeconds must be at least 5")
         @Max(value = 1800, message = "waitSeconds must be at most 1800")
-        Integer waitSeconds) {
+        Integer waitSeconds,
+
+        @Valid
+        User user,
+
+        /*
+         * Bounded here as well as by decoded size, because this is the one field that can make a
+         * request arbitrarily large. Base64 costs a third on top of the bytes it encodes, so this
+         * ceiling corresponds to roughly 15 MB of PDF. It is a backstop rather than the real
+         * control: by the time a constraint can run, the body is already parsed and in memory, so
+         * a hard limit belongs at the container or reverse proxy (see the README).
+         */
+        @Size(max = 20_971_520, message = "pdfBase64 exceeds the maximum accepted size")
+        String pdfBase64) {
 
     /**
      * Who the run concerns. The NHS number is checked for shape here and for its check digit in
@@ -88,6 +107,32 @@ public record RunSubmission(
             return (nhsNumber == null || nhsNumber.isBlank())
                     && (localId == null || localId.isBlank());
         }
+    }
+
+    /**
+     * Who submitted the request. Named {@code _id} on the wire because that is what the calling
+     * system sends; mapped onto a legal Java name rather than propagated inward, so one external
+     * convention does not spread through this codebase.
+     *
+     * <p>The pattern is what makes it safe to build a filename from. A value containing
+     * {@code ../}, a path separator or a null byte would otherwise write outside the storage root
+     * — this is caller-supplied input that becomes a path, which is the classic way to turn an
+     * upload endpoint into arbitrary file write. The check is belt to
+     * {@link com.newbrid.epr_automation.gateway.route.DocumentStore}'s braces, which also
+     * verifies the resolved path stays under the root.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record User(
+            @JsonProperty("_id")
+            @NotBlank(message = "user._id is required")
+            @Size(max = 64, message = "user._id must be at most 64 characters")
+            @Pattern(regexp = "[A-Za-z0-9._-]+",
+                    message = "user._id must contain only letters, digits, dot, underscore or hyphen")
+            String id) {}
+
+    /** Whether a document was attached at all. Not every run files one. */
+    public boolean hasDocument() {
+        return pdfBase64 != null && !pdfBase64.isBlank();
     }
 
     /** Never null, so callers of the transform do not each have to guard the map. */

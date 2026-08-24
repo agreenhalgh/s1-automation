@@ -40,13 +40,16 @@ POST /gateway/v1/runs
   ├─ parse                   strict: an unknown field is a 400, not a silent drop
   ├─ audit RECEIVED          before validation, so a rejection has a parent row
   ├─ validate                JSR-380 constraints + the NHS number check digit
+  ├─ store document          pdfBase64 → <root>/<yyyy-MM-dd>/<user._id>-<correlationId>.pdf
+  │                          (only when one is attached)      → audit DOCUMENT_STORED
   ├─ transform               external contract → control-plane DispatchRequest
   ├─ dispatch                POST /api/runs with X-Worker-Token   → audit DISPATCHED
   ├─ await                   poll GET /api/runs/{id} until terminal or the deadline passes
   └─ audit outcome, answer
 ```
 
-Four Camel routes: `gateway-submit`, `gateway-dispatch`, `gateway-await`, `gateway-poll`.
+Five Camel routes: `gateway-submit`, `gateway-store-document`, `gateway-dispatch`,
+`gateway-await`, `gateway-poll`.
 
 ## The contract
 
@@ -56,11 +59,16 @@ curl -s -X POST http://localhost:8083/gateway/v1/runs \
     "requestId": "caller-ref-1",
     "bot": "get-postcode-jab",
     "subject": { "nhsNumber": "9434765919", "localId": "L-42" },
+    "user":    { "_id": "clinician.7" },
     "parameters": { "searchTerm": "Smith" },
+    "pdfBase64": "JVBERi0xLjQK...",
     "pool": "ward-a",
     "waitSeconds": 120
   }'
 ```
+
+`user` and `pdfBase64` are both optional, but `user._id` becomes required the moment a document
+is attached — the stored file is named after it, so a document without one has nowhere to go.
 
 ```json
 {
@@ -78,8 +86,9 @@ curl -s -X POST http://localhost:8083/gateway/v1/runs \
 
 The external names are deliberately **not** the control plane's. `bot` → `botId`, `pool` →
 `capabilityTag`, and the structured `subject` is flattened into the flat `Map<String,String>` that
-a bot definition's placeholders resolve against — `${subject.nhsNumber}`, `${subject.localId}`.
-That mapping is the transform step, and it is what lets either contract move without the other.
+a bot definition's placeholders resolve against — `${subject.nhsNumber}`, `${subject.localId}`,
+and `${document.path}` / `${document.filename}` when a PDF was attached. That mapping is the
+transform step, and it is what lets either contract move without the other.
 
 ### What the HTTP status means
 
@@ -116,6 +125,54 @@ artefact, and are run through Camel's `bean-validator:`. Two choices worth knowi
   ten-digit regex sends a worker hunting for a patient who cannot exist, and surfaces minutes
   later as "no locator resolved" rather than as "that is not an NHS number".
 
+## The document store
+
+A submitted `pdfBase64` is written by the `gateway-store-document` route before the run is
+dispatched — the run is told where the file is, and it cannot be told about a file that does not
+exist yet.
+
+```
+<root>/2026-08-24/clinician.7-gw-161f5876-75dc-4a3c-a197-df8399cd4880.pdf
+       └ dated       └ user._id   └ correlation id
+```
+
+**The dated folder is UTC.** A document submitted at 00:30 during British Summer Time would
+otherwise land in the previous day's folder relative to the run record that references it — the
+sort of off-by-one that makes a retention sweep delete the wrong day.
+
+**The filename is the submitter plus the correlation id, not the submitter alone.** Two documents
+from one user on one day would otherwise resolve to one filename and the second would overwrite
+the first, silently losing a clinical document — the worst failure this route could have. The
+correlation id also appears on every audit row for the request, so a file on disk can be traced
+back to who sent it, when, and which run it produced. The write itself uses `fileExist=Fail`, so
+even a collision fails loudly rather than replacing something already filed.
+
+**The destination is checked, not just pattern-matched.** `user._id` is caller-supplied and
+becomes a path, which is the classic route from "upload endpoint" to "write anywhere on the
+filesystem". There are two guards: a `@Pattern` on the record, and a check that the resolved
+absolute path sits *exactly* in today's folder. Both are needed — a constraint on a request
+record is one edit away from not being enforced, and containment under the storage root alone is
+too weak, because `../outside` normalises to a path still inside the root but out of today's
+folder, from which a caller could disturb another day's files. A path that does not check out is
+**rejected, not sanitised**: quietly rewriting a hostile path tells the sender their request
+worked.
+
+**What is stored is checked too.** The payload must decode as base64 (MIME decoder, so
+line-wrapped input is fine — plenty of libraries wrap at 76 characters by default), come in under
+`maxBytes` *after* decoding, and begin with `%PDF-`. A name is not evidence of content, and this
+file is about to be handed to a bot to file into a patient record. It is a check on the wrapper,
+not a scan of the contents — see the malware-scanning gap below.
+
+**An orphan is possible and is traceable.** Because the file is written before dispatch, a
+control plane that then refuses the request leaves a document on disk with no run against it. The
+file is kept rather than deleted — discarding a clinical document because a downstream call
+failed is the worse of the two mistakes — and the `DOCUMENT_STORED` row followed by a `REJECTED`
+row with no `DISPATCHED` between them is what makes the orphan findable.
+
+If the write itself fails (no space, no permission), the caller gets **500** with an explicit "the
+document could not be stored, so no run was dispatched" — never the generic control-plane
+message, because they must not conclude the document has been filed.
+
 ## Audit
 
 Its own trail, in its own table (`gateway_request_audit`), append-only — one row per stage, all
@@ -141,6 +198,14 @@ only names it.
 `GATEWAY_PSEUDONYM_KEY` must be set once per environment and kept — rotating it deliberately
 severs the link between references written before and after.
 
+The **submitter's** id is recorded in the clear, and that is not an inconsistency with the above.
+`user._id` is the principal — "who did this" is the first thing an audit trail exists to answer —
+and it is already the name of the file on disk. A patient identifier is data about a third party
+who is not making the request; a submitter identifier is the request's provenance. The
+`DOCUMENT_STORED` row records the submitter, the filename, the path, the byte count and a
+SHA-256 of the content, so a stored file can later be shown to be the one that was received.
+It does not record the content.
+
 ## Waiting costs a thread
 
 A waiting request holds a request thread for the duration, because the caller is holding a
@@ -164,6 +229,8 @@ because the wait deadline governs the poll loop and not a socket that never answ
 | `GATEWAY_MAX_WAIT_SECONDS` | 1800 | ceiling on what one may ask for |
 | `GATEWAY_POLL_INTERVAL_MS` | 2000 | one control-plane read per poll |
 | `GATEWAY_PSEUDONYM_KEY` | `changeit` | keys the audit subject reference |
+| `GATEWAY_DOCUMENT_ROOT` | `./gateway-documents` | document store root; dated folders beneath it |
+| `GATEWAY_DOCUMENT_MAX_BYTES` | 15728640 | largest PDF accepted, measured after decoding |
 | `GATEWAY_JDBC_URL` | the `systmone` database | its own table in it |
 
 ## Not included
@@ -178,3 +245,13 @@ because the wait deadline governs the poll loop and not a socket that never answ
   API authenticates itself inside the route. Closing the gap means introducing a filter chain in
   front of an API that already does its own auth. Until then, do not expose 8083 off the host.
 - **A callback / webhook alternative** for callers that would rather not hold a connection.
+- **Malware scanning of submitted documents.** The gateway checks that a payload decodes to
+  something beginning `%PDF-` and is under the size limit. That is a check on the wrapper, not on
+  the contents: a PDF can carry an exploit, and this one is written to a share and then opened by
+  a bot driving a clinical desktop. An AV/sandbox pass belongs between the store and the dispatch.
+- **A hard cap on request size at the edge.** `pdfBase64` is bounded by a constraint and by the
+  decoded-size check, but both run after the body has been parsed into memory. A real limit needs
+  a servlet filter or a reverse proxy in front.
+- **Retention and encryption at rest for the document store.** The dated folders make a sweep
+  straightforward to write, but nothing writes one, and nothing encrypts what is on the share
+  (NFR-SEC-03).

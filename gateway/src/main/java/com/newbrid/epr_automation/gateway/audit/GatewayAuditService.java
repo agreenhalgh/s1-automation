@@ -56,6 +56,32 @@ public class GatewayAuditService {
         repo.save(e);
     }
 
+    /**
+     * A submitted PDF was written to the document store. Recorded before dispatch, which is the
+     * order things happen in: the run needs the path, so the file exists first.
+     *
+     * <p>That ordering means a dispatch that then fails leaves a document on disk with no run
+     * against it. The file is kept rather than deleted — throwing away a clinical document
+     * because a downstream call failed is the worse of the two mistakes — and this row plus the
+     * REJECTED row after it are what make the orphan findable.
+     *
+     * <p>The submitter's id is recorded in the clear, unlike a patient identifier. It is the
+     * principal: "who did this" is the first thing an audit trail exists to answer (NFR-SEC-05),
+     * and it is already the name of the file on disk.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void documentStored(String correlationId, String clientRequestId, String botId,
+                               String userId, String fileName, String path, int bytes,
+                               String sha256, long elapsedMs) {
+        GatewayAuditEntity e = new GatewayAuditEntity(
+                correlationId, clientRequestId, null, "DOCUMENT_STORED");
+        e.setBotId(botId);
+        e.setElapsedMs(elapsedMs);
+        e.setDetail(truncate("user=" + userId + " file=" + fileName + " path=" + path
+                + " bytes=" + bytes + " sha256=" + sha256));
+        repo.save(e);
+    }
+
     /** The control plane accepted the transformed request and created a run. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void dispatched(String correlationId, String clientRequestId, String botId,

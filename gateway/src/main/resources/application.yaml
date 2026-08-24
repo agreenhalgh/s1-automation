@@ -74,6 +74,17 @@ systmone:
       # and after, and leaving it at the default makes the references guessable by anyone with a
       # copy of this file.
       pseudonym-key: ${GATEWAY_PSEUDONYM_KEY:changeit}
+    document:
+      # Where a submitted pdfBase64 is written: <root>/<yyyy-MM-dd>/<user._id>-<correlationId>.pdf
+      #
+      # A local directory by default so a developer stack needs nothing mounted; in a real
+      # deployment this is a share the documents are safe to sit on, because they are clinical
+      # correspondence and want the same encryption-at-rest and retention treatment as the
+      # failure screenshots (NFR-SEC-03). Nothing is ever written outside the dated folder — a
+      # user._id that would resolve elsewhere is a rejected request, not a sanitised one.
+      root: ${GATEWAY_DOCUMENT_ROOT:./gateway-documents}
+      # Checked on the decoded bytes, not the base64, because that is the number that goes to disk.
+      max-bytes: ${GATEWAY_DOCUMENT_MAX_BYTES:15728640}
 
 management:
   endpoints:

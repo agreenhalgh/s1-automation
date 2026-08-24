@@ -1,6 +1,10 @@
 HELP.md
 target/
 worker-screenshots/
+# Submitted clinical documents written by the gateway. Never commit these: they are patient
+# correspondence, and the default store is inside the working tree.
+gateway/gateway-documents/
+gateway/target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

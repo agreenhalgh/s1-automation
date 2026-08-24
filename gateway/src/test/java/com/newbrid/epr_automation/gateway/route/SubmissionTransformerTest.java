@@ -23,7 +23,7 @@ class SubmissionTransformerTest {
     void mapsTheExternalNamesOntoTheControlPlaneRequest() {
         RunSubmission submission = new RunSubmission("caller-1", "get-postcode",
                 new RunSubmission.Subject("9434765919", "L-42"),
-                Map.of("searchTerm", "Smith"), "ward-a", null);
+                Map.of("searchTerm", "Smith"), "ward-a", null, null, null);
 
         DispatchRequest dispatched = transformer.toDispatchRequest(submission);
 
@@ -38,7 +38,7 @@ class SubmissionTransformerTest {
     @Test
     void omitsAnAbsentSubjectRatherThanSendingEmptyKeys() {
         RunSubmission submission = new RunSubmission(null, "no-patient-bot", null,
-                Map.of("a", "1"), null, null);
+                Map.of("a", "1"), null, null, null, null);
 
         DispatchRequest dispatched = transformer.toDispatchRequest(submission);
 
@@ -50,7 +50,7 @@ class SubmissionTransformerTest {
 
     @Test
     void blankPoolBecomesNull() {
-        RunSubmission submission = new RunSubmission(null, "bot", null, null, "   ", null);
+        RunSubmission submission = new RunSubmission(null, "bot", null, null, "   ", null, null, null);
 
         assertThat(transformer.toDispatchRequest(submission).capabilityTag()).isNull();
     }
@@ -61,7 +61,7 @@ class SubmissionTransformerTest {
     void usesTheConfiguredDefaultWhenTheCallerDoesNotAsk() {
         properties.getRun().setDefaultWaitSeconds(90);
 
-        RunSubmission submission = new RunSubmission(null, "bot", null, null, null, null);
+        RunSubmission submission = new RunSubmission(null, "bot", null, null, null, null, null, null);
 
         assertThat(transformer.waitMillisFor(submission)).isEqualTo(90_000L);
     }
@@ -70,7 +70,7 @@ class SubmissionTransformerTest {
     void clampsAnOverAmbitiousWaitToThePolicyCeiling() {
         properties.getRun().setMaxWaitSeconds(300);
 
-        RunSubmission submission = new RunSubmission(null, "bot", null, null, null, 1200);
+        RunSubmission submission = new RunSubmission(null, "bot", null, null, null, 1200, null, null);
 
         assertThat(transformer.waitMillisFor(submission))
                 .as("clamped rather than rejected — the request is reasonable, policy overrides it")

@@ -3,6 +3,7 @@ package com.newbrid.epr_automation.gateway.route;
 import com.newbrid.epr_automation.gateway.GatewayProperties;
 import com.newbrid.epr_automation.gateway.api.RunSubmission;
 import com.newbrid.epr_automation.gateway.controlplane.ControlPlaneWire.DispatchRequest;
+import com.newbrid.epr_automation.gateway.route.DocumentStore.StoredDocument;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -33,13 +34,30 @@ public class SubmissionTransformer {
     public static final String SUBJECT_NHS_NUMBER = "subject.nhsNumber";
     public static final String SUBJECT_LOCAL_ID = "subject.localId";
 
+    /**
+     * Where the submitted PDF was written, passed to the run so a bot that files a document has
+     * something to file. The bot refers to it as {@code ${document.path}}.
+     *
+     * <p>An absolute path rather than the bytes: the control plane's input map is a
+     * {@code Map<String, String>} destined for a message on a queue, and putting a 15 MB
+     * base64 document through the broker to hand it to a worker on the same network as the file
+     * share would be a poor trade.
+     */
+    public static final String DOCUMENT_PATH = "document.path";
+    public static final String DOCUMENT_FILENAME = "document.filename";
+
     private final GatewayProperties properties;
 
     public SubmissionTransformer(GatewayProperties properties) {
         this.properties = properties;
     }
 
-    public DispatchRequest toDispatchRequest(RunSubmission submission) {
+    /**
+     * @param stored the document written for this submission, or null when none was attached.
+     *               Taken as a parameter rather than read back off the submission because the
+     *               submission does not know where it ended up — only the store does
+     */
+    public DispatchRequest toDispatchRequest(RunSubmission submission, StoredDocument stored) {
         Map<String, String> input = new LinkedHashMap<>(submission.parametersOrEmpty());
 
         RunSubmission.Subject subject = submission.subject();
@@ -47,8 +65,17 @@ public class SubmissionTransformer {
             putIfPresent(input, SUBJECT_NHS_NUMBER, subject.nhsNumber());
             putIfPresent(input, SUBJECT_LOCAL_ID, subject.localId());
         }
+        if (stored != null) {
+            putIfPresent(input, DOCUMENT_PATH, stored.path().toString());
+            putIfPresent(input, DOCUMENT_FILENAME, stored.fileName());
+        }
 
         return new DispatchRequest(submission.bot(), input, blankToNull(submission.pool()));
+    }
+
+    /** A submission with nothing attached. */
+    public DispatchRequest toDispatchRequest(RunSubmission submission) {
+        return toDispatchRequest(submission, null);
     }
 
     /**

@@ -8,12 +8,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,7 +48,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.url=jdbc:h2:mem:gateway;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "systmone.gateway.document.root=target/test-documents"
 })
 @Import(StubControlPlane.class)
 class RunGatewayRouteTest {
@@ -55,10 +68,28 @@ class RunGatewayRouteTest {
     @Autowired
     private GatewayAuditRepository auditRepo;
 
+    private static final Path DOCUMENT_ROOT = Path.of("target/test-documents");
+
     @BeforeEach
-    void reset() {
+    void reset() throws Exception {
         stub.reset();
         auditRepo.deleteAll();
+        deleteRecursively(DOCUMENT_ROOT);
+    }
+
+    private static void deleteRecursively(Path root) throws IOException {
+        if (!Files.exists(root)) {
+            return;
+        }
+        try (var walk = Files.walk(root)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.delete(path);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        }
     }
 
     // ---------------------------------------------------------------- the waiting contract
@@ -260,6 +291,141 @@ class RunGatewayRouteTest {
                 .as("the run was never created, so this is not an outcome")
                 .isEqualTo(502);
         assertThat(response.body()).contains("control plane");
+    }
+
+    // ---------------------------------------------------------------- the document store
+
+    private static final byte[] PDF =
+            "%PDF-1.7\nthe letter\n%%EOF\n".getBytes(StandardCharsets.US_ASCII);
+
+    private static String pdfBase64() {
+        return Base64.getEncoder().encodeToString(PDF);
+    }
+
+    private static Path datedFolder() {
+        return DOCUMENT_ROOT.resolve(DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                .withZone(ZoneOffset.UTC).format(Instant.now()));
+    }
+
+    /** The correlation id out of a response — it is half the stored filename. */
+    private static String correlationIdOf(String responseBody) {
+        Matcher matcher = Pattern.compile("\"correlationId\":\"(gw-[0-9a-f-]+)\"")
+                .matcher(responseBody);
+        assertThat(matcher.find()).as("every response carries a correlation id").isTrue();
+        return matcher.group(1);
+    }
+
+    @Test
+    void writesTheDocumentUnderADatedFolderNamedForTheUser() throws Exception {
+        stub.statuses.add("SUCCEEDED");
+
+        HttpResponse<String> response = submit("""
+                {"bot":"file-a-letter","user":{"_id":"user-42"},"pdfBase64":"%s"}
+                """.formatted(pdfBase64()));
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        Path expected = datedFolder().resolve("user-42-" + correlationIdOf(response.body()) + ".pdf");
+        assertThat(expected).exists();
+        assertThat(Files.readAllBytes(expected))
+                .as("the bytes on disk are the bytes that were submitted")
+                .isEqualTo(PDF);
+    }
+
+    /**
+     * Storing the file is only half of it — a bot that files a document has to be told where the
+     * document is, so the path goes into the run input.
+     */
+    @Test
+    void passesTheStoredPathToTheRunSoABotCanFileIt() throws Exception {
+        stub.statuses.add("SUCCEEDED");
+
+        HttpResponse<String> response = submit("""
+                {"bot":"file-a-letter","user":{"_id":"user-42"},"pdfBase64":"%s"}
+                """.formatted(pdfBase64()));
+
+        String dispatched = stub.dispatchBodies.getFirst();
+        assertThat(dispatched)
+                .contains("document.path")
+                .contains("user-42-" + correlationIdOf(response.body()) + ".pdf")
+                .contains("document.filename");
+        assertThat(dispatched)
+                .as("the document reaches the bot as a path, never as bytes on the queue")
+                .doesNotContain(pdfBase64());
+    }
+
+    @Test
+    void storesNothingWhenNoDocumentIsAttached() throws Exception {
+        stub.statuses.add("SUCCEEDED");
+
+        submit("""
+                {"bot":"get-postcode","user":{"_id":"user-42"}}
+                """);
+
+        assertThat(Files.exists(datedFolder()))
+                .as("a run with no document must not create a folder for one")
+                .isFalse();
+    }
+
+    @Test
+    void refusesADocumentWithNoSubmitterBecauseTheFileWouldHaveNoName() throws Exception {
+        HttpResponse<String> response = submit("""
+                {"bot":"file-a-letter","pdfBase64":"%s"}
+                """.formatted(pdfBase64()));
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("user._id");
+        assertThat(stub.dispatchBodies).isEmpty();
+        assertThat(Files.exists(datedFolder())).isFalse();
+    }
+
+    @Test
+    void refusesAPayloadThatIsNotAPdf() throws Exception {
+        String notAPdf = Base64.getEncoder()
+                .encodeToString("<html>not a pdf</html>".getBytes(StandardCharsets.UTF_8));
+
+        HttpResponse<String> response = submit("""
+                {"bot":"file-a-letter","user":{"_id":"user-42"},"pdfBase64":"%s"}
+                """.formatted(notAPdf));
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("%PDF-");
+        assertThat(stub.dispatchBodies).isEmpty();
+    }
+
+    /**
+     * The whole reason the destination is checked and not just pattern-matched. A traversal in
+     * {@code user._id} must be refused by the route, and nothing may be written.
+     */
+    @Test
+    void refusesATraversalInTheSubmitterId() throws Exception {
+        HttpResponse<String> response = submit("""
+                {"bot":"file-a-letter","user":{"_id":"../../../../evil"},"pdfBase64":"%s"}
+                """.formatted(pdfBase64()));
+
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(stub.dispatchBodies).isEmpty();
+        assertThat(DOCUMENT_ROOT.resolve("../../../../evil").normalize()).doesNotExist();
+    }
+
+    @Test
+    void auditsTheStoredDocumentByPathAndDigestRatherThanByContent() throws Exception {
+        stub.statuses.add("SUCCEEDED");
+
+        submit("""
+                {"bot":"file-a-letter","user":{"_id":"user-42"},"pdfBase64":"%s"}
+                """.formatted(pdfBase64()));
+
+        List<GatewayAuditEntity> trail = auditRepo.findAll();
+        assertThat(trail).extracting(GatewayAuditEntity::getStage).contains("DOCUMENT_STORED");
+
+        GatewayAuditEntity stored = trail.stream()
+                .filter(r -> "DOCUMENT_STORED".equals(r.getStage())).findFirst().orElseThrow();
+        assertThat(stored.getDetail())
+                .contains("user=user-42")
+                .contains("bytes=" + PDF.length)
+                .contains("sha256=")
+                .as("the trail records where the document went, never what was in it")
+                .doesNotContain(pdfBase64());
     }
 
     // ---------------------------------------------------------------- audit

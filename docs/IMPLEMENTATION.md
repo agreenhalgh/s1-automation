@@ -189,6 +189,12 @@ Full contract, design decisions and configuration are in
   run that hit the engine's own deadline; the second is a run that was still going when the
   gateway stopped waiting, and may still be typing into a patient record.
 
+A request may carry a `pdfBase64` document and a `user._id`; the document is written to
+`<root>/<yyyy-MM-dd>/<user._id>-<correlationId>.pdf` before dispatch and its path passed to the
+run as `${document.path}`, so a bot that files correspondence has something to file. The filename
+is caller-derived, so the resolved path is verified to sit exactly in today's folder — a
+traversal is rejected, not sanitised — and the payload must decode as base64 and begin `%PDF-`.
+
 It keeps its own append-only trail in `gateway_request_audit`, in the same database, covering the
 requests that never became runs — a bad token, a malformed NHS number — which the control plane
 never hears about. No patient identifier is stored there: the NHS number is passed onward to the
@@ -446,7 +452,7 @@ documents the step/locator fields and the offset geometry.
 
 ## 5. What has been verified here
 
-Automated tests (`./mvnw test` — 282 tests in the root project, plus 39 in `gateway/`, all
+Automated tests (`./mvnw test` — 282 tests in the root project, plus 65 in `gateway/`, all
 green) and a live HTTP smoke test confirmed:
 - Engine fallback JAB→image, retry-then-succeed, fail-safe-on-no-match, output capture
   (`BotEngineTest`).
@@ -502,7 +508,7 @@ green) and a live HTTP smoke test confirmed:
   walks the whole trail without repeating or skipping a row (`AuditSearchTest`). Live against
   the compose PostgreSQL, the viewer listed the real trail — 45 `DISPATCH` entries out of the
   full set — and built its action dropdown from what is actually stored.
-- **The integration gateway**, 39 tests including 16 that drive the whole pipeline over real
+- **The integration gateway**, 65 tests including 23 that drive the whole pipeline over real
   HTTP against a stub control plane served by a second Camel route — chosen over a mocked bean
   because most of what can go wrong here is wiring: headers leaking from one call to the next, a
   poll loop that never terminates, a body that will not unmarshal. Confirmed: a run reported only
@@ -513,6 +519,14 @@ green) and a live HTTP smoke test confirmed:
   and the worker token presented; every validation problem reported at once; an unknown field
   rejected rather than dropped; and the audit trail written for each stage with **no NHS number,
   local id or parameter value anywhere in it**.
+- **Document storage**, by test and live. A submitted PDF lands at
+  `<root>/<yyyy-MM-dd>/<user._id>-<correlationId>.pdf` byte-identical to what was sent, its path
+  reaches the run input while the bytes never do, a run with no document creates no folder, and a
+  payload that is not a PDF or has no `user._id` is refused with nothing written. Seven path
+  traversals in `user._id` were refused — including `../outside`, which stays *inside* the
+  storage root but escapes today's folder and was a real bug the tests caught. Live: four
+  traversals refused with nothing written outside the root, and a genuine PDF stored and audited
+  as `DOCUMENT_STORED` with its digest but not its content.
 - **The gateway live** against a control plane on 8090 and the compose PostgreSQL: 401 with no
   or wrong token, 400 for a missing bot, a bad NHS check digit, an unknown field and three bad
   fields at once, and 502 when the control plane refused an unknown bot. The

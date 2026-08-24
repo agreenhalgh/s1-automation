@@ -78,6 +78,13 @@
 			<groupId>org.apache.camel.springboot</groupId>
 			<artifactId>camel-bean-validator-starter</artifactId>
 		</dependency>
+		<!-- Writes submitted documents to file storage. Already on the classpath transitively,
+		     declared here because a route uses the file: component directly and a transitive
+		     dependency is not a promise. -->
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-file-starter</artifactId>
+		</dependency>
 
 		<!-- The gateway's own audit store (its own table; see GatewayAuditEntity). -->
 		<dependency>
