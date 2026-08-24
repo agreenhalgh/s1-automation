@@ -29,6 +29,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *       client registration is configured; otherwise form login with role-based dev users
  *       (DEVELOPER / OPERATOR / AUDITOR / ADMIN) keeps the app runnable locally.</li>
  * </ol>
+ *
+ * <p>Within the UI perimeter, two routes are narrower than "any authenticated user": the audit
+ * viewer is AUDITOR-only, and dispatching a run is closed to AUDITOR. Those two facts are the
+ * same decision seen from both ends — the role that reviews what the automation did does not
+ * also get to make it do things.
  */
 @Configuration
 @EnableWebSecurity
@@ -58,6 +63,16 @@ public class SecurityConfig {
                                           ObjectProvider<ClientRegistrationRepository> oauthRepos) throws Exception {
         http.authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health", "/actuator/info", "/css/**", "/error").permitAll()
+                // The audit trail is the Auditor's surface and nobody else's (NFR-SEC-05).
+                // Deliberately not granted to ADMIN: who may read the record of what the
+                // automation did to patient records is an information-governance decision, and
+                // the narrower default is the one that can be widened without having leaked.
+                .requestMatchers("/audit", "/audit/**").hasRole("AUDITOR")
+                // Launching a run is an action against live clinical records, so it belongs to
+                // the roles whose job is to run bots — not to the role whose job is to review
+                // them afterwards. An auditor who could dispatch would be reviewing their own
+                // activity, which is the separation this exists to keep.
+                .requestMatchers("/ui/dispatch").hasAnyRole("OPERATOR", "DEVELOPER", "ADMIN")
                 .anyRequest().authenticated())
                 .formLogin(Customizer.withDefaults())
                 .logout(Customizer.withDefaults());

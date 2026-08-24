@@ -37,3 +37,44 @@ pre { background:#f6f8fc; padding:.75rem; border-radius:6px; overflow-x:auto; }
     font-weight: 600;
     white-space: nowrap;
 }
+
+/* Pushes the header's links and sign-out to the right of the title. */
+.grow { flex: 1; }
+header a { font-size: .85rem; color: var(--accent); text-decoration: none; margin-right: 1rem; }
+header a:hover { text-decoration: underline; }
+
+/* States something about the page itself rather than about a row of data — that the audit
+   trail cannot be edited, or that the signed-in role cannot dispatch. */
+.note {
+    margin: 0 0 1.25rem;
+    padding: .6rem .8rem;
+    border-left: 3px solid var(--accent);
+    background: #f6f8fc;
+    border-radius: 0 6px 6px 0;
+    font-size: .85rem;
+    color: var(--muted);
+}
+.note strong { color: var(--fg); }
+
+/* The audit filter bar: wraps rather than scrolls, so a narrow window keeps every field
+   reachable instead of hiding the date range off the edge. */
+.filters { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; }
+.filters label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; color: var(--muted); }
+.btn-secondary {
+    padding: .5rem .9rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: .85rem;
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.nowrap { white-space: nowrap; }
+/* Bounded so one long detail value cannot push the rest of the row off the page. */
+.detail { max-width: 34ch; }
+.detail summary { cursor: pointer; }
+.detail pre { margin: .4rem 0 0; white-space: pre-wrap; word-break: break-word; }
+
+.paging { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; font-size: .85rem; }
+.paging a { color: var(--accent); text-decoration: none; }
+.paging a:hover { text-decoration: underline; }

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Audit trail — SystmOne RPA</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<header>
+    <h1>Audit trail</h1>
+    <span class="grow"></span>
+    <a th:href="@{/}">Dashboard</a>
+    <form th:action="@{/logout}" method="post" class="inline">
+        <span class="muted" sec:authentication="name">auditor</span>
+        <button type="submit">Sign out</button>
+    </form>
+</header>
+
+<!-- The trail is append-only (NFR-SEC-05), so this page has no controls that change anything:
+     no edit, no delete, no re-dispatch. That is the point of it, and saying so on the page
+     means an auditor does not have to infer it from the absence of buttons. -->
+<p class="note">
+    Append-only record of who ran what, when, and how it ended. Nothing on this page can alter
+    it. All times are <strong>UTC</strong>, matching the stored timestamps.
+</p>
+
+<section>
+    <form th:action="@{/audit}" method="get" class="filters">
+        <label>Principal
+            <input type="text" name="principal" th:value="${query.principal}" placeholder="user, worker id"/>
+        </label>
+        <label>Action
+            <select name="action">
+                <option value="">Any</option>
+                <option th:each="a : ${actions}" th:value="${a}" th:text="${a}"
+                        th:selected="${a == query.action}"></option>
+            </select>
+        </label>
+        <label>Bot
+            <input type="text" name="botId" th:value="${query.botId}" placeholder="bot id"/>
+        </label>
+        <label>Run
+            <input type="text" name="runId" th:value="${query.runId}" placeholder="run id"/>
+        </label>
+        <label>From (UTC)
+            <input type="datetime-local" name="from" th:value="${from}"/>
+        </label>
+        <label>To (UTC)
+            <input type="datetime-local" name="to" th:value="${to}"/>
+        </label>
+        <button type="submit">Filter</button>
+        <a th:href="@{/audit}" class="btn-secondary" th:if="${query.filtered}">Clear</a>
+    </form>
+</section>
+
+<section>
+    <p class="muted">
+        <span th:if="${page.totalElements == 0}">No entries match.</span>
+        <span th:unless="${page.totalElements == 0}"
+              th:text="${page.totalElements} + ' entr' + (${page.totalElements} == 1 ? 'y' : 'ies')
+                       + (${query.filtered} ? ' matching' : ' in the trail')
+                       + ' — showing ' + (${page.number} * ${page.size} + 1)
+                       + ' to ' + (${page.number} * ${page.size} + ${#lists.size(rows)})"></span>
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>When (UTC)</th>
+            <th>Principal</th>
+            <th>Action</th>
+            <th>Bot</th>
+            <th>Run</th>
+            <th>Detail</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="e : ${rows}">
+            <td class="mono nowrap" th:text="${e.at}"></td>
+            <td th:text="${e.principal}"></td>
+            <!-- RUN_SUCCEEDED / RUN_FAILED and friends reuse the run-status colours, so the
+                 outcome of a run reads the same here as it does on the dashboard. -->
+            <td><span th:class="'status status-' + ${#strings.replace(e.action, 'RUN_', '')}"
+                      th:text="${e.action}"></span></td>
+            <td class="mono" th:text="${e.botId}"></td>
+            <td>
+                <a th:if="${e.runId}" th:href="@{'/runs/' + ${e.runId}}" class="mono"
+                   th:text="${#strings.abbreviate(e.runId, 12)}"
+                   th:title="${e.runId}"></a>
+            </td>
+            <td class="mono detail">
+                <span th:if="${e.hasDetail() and not e.detailTruncated()}" th:text="${e.detail}"></span>
+                <details th:if="${e.detailTruncated()}">
+                    <summary th:text="${e.detailPreview()}"></summary>
+                    <pre th:text="${e.detail}"></pre>
+                </details>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Paging carries the filters, so page 2 of a filtered search is still that search. -->
+    <nav class="paging" th:if="${page.totalPages > 1}">
+        <a th:if="${page.hasPrevious()}"
+           th:href="@{/audit(principal=${query.principal}, action=${query.action},
+                            botId=${query.botId}, runId=${query.runId},
+                            from=${from}, to=${to}, page=${page.number - 1})}">&larr; Newer</a>
+        <span class="muted" th:text="'Page ' + (${page.number} + 1) + ' of ' + ${page.totalPages}"></span>
+        <a th:if="${page.hasNext()}"
+           th:href="@{/audit(principal=${query.principal}, action=${query.action},
+                            botId=${query.botId}, runId=${query.runId},
+                            from=${from}, to=${to}, page=${page.number + 1})}">Older &rarr;</a>
+    </nav>
+</section>
+</body>
+</html>

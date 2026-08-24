@@ -38,8 +38,8 @@ com.newbrid.epr_automation.systmone
 │                        TemplateStore, MatchResult
 ├── config               RabbitTopologyConfig (queues, DLX/DLQ),
 │                        MetricsSecurityConfig (the scrape perimeter, every role)
-├── controlplane         domain (JPA), repo, service (incl. RunMetrics), amqp,
-│                        web (api + ui), security
+├── controlplane         domain (JPA), repo, service (incl. RunMetrics, AuditQuery), amqp,
+│                        web (api + ui, incl. AuditController), security
 └── worker               WorkerConfig, JobListener, ControlPlaneClient, PostingRunListener,
                          HttpTemplateStore, LocalScreenshotSink, WorkerRegistrationRunner,
                          WorkerMetrics, WorkerSecurityConfig
@@ -65,7 +65,7 @@ com.newbrid.epr_automation.systmone
 | FR-WRK-03/04/05 POST results, ack-after-POST, retry→DLQ | `worker.JobListener`, `PostingRunListener`, `ControlPlaneClient` |
 | FR-WRK-08 Self-registration | `worker.WorkerRegistrationRunner` |
 | NFR-SEC-01 OAuth2 + RBAC + worker token | `controlplane.security.SecurityConfig`, `WorkerTokenFilter` |
-| NFR-SEC-05 Audit trail | `service.AuditService`, `AuditEntity` |
+| NFR-SEC-05 Audit trail | `service.AuditService`, `AuditEntity`, `web.ui.AuditController` (AUDITOR-only viewer) |
 | NFR-OBS-03 Metrics | `service.RunMetrics`, `worker.WorkerMetrics`, `config.MetricsSecurityConfig`, `docker/prometheus/`, `docker/grafana/` |
 
 ## 4. Running it locally
@@ -116,6 +116,7 @@ is the default in `application.yaml`.
 ```powershell
 .\mvnw.cmd spring-boot:run
 # UI:   http://localhost:8080  (dev login: operator/operator, developer/developer, auditor/auditor, admin/admin)
+# Audit: http://localhost:8080/audit  (AUDITOR only — see Roles below)
 # API:  http://localhost:8080/api/**  (header  X-Worker-Token: changeit)
 # Health: http://localhost:8080/actuator/health
 # Metrics: http://localhost:8080/actuator/prometheus  (HTTP Basic, prometheus/prometheus)
@@ -150,6 +151,56 @@ two ports. Add each workstation to
 it scraped — Prometheus re-reads that file every 30s, so no restart is involved. Set
 `WORKER_WEB_TYPE=none` to go back to a worker with no listener at all, at the cost of it
 disappearing from Prometheus.
+
+### Roles, and what each may do
+RBAC is per-route rather than all-or-nothing for signed-in users (NFR-SEC-01). Two routes are
+narrower than "any authenticated user", and they are the same decision seen from both ends —
+**the role that reviews what the automation did does not also get to make it do things**:
+
+| Route | DEVELOPER | OPERATOR | AUDITOR | ADMIN |
+| --- | :-: | :-: | :-: | :-: |
+| `/`, `/runs/{id}` — dashboard and run history | ✓ | ✓ | ✓ | ✓ |
+| `POST /ui/dispatch` — launch a run | ✓ | ✓ | — | ✓ |
+| `/audit` — the audit log viewer | — | — | ✓ | — |
+
+Both rules are enforced twice: by URL in `controlplane.security.SecurityConfig`, and by
+`@PreAuthorize` on the handler. That is not belt-and-braces for its own sake — the URL rule is
+what stops an unauthorised request reaching the controller, and the annotation is what keeps the
+rule attached to the code if a mapping is later moved, renamed or added. The dashboard also
+renders to match: an auditor is shown no dispatch form and a link to the trail, an operator the
+reverse, so nobody is offered an action that would 403.
+
+**ADMIN deliberately does not inherit `/audit`.** Whether an administrator may read the record
+of what the automation did to patient records is an information-governance decision rather than
+a technical one, and the narrower default is the one that can be widened later without having
+already leaked. `AuditAccessTest.adminDoesNotInheritTheTrail` is the thing to change if that
+decision goes the other way.
+
+### The audit log viewer
+`/audit` is the Auditor persona's whole surface — "reviews what the automation did and when" —
+and it is strictly read-only: no edit, no delete, no re-dispatch anywhere on the page, which is
+the property that makes an append-only trail worth keeping (NFR-SEC-05). The page says so, so
+an auditor does not have to infer it from an absence of buttons.
+
+Every entry `AuditService.record` writes is visible there: `DISPATCH`, `REGISTER_BOT`,
+`SAVE_TEMPLATE`, `SAVE_LOCATOR` and the terminal `RUN_*` transitions. Filters — principal,
+action, bot, run, and a UTC time window — combine as an AND, and paging carries them, so page
+two of a filtered search is still that search. Notes on the details that matter for evidence:
+
+- **Ordering is fixed by the service, not the request.** Newest first, tie-broken on the
+  identity column: entries written in one transaction can share a timestamp, and a trail that
+  reorders itself between two page loads is not evidence.
+- **Times are UTC**, matching the stored `Instant` and the `PGTZ=UTC` container. A
+  `datetime-local` input carries no zone, so the form labels its fields UTC rather than
+  silently reading them as the reader's local time.
+- **The window is `>= from` and `< to`**, so two adjacent ranges neither overlap nor drop a row.
+- **`principal`, `bot` and `run` match as substrings; `action` matches exactly.** A substring
+  match on `RUN_FAILED` would also catch a future `RUN_FAILED_PERMANENTLY` and overstate the
+  count. Typed `%` and `_` are escaped to literals — they cannot hide a row, but they can
+  quietly return more than was asked for.
+- **Blank form fields are not filters.** An untouched text box submits as `""`, and left as-is
+  that would become `action = ''` and filter every row out — which reads as "no audit entries
+  exist".
 
 ### Metrics
 Prometheus (in `docker-compose.yaml`) scrapes five things: itself, RabbitMQ, PostgreSQL via
@@ -352,7 +403,7 @@ documents the step/locator fields and the offset geometry.
 
 ## 5. What has been verified here
 
-Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
+Automated tests (`./mvnw test` — 282 tests, all green) and a live HTTP smoke test confirmed:
 - Engine fallback JAB→image, retry-then-succeed, fail-safe-on-no-match, output capture
   (`BotEngineTest`).
 - Template matching locates a patch, scores ~1.0, and flags ambiguous / below-threshold
@@ -392,6 +443,25 @@ Automated tests (`./mvnw test`, all green) and a live HTTP smoke test confirmed:
   this Windows host, the worker **registers with the control plane over HTTP**, and its
   listener waits on RabbitMQ as a competing consumer. (Screen adapter reports unavailable
   in a headless session — the intended graceful degradation.)
+- **Audit viewer RBAC**, by test and against a running control plane: `/audit` returns 200 for
+  AUDITOR and 403 for OPERATOR, DEVELOPER and ADMIN alike, and an unauthenticated request is
+  redirected to login rather than refused. `POST /ui/dispatch` is 403 for AUDITOR with the
+  dispatch service never invoked — a status code says the request was refused, `never()` says
+  nothing happened — while a user holding AUDITOR *and* OPERATOR still dispatches, because the
+  rule is "dispatching needs a dispatching role", not "AUDITOR disqualifies you". The dashboard
+  renders to match: no dispatch form and a trail link for an auditor, the reverse for an
+  operator (`AuditAccessTest`).
+- **Audit filters**, against a real schema: unfiltered returns everything newest first, an
+  exact `action` match does not catch a longer action with the same prefix, filters AND
+  together, the time window is inclusive at `from` and exclusive at `to`, a typed `%` finds the
+  principal containing one rather than every row, blank form fields are not filters, and paging
+  walks the whole trail without repeating or skipping a row (`AuditSearchTest`). Live against
+  the compose PostgreSQL, the viewer listed the real trail — 45 `DISPATCH` entries out of the
+  full set — and built its action dropdown from what is actually stored.
+- **Metrics**, live: `/actuator/prometheus` returns 401 unauthenticated and metrics with the
+  scrape credential on both the control plane and a worker, `/actuator/health` stays open, and
+  Prometheus reports every container target plus both applications up. All 47 Grafana panel
+  queries execute through the provisioned datasource without error.
 
 ## 6. What still needs on-host validation (Risk R1)
 

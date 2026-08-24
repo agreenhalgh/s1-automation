@@ -1,12 +1,15 @@
 package com.newbrid.epr_automation.systmone.controlplane.web.dto;
 
 import com.newbrid.epr_automation.systmone.common.dto.LocatorDefinition;
+import com.newbrid.epr_automation.systmone.controlplane.domain.AuditEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.LocatorEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.RunEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.StepResultEntity;
 import com.newbrid.epr_automation.systmone.controlplane.domain.TemplateEntity;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashMap;
@@ -63,6 +66,49 @@ public final class WebDtos {
 
     /** GET /api/runs/{id} — run plus its step history, one row per execution. */
     public record RunDetail(RunEntity run, List<StepResultEntity> steps) {}
+
+    /**
+     * One audit entry, as the viewer shows it (NFR-SEC-05). A flattened copy rather than the
+     * entity, so the template can only reach what the auditor is meant to see and cannot
+     * navigate off into whatever the entity might gain later.
+     *
+     * @param at the timestamp rendered in UTC. The trail stores {@link Instant} and the database
+     *           runs with {@code PGTZ=UTC}, so rendering in the reader's local zone would put a
+     *           different time on the same evidence depending on who opened it
+     */
+    public record AuditRow(Long id, String at, String principal, String action, String botId,
+                           String runId, String detail) {
+
+        /** Long enough that the table would become unreadable if it were shown inline. */
+        private static final int PREVIEW = 110;
+
+        private static final DateTimeFormatter UTC_STAMP = DateTimeFormatter
+                .ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC);
+
+        public static List<AuditRow> of(List<AuditEntity> entries) {
+            return entries.stream().map(AuditRow::of).toList();
+        }
+
+        public static AuditRow of(AuditEntity e) {
+            return new AuditRow(e.getId(),
+                    e.getTs() == null ? "" : UTC_STAMP.format(e.getTs()),
+                    e.getPrincipal(), e.getAction(), e.getBotId(), e.getRunId(), e.getDetail());
+        }
+
+        public boolean hasDetail() {
+            return detail != null && !detail.isBlank();
+        }
+
+        /** Whether the detail needs an expander rather than being shown in the cell. */
+        public boolean detailTruncated() {
+            return detail != null && detail.length() > PREVIEW;
+        }
+
+        public String detailPreview() {
+            if (detail == null) return "";
+            return detail.length() <= PREVIEW ? detail : detail.substring(0, PREVIEW) + "…";
+        }
+    }
 
     /**
      * One execution, as the run page shows it: the stored row plus where this visit sits among

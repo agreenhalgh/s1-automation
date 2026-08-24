@@ -9,13 +9,15 @@
 <body>
 <header>
     <h1>SystmOne RPA — Control Plane</h1>
+    <span class="grow"></span>
+    <a sec:authorize="hasRole('AUDITOR')" th:href="@{/audit}">Audit trail</a>
     <form th:action="@{/logout}" method="post" class="inline">
-        <span sec:authorize="isAuthenticated()" th:text="'Signed in'">Signed in</span>
+        <span class="muted" sec:authorize="isAuthenticated()" sec:authentication="name">Signed in</span>
         <button type="submit">Sign out</button>
     </form>
 </header>
 
-<section>
+<section sec:authorize="hasAnyRole('OPERATOR', 'DEVELOPER', 'ADMIN')">
     <h2>Dispatch a run</h2>
     <form th:action="@{/ui/dispatch}" method="post" class="row">
         <label>Bot
@@ -28,6 +30,10 @@
     </form>
     <p th:if="${#lists.isEmpty(bots)}" class="muted">No bots registered. POST a BotDefinition to <code>/api/bots</code>.</p>
 </section>
+
+<p sec:authorize="!hasAnyRole('OPERATOR', 'DEVELOPER', 'ADMIN')" class="note">
+    Read-only access: this role reviews runs rather than launching them.
+</p>
 
 <section>
     <h2>Workers <span class="muted" th:text="'(' + ${#lists.size(workers)} + ')'"></span></h2>

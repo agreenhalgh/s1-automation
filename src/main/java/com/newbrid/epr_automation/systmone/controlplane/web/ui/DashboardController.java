@@ -8,6 +8,7 @@ import com.newbrid.epr_automation.systmone.controlplane.service.WorkerService;
 import com.newbrid.epr_automation.systmone.controlplane.web.dto.WebDtos;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Map;
 
-/** Operator dashboard: launch runs, watch live status, drill into run detail (FR-CP-03). */
+/**
+ * Operator dashboard: launch runs, watch live status, drill into run detail (FR-CP-03).
+ */
 @Controller
 @Profile("controlplane")
 public class DashboardController {
@@ -55,6 +58,7 @@ public class DashboardController {
         return "run";
     }
 
+    @PreAuthorize("hasAnyRole('OPERATOR', 'DEVELOPER', 'ADMIN')")
     @PostMapping("/ui/dispatch")
     public String dispatch(@RequestParam String botId,
                            @RequestParam(required = false) String capabilityTag,
