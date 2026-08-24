@@ -45,6 +45,18 @@ com.newbrid.epr_automation.systmone
                          WorkerMetrics, WorkerSecurityConfig
 ```
 
+A separate sub-project sits alongside it, sharing no code and integrating over the REST API:
+
+```
+gateway/                 Apache Camel integration gateway — see gateway/README.md
+└── com.newbrid.epr_automation.gateway
+    ├── api              RunSubmission (the external contract, with its constraints),
+    │                    RunResponse, RunOutcome, ApiProblem
+    ├── controlplane     ControlPlaneWire — the control plane REST shapes, hand-written
+    ├── audit            GatewayAuditEntity/Repository/Service, SubjectPseudonymiser
+    └── route            RunGatewayRoute (the four Camel routes), SubmissionTransformer
+```
+
 ## 3. Requirement → code map (highlights)
 
 | Requirement | Where |
@@ -66,6 +78,7 @@ com.newbrid.epr_automation.systmone
 | FR-WRK-08 Self-registration | `worker.WorkerRegistrationRunner` |
 | NFR-SEC-01 OAuth2 + RBAC + worker token | `controlplane.security.SecurityConfig`, `WorkerTokenFilter` |
 | NFR-SEC-05 Audit trail | `service.AuditService`, `AuditEntity`, `web.ui.AuditController` (AUDITOR-only viewer) |
+| FR-CP-05 Synchronous run API for external callers | `gateway/` — `route.RunGatewayRoute` |
 | NFR-OBS-03 Metrics | `service.RunMetrics`, `worker.WorkerMetrics`, `config.MetricsSecurityConfig`, `docker/prometheus/`, `docker/grafana/` |
 
 ## 4. Running it locally
@@ -151,6 +164,36 @@ two ports. Add each workstation to
 it scraped — Prometheus re-reads that file every 30s, so no restart is involved. Set
 `WORKER_WEB_TYPE=none` to go back to a worker with no listener at all, at the cost of it
 disappearing from Prometheus.
+
+### Start the integration gateway (optional)
+A separate sub-project, `gateway/`, for callers that need a run's outcome rather than a run id.
+It accepts a request on its own REST API, audits, validates and transforms it, dispatches it to
+the control plane, and answers only once the run has definitively succeeded, failed or timed out.
+
+```powershell
+cd gateway
+..\mvnw.cmd spring-boot:run
+# API:     http://localhost:8083/gateway/v1/runs  (header  X-Gateway-Token: changeit)
+# Health:  http://localhost:8083/actuator/health
+```
+
+Full contract, design decisions and configuration are in
+[`gateway/README.md`](../gateway/README.md). The two things worth knowing before calling it:
+
+- **A failed run comes back 200** with `outcome: FAILED`. The HTTP status says whether the
+  gateway did its job; the body says what the run did. Many integration clients retry non-2xx
+  automatically, and a clinical action must not be re-run because the first attempt legitimately
+  failed. Non-2xx means the gateway has no answer — 400 rejected, 502 control plane unreachable,
+  504 gave up waiting.
+- **`TIMED_OUT` (200) and `GATEWAY_TIMEOUT` (504) are different events.** The first is a finished
+  run that hit the engine's own deadline; the second is a run that was still going when the
+  gateway stopped waiting, and may still be typing into a patient record.
+
+It keeps its own append-only trail in `gateway_request_audit`, in the same database, covering the
+requests that never became runs — a bad token, a malformed NHS number — which the control plane
+never hears about. No patient identifier is stored there: the NHS number is passed onward to the
+run but recorded as a keyed HMAC, because an unkeyed digest of a ten-digit number is reversible
+by exhaustive search and would make the table a patient register in all but name.
 
 ### Roles, and what each may do
 RBAC is per-route rather than all-or-nothing for signed-in users (NFR-SEC-01). Two routes are
@@ -403,7 +446,8 @@ documents the step/locator fields and the offset geometry.
 
 ## 5. What has been verified here
 
-Automated tests (`./mvnw test` — 282 tests, all green) and a live HTTP smoke test confirmed:
+Automated tests (`./mvnw test` — 282 tests in the root project, plus 39 in `gateway/`, all
+green) and a live HTTP smoke test confirmed:
 - Engine fallback JAB→image, retry-then-succeed, fail-safe-on-no-match, output capture
   (`BotEngineTest`).
 - Template matching locates a patch, scores ~1.0, and flags ambiguous / below-threshold
@@ -458,6 +502,26 @@ Automated tests (`./mvnw test` — 282 tests, all green) and a live HTTP smoke t
   walks the whole trail without repeating or skipping a row (`AuditSearchTest`). Live against
   the compose PostgreSQL, the viewer listed the real trail — 45 `DISPATCH` entries out of the
   full set — and built its action dropdown from what is actually stored.
+- **The integration gateway**, 39 tests including 16 that drive the whole pipeline over real
+  HTTP against a stub control plane served by a second Camel route — chosen over a mocked bean
+  because most of what can go wrong here is wiring: headers leaking from one call to the next, a
+  poll loop that never terminates, a body that will not unmarshal. Confirmed: a run reported only
+  once it reaches SUCCEEDED/FAILED/TIMED_OUT, having polled past the non-terminal statuses; a
+  failed run answered 200 with the outcome rather than a 5xx; the gateway giving up answered 504
+  as `GATEWAY_TIMEOUT` with `definitive: false`, never as the run's own `TIMED_OUT`; the external
+  contract transformed to `botId`/`capabilityTag` with the subject flattened into the input map
+  and the worker token presented; every validation problem reported at once; an unknown field
+  rejected rather than dropped; and the audit trail written for each stage with **no NHS number,
+  local id or parameter value anywhere in it**.
+- **The gateway live** against a control plane on 8090 and the compose PostgreSQL: 401 with no
+  or wrong token, 400 for a missing bot, a bad NHS check digit, an unknown field and three bad
+  fields at once, and 502 when the control plane refused an unknown bot. The
+  `gateway_request_audit` table was created and written — REJECTED rows for requests refused at
+  the door, RECEIVED/REJECTED pairs for validation failures — with a SQL sweep of every column
+  finding zero occurrences of the NHS number or of a parameter value, and the same patient
+  yielding the same reference across two separate requests. Not exercised live: a *successful*
+  wait, which needs a registered bot and a running worker, and so would have driven real
+  automation on this desktop; that path is covered by the HTTP-level tests above.
 - **Metrics**, live: `/actuator/prometheus` returns 401 unauthenticated and metrics with the
   scrape credential on both the control plane and a worker, `/actuator/health` stays open, and
   Prometheus reports every container target plus both applications up. All 47 Grafana panel
@@ -494,7 +558,11 @@ retention for screenshots and JAB snapshots (NFR-SEC-03); OCR (FR-SR-05); valida
 Access Bridge **table API** binding (`getAccessibleTableInfo`, `getAccessibleTableCellInfo`) against
 a live SystmOne host — it is written to the documented struct layouts, guarded so a failure degrades
 to the tree walk, and exercised only against a scripted bridge so far; a Postgres
-schema migration (Flyway/Liquibase) in place of `ddl-auto`; reclaiming runs from dead
+schema migration (Flyway/Liquibase) in place of `ddl-auto`; **gateway idempotency** — a client
+retrying the same `requestId` currently dispatches a second run, which for a synchronous API over
+a clinical action is its most important gap — plus rate limiting on the gateway and an
+authenticated `/actuator/prometheus` for it (the only application scrape endpoint without a
+credential, because that module has no Spring Security on its classpath); reclaiming runs from dead
 workers via heartbeat timeout; and, on the metrics side, **alerting** — the series are
 scraped and drawn (NFR-OBS-03) but nothing yet pages anyone about a DLQ that is filling or a
 locator-fallback rate that has doubled. `docker/grafana/provisioning/alerting/` is where

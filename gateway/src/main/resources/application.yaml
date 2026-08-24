@@ -1,0 +1,93 @@
+# Integration gateway: accepts run requests on a REST API, audits, validates and transforms
+# them, dispatches them to the control plane, and answers only once the run has definitively
+# succeeded, failed or timed out.
+#
+#   cd gateway
+#   ..\mvnw.cmd spring-boot:run
+#
+# Submit a run (the control plane must be up, with the bot registered):
+#   curl -s -X POST http://localhost:8083/gateway/v1/runs \
+#     -H 'X-Gateway-Token: changeit' -H 'Content-Type: application/json' \
+#     -d '{"bot":"get-postcode-jab","subject":{"nhsNumber":"9434765919"},"waitSeconds":60}'
+
+spring:
+  application:
+    name: systmone-gateway
+
+  # The gateway's own audit table (gateway_request_audit), in the same PostgreSQL the control
+  # plane uses. Its own table, not a shared one: the two trails answer different questions —
+  # the control plane records what the automation did, this records what was asked of it and by
+  # whom, including the requests that never became runs.
+  datasource:
+    url: ${GATEWAY_JDBC_URL:jdbc:postgresql://localhost:5432/systmone}
+    username: ${GATEWAY_JDBC_USER:systmone}
+    password: ${GATEWAY_JDBC_PASSWORD:systmone}
+  jpa:
+    hibernate:
+      # Same caveat as the control plane: this creates and adds, never drops. A migration tool is
+      # listed as production hardening for both.
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  # 8080 control plane, 8081 capture tool, 8082 worker actuator, 8083 here.
+  port: ${GATEWAY_PORT:8083}
+  tomcat:
+    threads:
+      # A waiting request holds a thread for the length of the run, so this is the real ceiling
+      # on concurrent runs through the gateway rather than a tuning knob to leave alone. Raise it
+      # together with maxWaitSeconds, not instead of it.
+      max: ${GATEWAY_MAX_CONCURRENT:200}
+
+camel:
+  springboot:
+    name: systmone-gateway
+    # Fail at startup rather than at the first request if a route is misconfigured.
+    main-run-controller: false
+  component:
+    http:
+      # Bounds a single call to the control plane. Without these, Apache HttpClient waits
+      # indefinitely for a response, and a wedged control plane would hold the caller past the
+      # wait deadline the gateway promised them — the deadline only governs the poll loop, not a
+      # socket that never answers.
+      connect-timeout: ${GATEWAY_CP_CONNECT_TIMEOUT_MS:5000}
+      response-timeout: ${GATEWAY_CP_RESPONSE_TIMEOUT_MS:10000}
+      so-timeout: ${GATEWAY_CP_SO_TIMEOUT_MS:10000}
+
+systmone:
+  gateway:
+    inbound:
+      # Credential a caller presents in X-Gateway-Token. This endpoint launches automation
+      # against live patient records; set it in every real environment.
+      token: ${GATEWAY_TOKEN:changeit}
+    control-plane:
+      url: ${CONTROL_PLANE_URL:http://localhost:8080}
+      # Matches the control plane's ${SYSTMONE_WORKER_TOKEN:changeit}.
+      token: ${SYSTMONE_WORKER_TOKEN:changeit}
+    run:
+      default-wait-seconds: ${GATEWAY_DEFAULT_WAIT_SECONDS:120}
+      max-wait-seconds: ${GATEWAY_MAX_WAIT_SECONDS:1800}
+      poll-interval-ms: ${GATEWAY_POLL_INTERVAL_MS:2000}
+    audit:
+      # Keys the HMAC that turns a patient identifier into an audit reference. Set it once per
+      # environment and keep it: rotating it severs the link between references written before
+      # and after, and leaving it at the default makes the references guessable by anyone with a
+      # copy of this file.
+      pseudonym-key: ${GATEWAY_PSEUDONYM_KEY:changeit}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      role: gateway
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  level:
+    com.newbrid.epr_automation.gateway: INFO

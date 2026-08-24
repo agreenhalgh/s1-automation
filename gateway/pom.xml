@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!--
+	  A standalone sub-project, deliberately not a module of the root reactor. It shares no code
+	  with the control plane and no database entities — it is a separate process that talks to it
+	  over the same REST API any other client would use, which is the whole point of a gateway.
+	  Making it a reactor module would have meant moving the existing source tree under a module
+	  directory and rewriting every run instruction and IDE configuration for no gain.
+
+	  Built and run from this directory:
+	    cd gateway
+	    ..\mvnw.cmd spring-boot:run
+	-->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.0</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>com.newbrid.epr-automation</groupId>
+	<artifactId>systmone-gateway</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>SystmOne RPA integration gateway</name>
+	<description>
+		Camel gateway: accepts run requests on a REST API, audits, validates and transforms them,
+		dispatches them to the control plane, and answers only once the run has definitively
+		succeeded, failed or timed out.
+	</description>
+
+	<properties>
+		<java.version>25</java.version>
+		<!-- Camel 4.22 is the first line built against Spring Boot 4 — its own starter depends on
+		     spring-boot-starter-restclient, which exists only in Boot 4. That is what lets this
+		     sub-project sit on the same Boot version and the same JDK as the control plane
+		     instead of pinning a second toolchain. -->
+		<camel.version>4.22.0</camel.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.apache.camel.springboot</groupId>
+				<artifactId>camel-spring-boot-bom</artifactId>
+				<version>${camel.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-spring-boot-starter</artifactId>
+		</dependency>
+		<!-- Serves the REST DSL over the Boot web server rather than a second embedded one, so
+		     there is one port, one thread pool and one set of actuator endpoints to reason about. -->
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-platform-http-starter</artifactId>
+		</dependency>
+		<!-- Calls the control plane's /api/runs. -->
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-http-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-jackson-starter</artifactId>
+		</dependency>
+		<!-- JSR-380 validation as a route step (bean-validator: endpoint) rather than as a
+		     hand-rolled check, so the constraints live on the request record itself. -->
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-bean-validator-starter</artifactId>
+		</dependency>
+
+		<!-- The gateway's own audit store (its own table; see GatewayAuditEntity). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Health and the Prometheus scrape endpoint, matching the control plane and workers so
+		     the gateway appears in the same dashboards (NFR-OBS-03). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-micrometer-starter</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Camel core group, which camel-spring-boot-bom does not manage, so the version is
+		     explicit. It tracks the Camel line the starters come from. -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-test-spring-junit5</artifactId>
+			<version>${camel.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

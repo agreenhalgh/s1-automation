@@ -22,6 +22,7 @@
 #   controlplane        host.docker.internal:8080 /actuator/prometheus (Micrometer)
 #   authoring           host.docker.internal:8081 /actuator/prometheus
 #   workers             docker/prometheus/targets/workers.yml — one entry per workstation
+#   gateway             host.docker.internal:8083 /actuator/prometheus (the gateway/ sub-project)
 # The application endpoints need HTTP Basic (prometheus/prometheus by default); see
 # docker/prometheus/prometheus.yml and config/MetricsSecurityConfig.
 #

@@ -80,6 +80,19 @@ scrape_configs:
       # No `role` label, as above: it already arrives as role=authoring from the app.
       - targets: ["host.docker.internal:8081"]
 
+  # The integration gateway (the `gateway/` sub-project), when it is running.
+  #
+  # The one application target with no credential on it. The gateway has no Spring Security on
+  # its classpath — its own REST API is guarded by a token check inside the Camel route — so
+  # adding basic auth to its actuator would mean introducing a security filter chain in front of
+  # an API that already authenticates itself. That is a deliberate gap rather than an oversight,
+  # and it is listed as such in docs/IMPLEMENTATION.md; until it is closed, do not expose 8083
+  # beyond the host.
+  - job_name: systmone-gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8083"]
+
   # Workers are the one target list that changes: one per SystmOne workstation, added and
   # removed as machines come and go. They are read from a separate file so adding a worker
   # is an edit to targets/workers.yml that Prometheus picks up on its own — no restart, no
