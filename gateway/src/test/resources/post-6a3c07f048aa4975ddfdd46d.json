@@ -1,0 +1,1630 @@
+{
+  "externalValue": {
+    "clinicalPath": {
+      "_id": "6a3c07f048aa4975ddfdd46d",
+      "dynamicUserId": "6a3c07319aa78a4853b67b75",
+      "disease": {
+        "_id": "63d786d467e872cee310d534",
+        "combination": [
+          {
+            "combination": [
+              {
+                "option": "664f50c8e43b70e83dac5f32",
+                "question": "664f50c8e43b70e83dac5f2d",
+                "_id": "6683d3b0e43b70e83d91747a"
+              },
+              {
+                "option": "664f50c8e43b70e83dac5ea9",
+                "question": "664f50c8e43b70e83dac5ea1",
+                "_id": "6683d3b0e43b70e83d91747b"
+              }
+            ],
+            "createdAt": "2024-07-02T10:17:20.766Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Rash fade / temp",
+            "_id": "6683d3b0e43b70e83d917479"
+          },
+          {
+            "combination": [
+              {
+                "option": "69789b791da3b7398b845b41",
+                "question": "69789b791da3b7398b845b3f",
+                "_id": "6978e4571da3b7398b8b9411"
+              },
+              {
+                "option": "69789c421da3b7398b845f49",
+                "question": "69789c421da3b7398b845f47",
+                "_id": "6978e4571da3b7398b8b9412"
+              }
+            ],
+            "createdAt": "2026-01-27T16:14:15.367Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Diff breathing + Voice change = p2",
+            "version": "firstPerson",
+            "_id": "6978e4571da3b7398b8b9410"
+          },
+          {
+            "combination": [
+              {
+                "option": "69789b791da3b7398b845b41",
+                "question": "69789b791da3b7398b845b3f",
+                "_id": "6978e4791da3b7398b8b95eb"
+              },
+              {
+                "option": "69789bc31da3b7398b845e12",
+                "question": "69789bc31da3b7398b845e10",
+                "_id": "6978e4791da3b7398b8b95ec"
+              }
+            ],
+            "createdAt": "2026-01-27T16:14:49.113Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Diff breathing + swollen lips = p2",
+            "version": "firstPerson",
+            "_id": "6978e4791da3b7398b8b95ea"
+          },
+          {
+            "combination": [
+              {
+                "option": "69789b791da3b7398b845b41",
+                "question": "69789b791da3b7398b845b3f",
+                "_id": "6978e48d1da3b7398b8b97d1"
+              },
+              {
+                "option": "69789bae1da3b7398b845cff",
+                "question": "69789bae1da3b7398b845cfd",
+                "_id": "6978e48d1da3b7398b8b97d2"
+              }
+            ],
+            "createdAt": "2026-01-27T16:15:09.893Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Diff breathing + swollen tongue = p2",
+            "version": "firstPerson",
+            "_id": "6978e48d1da3b7398b8b97d0"
+          },
+          {
+            "combination": [
+              {
+                "option": "69789b791da3b7398b845b41",
+                "question": "69789b791da3b7398b845b3f",
+                "_id": "6978e4be1da3b7398b8b9b4a"
+              },
+              {
+                "option": "69789b901da3b7398b845c10",
+                "question": "69789b901da3b7398b845c0e",
+                "_id": "6978e4be1da3b7398b8b9b4b"
+              }
+            ],
+            "createdAt": "2026-01-27T16:15:58.576Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P1",
+            "title": "Diff breathing + throat closing = p1",
+            "version": "firstPerson",
+            "_id": "6978e4be1da3b7398b8b9b49"
+          },
+          {
+            "combination": [
+              {
+                "option": "6978d6541da3b7398b8b5cd5",
+                "question": "6978d6541da3b7398b8b5cd3",
+                "_id": "6978e4e71da3b7398b8b9d46"
+              },
+              {
+                "option": "6978d1951da3b7398b8b4edb",
+                "question": "6978d1951da3b7398b8b4ed9",
+                "_id": "6978e4e71da3b7398b8b9d47"
+              }
+            ],
+            "createdAt": "2026-04-01T13:39:22.678Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "skin blistered + temp =p3",
+            "version": "firstPerson",
+            "_id": "69cd200ab17950cd0599d91f"
+          },
+          {
+            "combination": [
+              {
+                "option": "6989b332fb01fcf283b26497",
+                "question": "6989b332fb01fcf283b26493",
+                "_id": "698a350efb01fcf283b3d1cb"
+              },
+              {
+                "option": "6989b332fb01fcf283b264b7",
+                "question": "6989b332fb01fcf283b264b3",
+                "_id": "698a350efb01fcf283b3d1cc"
+              }
+            ],
+            "createdAt": "2026-02-09T19:27:10.658Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Diff breathing + Voice change = p2",
+            "version": "proxy",
+            "_id": "698a350efb01fcf283b3d1ca"
+          },
+          {
+            "combination": [
+              {
+                "option": "6989b332fb01fcf283b26497",
+                "question": "6989b332fb01fcf283b26493",
+                "_id": "698a3524fb01fcf283b3d46b"
+              },
+              {
+                "option": "6989b332fb01fcf283b264af",
+                "question": "6989b332fb01fcf283b264ab",
+                "_id": "698a3524fb01fcf283b3d46c"
+              }
+            ],
+            "createdAt": "2026-02-09T19:27:50.662Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Diff breathing + swollen lips = p2",
+            "version": "proxy",
+            "_id": "698a3536fb01fcf283b3d9c0"
+          },
+          {
+            "combination": [
+              {
+                "option": "6989b332fb01fcf283b26497",
+                "question": "6989b332fb01fcf283b26493",
+                "_id": "698a354bfb01fcf283b3dc70"
+              },
+              {
+                "option": "6989b332fb01fcf283b264a7",
+                "question": "6989b332fb01fcf283b264a3",
+                "_id": "698a354bfb01fcf283b3dc71"
+              }
+            ],
+            "createdAt": "2026-02-09T19:28:11.608Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "Diff breathing + swollen tongue = p2",
+            "version": "proxy",
+            "_id": "698a354bfb01fcf283b3dc6f"
+          },
+          {
+            "combination": [
+              {
+                "option": "6989b332fb01fcf283b26497",
+                "question": "6989b332fb01fcf283b26493",
+                "_id": "698a3569fb01fcf283b3df2c"
+              },
+              {
+                "option": "6989b332fb01fcf283b2649f",
+                "question": "6989b332fb01fcf283b2649b",
+                "_id": "698a3569fb01fcf283b3df2d"
+              }
+            ],
+            "createdAt": "2026-02-09T19:28:41.924Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P1",
+            "title": "Diff breathing + throat closing = p1",
+            "version": "proxy",
+            "_id": "698a3569fb01fcf283b3df2b"
+          },
+          {
+            "combination": [
+              {
+                "option": "6989b332fb01fcf283b2656b",
+                "question": "6989b332fb01fcf283b26567",
+                "_id": "698a3584fb01fcf283b3e1f5"
+              },
+              {
+                "option": "6989b332fb01fcf283b26549",
+                "question": "6989b332fb01fcf283b26545",
+                "_id": "698a3584fb01fcf283b3e1f6"
+              }
+            ],
+            "createdAt": "2026-04-01T13:39:40.713Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "skin blistered + temp =p3",
+            "version": "proxy",
+            "_id": "69cd201cb17950cd059a24b2"
+          }
+        ],
+        "injuryOrIllness": "Illness",
+        "multiLanguageDiseaseName": [
+          {
+            "content": "Rash, Spots & Skin Infections ",
+            "language": "en",
+            "_id": "6528eedf27fce369c4c9f68d"
+          },
+          {
+            "content": "الطفح الجلدي، البقع و التهاب الجلد",
+            "language": "ar",
+            "_id": "6528eedf27fce369c4c9f68e"
+          }
+        ],
+        "question": {
+          "description": "",
+          "multiLanguageDescription": [
+            {
+              "content": "Has this rash or skin problem been caused by an allergic reaction?",
+              "language": "en",
+              "_id": "697896ad1da3b7398b83ab04"
+            }
+          ],
+          "multiLanguageDescriptionPaediatric": [
+            {
+              "content": "Has this rash or skin problem been caused by an allergic reaction?",
+              "language": "en",
+              "_id": "697896ad1da3b7398b83ab02"
+            }
+          ],
+          "multiLanguageDescriptionProxy": [
+            {
+              "content": "Has this rash or skin problem been caused by an allergic reaction?",
+              "language": "en",
+              "_id": "697896ad1da3b7398b83ab03"
+            }
+          ],
+          "options": [
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "Yes",
+              "pathway": "63d3ba900ddb0cb543049880",
+              "pathwayName": "Allergic Reaction",
+              "version": "firstPerson",
+              "_id": "69d4beb92b1a43ac7d502a51"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "No",
+              "pathway": "63d786d467e872cee310d534",
+              "pathwayName": "Rash, Spots & Skin Infections ",
+              "version": "firstPerson",
+              "_id": "69d4beb92b1a43ac7d502a52"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "Yes",
+              "pathway": "63d3ba900ddb0cb543049880",
+              "pathwayName": "Allergic Reaction",
+              "version": "proxy",
+              "_id": "69d4beb92b1a43ac7d502a53"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "No",
+              "pathway": "63d786d467e872cee310d534",
+              "pathwayName": "Rash, Spots & Skin Infections ",
+              "version": "proxy",
+              "_id": "69d4beb92b1a43ac7d502a54"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "Yes",
+              "pathway": "63d3ba900ddb0cb543049880",
+              "pathwayName": "Allergic Reaction",
+              "version": "paediatric",
+              "_id": "69d4beb92b1a43ac7d502a55"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "No",
+              "pathway": "63d786d467e872cee310d534",
+              "pathwayName": "Rash, Spots & Skin Infections ",
+              "version": "paediatric",
+              "_id": "69d4beb92b1a43ac7d502a56"
+            }
+          ]
+        },
+        "sexAtBirth": "General",
+        "snomedCode": 271807003,
+        "tags": [
+          "Sores",
+          "Pressure Sores",
+          "Ulcers"
+        ]
+      },
+      "record": [
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "Less than 24 hours",
+              "id": "697897e11da3b7398b843eb8",
+              "_id": "6a3c07f09aa78a4853b67bc3"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 43,
+          "questionDetails": {
+            "content": "How long have you had the rash or skin problem?",
+            "id": "697897e11da3b7398b843eb6",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 43,
+          "_id": "6a3c07f09aa78a4853b67bc2"
+        },
+        {
+          "answers": [
+            {
+              "code": "P0",
+              "content": "N/A",
+              "_id": "6a3c07f09aa78a4853b67bc5"
+            }
+          ],
+          "code": "P0",
+          "nextQuestionNumber": 44,
+          "questionDetails": {
+            "content": "Where is the rash or skin problem?",
+            "id": "697898a31da3b7398b843ecf",
+            "questionType": "input"
+          },
+          "questionNumber": 44,
+          "_id": "6a3c07f09aa78a4853b67bc4"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789a461da3b7398b8459cd",
+              "_id": "6a3c07f09aa78a4853b67bc7"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 45,
+          "questionDetails": {
+            "content": "Have you had any moments of being unconscious?",
+            "id": "69789a461da3b7398b8459c9",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 45,
+          "_id": "6a3c07f09aa78a4853b67bc6"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789b791da3b7398b845b43",
+              "_id": "6a3c07f09aa78a4853b67bc9"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 46,
+          "questionDetails": {
+            "content": "Are you having difficulty breathing?",
+            "id": "69789b791da3b7398b845b3f",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 46,
+          "_id": "6a3c07f09aa78a4853b67bc8"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789b901da3b7398b845c12",
+              "_id": "6a3c07f09aa78a4853b67bcb"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 47,
+          "questionDetails": {
+            "content": "Is your throat tight or closing up?",
+            "id": "69789b901da3b7398b845c0e",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 47,
+          "_id": "6a3c07f09aa78a4853b67bca"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789bae1da3b7398b845d01",
+              "_id": "6a3c07f09aa78a4853b67bcd"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 48,
+          "questionDetails": {
+            "content": "Do you have a swollen tongue?",
+            "id": "69789bae1da3b7398b845cfd",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 48,
+          "_id": "6a3c07f09aa78a4853b67bcc"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789bc31da3b7398b845e14",
+              "_id": "6a3c07f09aa78a4853b67bcf"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 49,
+          "questionDetails": {
+            "content": "Do you have swollen lips?",
+            "id": "69789bc31da3b7398b845e10",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 49,
+          "_id": "6a3c07f09aa78a4853b67bce"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789c421da3b7398b845f4b",
+              "_id": "6a3c07f09aa78a4853b67bd1"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 50,
+          "questionDetails": {
+            "content": "Has your voice changed in the last hour?",
+            "id": "69789c421da3b7398b845f47",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 50,
+          "_id": "6a3c07f09aa78a4853b67bd0"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789cba1da3b7398b8460a6",
+              "_id": "6a3c07f09aa78a4853b67bd3"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 55,
+          "questionDetails": {
+            "content": "Do you have pain?",
+            "id": "69789cba1da3b7398b8460a2",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 55,
+          "_id": "6a3c07f09aa78a4853b67bd2"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69789e311da3b7398b84676e",
+              "_id": "6a3c07f09aa78a4853b67bd5"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 63,
+          "questionDetails": {
+            "content": "In the last 6 hours, have chemicals or cleaning products caused redness, burning, or blistering to your skin or eyes?",
+            "id": "69789e311da3b7398b84676a",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 63,
+          "_id": "6a3c07f09aa78a4853b67bd4"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978a4721da3b7398b856b6e",
+              "_id": "6a3c07f09aa78a4853b67bd7"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 67,
+          "questionDetails": {
+            "content": "Have you vomited (been sick)?",
+            "id": "6978a4721da3b7398b856b6a",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 67,
+          "_id": "6a3c07f09aa78a4853b67bd6"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978d1951da3b7398b8b4edd",
+              "_id": "6a3c07f09aa78a4853b67bd9"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 68,
+          "questionDetails": {
+            "content": "Do you have a fever (temperature more than 38°C or 100°F)?",
+            "id": "6978d1951da3b7398b8b4ed9",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 68,
+          "_id": "6a3c07f09aa78a4853b67bd8"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978d5a71da3b7398b8b51e2",
+              "_id": "6a3c07f09aa78a4853b67bdb"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 69,
+          "questionDetails": {
+            "content": "Do you feel muddled or confused?",
+            "id": "6978d5a71da3b7398b8b51de",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 69,
+          "_id": "6a3c07f09aa78a4853b67bda"
+        },
+        {
+          "answers": [
+            {
+              "code": "P3",
+              "content": "No",
+              "id": "6978d5d11da3b7398b8b56af",
+              "_id": "6a3c07f09aa78a4853b67bdd"
+            }
+          ],
+          "code": "P3",
+          "nextQuestionNumber": 70,
+          "questionDetails": {
+            "content": "Have you passed urine (pee) in the last 12 hours?",
+            "id": "6978d5d11da3b7398b8b56ab",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 70,
+          "_id": "6a3c07f09aa78a4853b67bdc"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978d5ed1da3b7398b8b59b1",
+              "_id": "6a3c07f09aa78a4853b67bdf"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 71,
+          "questionDetails": {
+            "content": "Is the rash or skin problem itchy?",
+            "id": "6978d5ed1da3b7398b8b59ad",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 71,
+          "_id": "6a3c07f09aa78a4853b67bde"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978d6541da3b7398b8b5cd7",
+              "_id": "6a3c07f09aa78a4853b67be1"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 72,
+          "questionDetails": {
+            "content": "Is your skin blistered or peeling?",
+            "id": "6978d6541da3b7398b8b5cd3",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 72,
+          "_id": "6a3c07f09aa78a4853b67be0"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978dc081da3b7398b8b6021",
+              "_id": "6a3c07f09aa78a4853b67be3"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 73,
+          "questionDetails": {
+            "content": "Do you have jaundice (yellowing of the skin or eyes)?",
+            "id": "6978dc081da3b7398b8b601d",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 73,
+          "_id": "6a3c07f09aa78a4853b67be2"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978dc261da3b7398b8b638f",
+              "_id": "6a3c07f09aa78a4853b67be5"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 74,
+          "questionDetails": {
+            "content": "Do you have any moles that are new or changed in shape?",
+            "id": "6978dc261da3b7398b8b638b",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 74,
+          "_id": "6a3c07f09aa78a4853b67be4"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978e06f1da3b7398b8b6877",
+              "_id": "6a3c07f09aa78a4853b67be7"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 77,
+          "questionDetails": {
+            "content": "Have you taken any medication?",
+            "id": "6978e06f1da3b7398b8b6873",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 77,
+          "_id": "6a3c07f09aa78a4853b67be6"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978e2181da3b7398b8b6fff",
+              "_id": "6a3c07f09aa78a4853b67be9"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 79,
+          "questionDetails": {
+            "content": "Do you take any regular medication?",
+            "id": "6978e2181da3b7398b8b6ffb",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 79,
+          "_id": "6a3c07f09aa78a4853b67be8"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978e2861da3b7398b8b7547",
+              "_id": "6a3c07f09aa78a4853b67beb"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 80,
+          "questionDetails": {
+            "content": "Do you think you are at risk of domestic abuse?",
+            "id": "6978e2861da3b7398b8b7543",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 80,
+          "_id": "6a3c07f09aa78a4853b67bea"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978e2ad1da3b7398b8b7965",
+              "_id": "6a3c07f09aa78a4853b67bed"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 81,
+          "questionDetails": {
+            "content": "Do you feel safe at home?",
+            "id": "6978e2ad1da3b7398b8b7961",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 81,
+          "_id": "6a3c07f09aa78a4853b67bec"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "Social Services",
+              "id": "6978e32f1da3b7398b8b7db7",
+              "_id": "6a3c07f09aa78a4853b67bef"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 83,
+          "questionDetails": {
+            "content": "Do you have any support from the following?",
+            "id": "6978e32f1da3b7398b8b7db5",
+            "questionType": "multiOption"
+          },
+          "questionNumber": 83,
+          "_id": "6a3c07f09aa78a4853b67bee"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6978e3501da3b7398b8b83df",
+              "_id": "6a3c07f09aa78a4853b67bf1"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": -1,
+          "questionDetails": {
+            "content": "Is there anything else you wish to tell us?",
+            "id": "6978e3501da3b7398b8b83db",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 24,
+          "_id": "6a3c07f09aa78a4853b67bf0"
+        }
+      ],
+      "version": "firstPerson"
+    },
+    "ecdsPathway": [
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "White irish",
+            "id": "69a029ef767ec0a21c8c8004",
+            "_id": "6a3c07559aa78a4853b67b9c"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 2,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Please tell us your ethnicity ? ",
+          "id": "69a029ef767ec0a21c8c8002",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67b9b"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a02a2b767ec0a21c8c81f8",
+            "_id": "6a3c07559aa78a4853b67b9e"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 4,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Are you deaf or hard of hearing?",
+          "id": "69a02a2b767ec0a21c8c81f4",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67b9d"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "English",
+            "id": "69a02c00767ec0a21c8c8a9a",
+            "_id": "6a3c07559aa78a4853b67ba0"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 5,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Which is your native spoken language?",
+          "id": "69a02c00767ec0a21c8c8a98",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67b9f"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "Yes, an interpreter is required ",
+            "id": "69a02d79767ec0a21c8cb274",
+            "_id": "6a3c07559aa78a4853b67ba2"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 6,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Do you require an interpreter ? ",
+          "id": "69a02d79767ec0a21c8cb272",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67ba1"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "English",
+            "id": "69a02f3e767ec0a21c8cbf45",
+            "_id": "6a3c07559aa78a4853b67ba4"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 7,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Which interpreter language would you need to help you today? ",
+          "id": "69a02f3e767ec0a21c8cbf43",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67ba3"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "House/Flat",
+            "id": "69a03013767ec0a21c8cc610",
+            "_id": "6a3c07559aa78a4853b67ba6"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 8,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Please select your accommodation status from the list below ?",
+          "id": "69a03013767ec0a21c8cc60e",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67ba5"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a058c03ae0dc11b14f65ef",
+            "_id": "6a3c07559aa78a4853b67ba8"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 9,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Have you been to this Emergency Department in the last 7 days for the same problem you have today?",
+          "id": "69a058c03ae0dc11b14f65ed",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67ba7"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "Own transport / walked in",
+            "id": "69a059b03ae0dc11b14f7544",
+            "_id": "6a3c07559aa78a4853b67baa"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 10,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "How did you travel here today ?",
+          "id": "69a059b03ae0dc11b14f7542",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67ba9"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a05bd63ae0dc11b14f7c92",
+            "_id": "6a3c07559aa78a4853b67bac"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 12,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Has anyone told you to come here?",
+          "id": "69a05bd63ae0dc11b14f7c8e",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67bab"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a05cff3ae0dc11b14f88e5",
+            "_id": "6a3c07559aa78a4853b67bae"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 13,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Have you lived out of uk from the past 12 months at all ?",
+          "id": "69a05cff3ae0dc11b14f88e1",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67bad"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a05ea13ae0dc11b14fad54",
+            "_id": "6a3c07559aa78a4853b67bb0"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 14,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [
+            {
+              "option": "Yes",
+              "optionId": "69a05ea13ae0dc11b14fad52",
+              "question": "Are you a military veiteran ?",
+              "questionId": "69a05ea13ae0dc11b14fad50",
+              "_id": "69ce287ec51dba7ec5a6f7fc"
+            }
+          ],
+          "order": 3,
+          "section": "key_safety",
+          "show": true
+        },
+        "questionDetails": {
+          "content": "Are you a military veiteran ?",
+          "id": "69a05ea13ae0dc11b14fad50",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67baf"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "An illness",
+            "id": "69a05f233ae0dc11b14fb142",
+            "_id": "6a3c07559aa78a4853b67bb3"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": -1,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "You are here because of ?",
+          "id": "69a05f233ae0dc11b14fb140",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c07559aa78a4853b67bb2"
+      }
+    ],
+    "isolation": [
+      {
+        "option": "false",
+        "optionId": "69663040cf4549bf9e6643bd",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Are you having immunotherapy or are you immunosuppressed?",
+        "questionId": "69663040cf4549bf9e6643b9",
+        "_id": "6a3c07559aa78a4853b67b95"
+      },
+      {
+        "option": "false",
+        "optionId": "69f9e4aeaaaa4c797c4e6b4c",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Are you having radiotherapy?",
+        "questionId": "69662ff4cf4549bf9e66439f",
+        "_id": "6a3c07559aa78a4853b67b96"
+      },
+      {
+        "option": "false",
+        "optionId": "6966301dcf4549bf9e6643b0",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Have you had any cancer treatment, such as chemotherapy, in the last 6 weeks?",
+        "questionId": "6966301dcf4549bf9e6643ac",
+        "_id": "6a3c07559aa78a4853b67b97"
+      }
+    ],
+    "nhsUser": null,
+    "nhsUserFlagsCPIS": null,
+    "nhsUserFlagsNRAF": null,
+    "pdfBase64": "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bWFnZUldCi9FeHRHU3RhdGUgPDwKL0dzMSA5IDAgUgovR3MyIDEzIDAgUgo+PgovWE9iamVjdCA8PAovSTEgMTAgMCBSCj4+Ci9Gb250IDw8Ci9GMSAxMSAwIFIKL0YyIDEyIDAgUgo+PgovQ29sb3JTcGFjZSA8PAo+Pgo+PgplbmRvYmoKMTYgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAxIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUuMjgwMDI5IDg0MS44OTAwMTVdCi9Db250ZW50cyAxNCAwIFIKL1Jlc291cmNlcyAxNSAwIFIKL1VzZXJVbml0IDEKPj4KZW5kb2JqCjE1IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRXh0R1N0YXRlIDw8Ci9HczEgOSAwIFIKPj4KL0ZvbnQgPDwKL0YxIDExIDAgUgovRjIgMTIgMCBSCj4+Ci9Db2xvclNwYWNlIDw8Cj4+Cj4+CmVuZG9iagoxOSAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDU5NS4yODAwMjkgODQxLjg5MDAxNV0KL0NvbnRlbnRzIDE3IDAgUgovUmVzb3VyY2VzIDE4IDAgUgovVXNlclVuaXQgMQo+PgplbmRvYmoKMTggMCBvYmoKPDwKL1Byb2NTZXQgWy9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUldCi9FeHRHU3RhdGUgPDwKL0dzMSA5IDAgUgo+PgovRm9udCA8PAovRjEgMTEgMCBSCi9GMiAxMiAwIFIKPj4KL0NvbG9yU3BhY2UgPDwKPj4KPj4KZW5kb2JqCjIxIDAgb2JqCihyZWFjdC1wZGYpCmVuZG9iagoyMiAwIG9iagoocmVhY3QtcGRmKQplbmRvYmoKMjMgMCBvYmoKKEQ6MjAyNjA2MjQxNjM4MTFaKQplbmRvYmoKMjAgMCBvYmoKPDwKL1Byb2R1Y2VyIDIxIDAgUgovQ3JlYXRvciAyMiAwIFIKL0NyZWF0aW9uRGF0ZSAyMyAwIFIKPj4KZW5kb2JqCjExIDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9CYXNlRm9udCAv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lDX5wFdz84yKRsWdUTGRCvzDD6xnrZcnLqypfoc8za5WSCD3wMCXo+uxhI8O9w6jmVG9SKiMpLItUWBkuh6s3pwQij6m1RpAxsc3NWij4RfQMAD4UEphmyp/nz7iHy51ouVSwpSIG6bUvzDlKUI0DpqfuHMyUladP1te5p7JuJ3PXsuFz+Lmzn/sS0ZuTosP4JNNADUa7p6GUVTtT5aVuU8a3pKV+bWKp+SkpUK4j6JHnY/OgBpLmY5lRbTM0uh/3qAW2s7LUPYUbQTSWLp3luagUwLI8jLG0s0M91VxOi2DO+SudYpUX7ypjljOSkSPwtfX5lyx7gg2p+RTKL6AOacG1J0DNSLpxIPLVRkMqHcC1JeTPEFQnvrJ95dYjb2zilrN6bw5B6sWwAEbtjQW7p6FXHyxhM79snDFuRwIeMk/HbCsRZlqSpu+jIdVBGkaSMPh3nEoyWbXGA4vcdgVK366isKHiLor8Ek1s1Nf1ReDD12JeM32FGHF6TRrkrcDaQg+kBU/NlrunZalWzjDajoZLbcU46lOsR/7BlZWFWRl4wtV7ZBsKNEIuHMCCrFPdRVOK9dkBLwpN5O4FnhPmnc5uHfaXYEoM8HkcSYfl0VJ0IuE+BY+C3kx8bjh81uvhNivc3zW9a10jeOhS2c4aA5R14TRVY9XbVXEI1+Z6gppI3oBAN6RokjXne3fPa5LO8C2LmYbUqphHGb/lUtlG3lvUaIPUfjE2WmBoaoKqiWeVhI9SeP1PNYiCp3qSGf2bFYZSsnL/2qlts5ulmwdzWpaH7nj67R6svH1B+HrV7in88d/AShgYEwKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgMjQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAzODc0IDAwMDAwIG4gCjAwMDAwMDM5NDUgMDAwMDAgbiAKMDAwMDAwMzc4NyAwMDAwMCBuIAowMDAwMDAzNzY2IDAwMDAwIG4gCjAwMDAwMDM5OTIgMDAwMDAgbiAKMDAwMDAwNjU4OCAwMDAwMCBuIAowMDAwMDAyNjUwIDAwMDAwIG4gCjAwMDAwMDI1MjAgMDAwMDAgbiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDU5IDAwMDAwIG4gCjAwMDAwMDM1NjUgMDAwMDAgbiAKMDAwMDAwMzY2MyAwMDAwMCBuIAowMDAwMDAyNDc1IDAwMDAwIG4gCjAwMDAwMTExNzggMDAwMDAgbiAKMDAwMDAwMjk2OCAwMDAwMCBuIAowMDAwMDAyODM1IDAwMDAwIG4gCjAwMDAwMDQwMzUgMDAwMDAgbiAKMDAwMDAwMzI0OSAwMDAwMCBuIAowMDAwMDAzMTE2IDAwMDAwIG4gCjAwMDAwMDM0ODkgMDAwMDAgbiAKMDAwMDAwMzM5NyAwMDAwMCBuIAowMDAwMDAzNDI1IDAwMDAwIG4gCjAwMDAwMDM0NTMgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSAyNAovUm9vdCAzIDAgUgovSW5mbyAyMCAwIFIKL0lEIFs8ZGIxYjRiYTI5MDkwNzQxMGNlMTZhYTI3OWEwMWI2NDI+IDxkYjFiNGJhMjkwOTA3NDEwY2UxNmFhMjc5YTAxYjY0Mj5dCj4+CnN0YXJ0eHJlZgoxMzIzNQolJUVPRgo=",
+    "publicHealth": [
+      {
+        "option": "false",
+        "optionId": "661fcb48824e957ac060e38d",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have a generalised rash?",
+        "questionId": "661fcb48824e957ac060e389",
+        "_id": "6a3c07559aa78a4853b67b89"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcb7b824e957ac060e408",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Have you had diarrhoea?",
+        "questionId": "661fcb7b824e957ac060e404",
+        "_id": "6a3c07559aa78a4853b67b8a"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcbf2824e957ac060e599",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Have you recently tested positive for Covid 19?",
+        "questionId": "661fcbf2824e957ac060e595",
+        "_id": "6a3c07559aa78a4853b67b8b"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcac2824e957ac060e357",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have shortness of breath?",
+        "questionId": "661fcac1824e957ac060e353",
+        "_id": "6a3c07559aa78a4853b67b8c"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcbab824e957ac060e497",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have conjunctivitis?",
+        "questionId": "661fcbab824e957ac060e493",
+        "_id": "6a3c07559aa78a4853b67b8d"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcb93824e957ac060e44d",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have nasal discharge?",
+        "questionId": "661fcb93824e957ac060e449",
+        "_id": "6a3c07559aa78a4853b67b8e"
+      }
+    ],
+    "routing": {
+      "redirections": [],
+      "department": {
+        "_id": "6a0b05326abf3cb4e1fa3d7d",
+        "departmentCode": "ED",
+        "departmentName": "Emergency Department",
+        "description": ""
+      },
+      "message": "Please proceed to the reception desk for further assistance."
+    },
+    "user": {
+      "_id": "6a3c07319aa78a4853b67b75",
+      "alerts": [],
+      "completion": {
+        "incompleteAt": null,
+        "incompleteReason": "",
+        "isIncomplete": false,
+        "lastScreen": null
+      },
+      "data": [
+        {
+          "answer": "Arthur",
+          "id": "field-1768558936355",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 2,
+            "section": "pds",
+            "show": true
+          },
+          "question": "First Name",
+          "type": "text"
+        },
+        {
+          "answer": "Khan",
+          "id": "field-1768558936507",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 1,
+            "section": "pds",
+            "show": true
+          },
+          "question": "Last Name ",
+          "type": "text"
+        },
+        {
+          "answer": "1986-11-10",
+          "id": "field-1768558971274",
+          "integrations": [],
+          "key": "dob",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 3,
+            "section": "pds",
+            "show": true
+          },
+          "question": "Date of Birth",
+          "type": "date"
+        },
+        {
+          "answer": "Female",
+          "id": "field-1768558990442",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Gender",
+          "type": "select"
+        },
+        {
+          "answer": "DS3 1HA",
+          "id": "field-1768559028939",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Postcode",
+          "type": "text"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559118986",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "",
+          "type": "radio"
+        },
+        {
+          "answer": "+447465523236",
+          "id": "field-1768559146530",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Phone number",
+          "type": "tel"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559162171",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "",
+          "type": "radio"
+        },
+        {
+          "answer": "Male",
+          "id": "field-1768559276073",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "How do you identify yourself ?",
+          "type": "radio"
+        },
+        {
+          "answer": "No",
+          "id": "field-1768559447474",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Has anyone come with you today?",
+          "type": "radio"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559922928",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "First Name",
+          "type": "text"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559932864",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Last Name ",
+          "type": "text"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559953678",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Phone number",
+          "type": "tel"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559965670",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "What is their relationship to you?",
+          "type": "select"
+        },
+        {
+          "answer": "",
+          "id": "c-field-1768560046710",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Please specify Their relation wih you",
+          "type": "textarea"
+        },
+        {
+          "answer": "",
+          "id": "field-1768560088126",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Is This person your emergency contact ?",
+          "type": "radio"
+        },
+        {
+          "answer": "Arthur",
+          "id": "field-1768560256789",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "First Name",
+          "type": "text"
+        },
+        {
+          "answer": "Khan",
+          "id": "field-1768560264949",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Last Name ",
+          "type": "text"
+        },
+        {
+          "answer": "+447465523236",
+          "id": "field-1768560274854",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Phone Number",
+          "type": "tel"
+        },
+        {
+          "answer": "Father",
+          "id": "field-1768560290413",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "What is their relation to you ?",
+          "type": "select"
+        },
+        {
+          "answer": "",
+          "id": "c-field-1768560353430",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Please specify their relation to you ",
+          "type": "textarea"
+        },
+        {
+          "answer": "",
+          "id": "field-1768560388517",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 4,
+            "section": "pds",
+            "show": true
+          },
+          "question": "",
+          "type": "radio"
+        }
+      ],
+      "endTimestamp": "2026-06-24T16:38:08.933Z",
+      "hospitalId": {
+        "_id": "6968ea67fc51ef709107c6d6",
+        "code": 797283,
+        "name": "Pen Hospital Testing",
+        "odsCode": null
+      },
+      "pValue": "P3",
+      "startTimestamp": "2026-06-24T16:34:57.000Z",
+      "version": "firstPerson"
+    }
+  },
+  "summary": "OPTO Health"
+}

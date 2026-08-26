@@ -1,0 +1,1778 @@
+{
+  "externalValue": {
+    "clinicalPath": {
+      "_id": "6a3c072b48aa4975ddfdd46b",
+      "dynamicUserId": "6a3c066b9aa78a4853b67ad5",
+      "disease": {
+        "_id": "63eb7bd96c428fe123cd699f",
+        "combination": [
+          {
+            "combination": [
+              {
+                "option": "695e6de7214db579795bebfc",
+                "question": "695e6de7214db579795bebfa",
+                "_id": "695e786e214db579795c6cf0"
+              },
+              {
+                "option": "695e7197214db579795bfcd6",
+                "question": "695e7197214db579795bfcd4",
+                "_id": "695e786e214db579795c6cf1"
+              }
+            ],
+            "createdAt": "2026-01-07T15:14:54.324Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "swelling + fever = p3",
+            "version": "paediatric",
+            "_id": "695e786e214db579795c6cef"
+          },
+          {
+            "combination": [
+              {
+                "option": "695e6dff214db579795bef20",
+                "question": "695e6dff214db579795bef1e",
+                "_id": "695e7897214db579795c6f14"
+              },
+              {
+                "option": "695e7197214db579795bfcd6",
+                "question": "695e7197214db579795bfcd4",
+                "_id": "695e7897214db579795c6f15"
+              }
+            ],
+            "createdAt": "2026-01-07T15:15:35.017Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "redness + fever = p3",
+            "version": "paediatric",
+            "_id": "695e7897214db579795c6f13"
+          },
+          {
+            "combination": [
+              {
+                "option": "695e6bd3214db579795be14d",
+                "question": "695e6bd3214db579795be147",
+                "_id": "695e78ba214db579795c7144"
+              },
+              {
+                "option": "695e70cf214db579795bf75c",
+                "question": "695e70cf214db579795bf75a",
+                "_id": "695e78ba214db579795c7145"
+              }
+            ],
+            "createdAt": "2026-01-07T15:16:10.241Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "colour change + severe pain = p2",
+            "version": "paediatric",
+            "_id": "695e78ba214db579795c7143"
+          },
+          {
+            "combination": [
+              {
+                "option": "695e70b4214db579795bf672",
+                "question": "695e70b4214db579795bf670",
+                "_id": "695e78ea214db579795c7389"
+              },
+              {
+                "option": "695e70cf214db579795bf75c",
+                "question": "695e70cf214db579795bf75a",
+                "_id": "695e78ea214db579795c738a"
+              }
+            ],
+            "createdAt": "2026-01-07T15:16:58.138Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "cold to touch + colour change = p2",
+            "version": "paediatric",
+            "_id": "695e78ea214db579795c7388"
+          },
+          {
+            "combination": [
+              {
+                "option": "68d53664296329ccda404e3c",
+                "question": "68d53664296329ccda404e3a",
+                "_id": "696682a771cede606776d2c4"
+              },
+              {
+                "option": "68d537e4296329ccda405a21",
+                "question": "68d537e4296329ccda405a1f",
+                "_id": "696682a771cede606776d2c5"
+              }
+            ],
+            "createdAt": "2026-01-13T17:36:39.303Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "swelling + fever = p3",
+            "version": "firstPerson",
+            "_id": "696682a771cede606776d2c3"
+          },
+          {
+            "combination": [
+              {
+                "option": "68d53679296329ccda404eef",
+                "question": "68d53679296329ccda404eed",
+                "_id": "696682c971cede606776d660"
+              },
+              {
+                "option": "68d537e4296329ccda405a21",
+                "question": "68d537e4296329ccda405a1f",
+                "_id": "696682c971cede606776d661"
+              }
+            ],
+            "createdAt": "2026-01-13T17:37:13.783Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "redness + fever = p3",
+            "version": "firstPerson",
+            "_id": "696682c971cede606776d65f"
+          },
+          {
+            "combination": [
+              {
+                "option": "68d537aa296329ccda4057e5",
+                "question": "68d537aa296329ccda4057e3",
+                "_id": "696682ea71cede606776d887"
+              },
+              {
+                "option": "68d535c3296329ccda404b8b",
+                "question": "68d535c3296329ccda404b85",
+                "_id": "696682ea71cede606776d888"
+              }
+            ],
+            "createdAt": "2026-01-13T17:37:46.965Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "colours change + sever pain = p2",
+            "version": "firstPerson",
+            "_id": "696682ea71cede606776d886"
+          },
+          {
+            "combination": [
+              {
+                "option": "68d53796296329ccda4056d6",
+                "question": "68d53796296329ccda4056d4",
+                "_id": "6966830871cede606776dac5"
+              },
+              {
+                "option": "68d537aa296329ccda4057e5",
+                "question": "68d537aa296329ccda4057e3",
+                "_id": "6966830871cede606776dac6"
+              }
+            ],
+            "createdAt": "2026-01-13T17:38:16.953Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "cold + changed colour = p2",
+            "version": "firstPerson",
+            "_id": "6966830871cede606776dac4"
+          },
+          {
+            "combination": [
+              {
+                "option": "69667d8b71cede6067766661",
+                "question": "68d5381e296329ccda405c93",
+                "_id": "6966832971cede606776dd10"
+              },
+              {
+                "option": "68d53469296329ccda4030af",
+                "question": "68d53469296329ccda4030ad",
+                "_id": "6966832971cede606776dd11"
+              }
+            ],
+            "createdAt": "2026-01-13T17:38:49.951Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "sickle cell + pain = p2",
+            "version": "firstPerson",
+            "_id": "6966832971cede606776dd0f"
+          },
+          {
+            "combination": [
+              {
+                "option": "68d5383c296329ccda405ddc",
+                "question": "68d5383c296329ccda405dda",
+                "_id": "6966834271cede606776df6f"
+              },
+              {
+                "option": "68d537e4296329ccda405a21",
+                "question": "68d537e4296329ccda405a1f",
+                "_id": "6966834271cede606776df70"
+              }
+            ],
+            "createdAt": "2026-01-13T17:39:14.294Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "rash + fever = p2",
+            "version": "firstPerson",
+            "_id": "6966834271cede606776df6e"
+          },
+          {
+            "combination": [
+              {
+                "option": "696fc45b1da3b7398b589750",
+                "question": "696fc45b1da3b7398b58974c",
+                "_id": "696fc7ee1da3b7398b5b12b6"
+              },
+              {
+                "option": "696fc45b1da3b7398b589796",
+                "question": "696fc45b1da3b7398b589792",
+                "_id": "696fc7ee1da3b7398b5b12b7"
+              }
+            ],
+            "createdAt": "2026-01-20T18:22:38.604Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "swelling + fever = p3",
+            "version": "proxy",
+            "_id": "696fc7ee1da3b7398b5b12b5"
+          },
+          {
+            "combination": [
+              {
+                "option": "696fc45b1da3b7398b589758",
+                "question": "696fc45b1da3b7398b589754",
+                "_id": "696fc8131da3b7398b5b15d3"
+              },
+              {
+                "option": "696fc45b1da3b7398b589796",
+                "question": "696fc45b1da3b7398b589792",
+                "_id": "696fc8131da3b7398b5b15d4"
+              }
+            ],
+            "createdAt": "2026-01-20T18:23:15.270Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P3",
+            "title": "redness + fever = p3",
+            "version": "proxy",
+            "_id": "696fc8131da3b7398b5b15d2"
+          },
+          {
+            "combination": [
+              {
+                "option": "696fc45b1da3b7398b589784",
+                "question": "696fc45b1da3b7398b589780",
+                "_id": "696fc82b1da3b7398b5b18fd"
+              },
+              {
+                "option": "696fc68d1da3b7398b5a7381",
+                "question": "696fc45b1da3b7398b589722",
+                "_id": "696fc82b1da3b7398b5b18fe"
+              }
+            ],
+            "createdAt": "2026-01-20T18:23:39.721Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "colours change + sever pain = p2",
+            "version": "proxy",
+            "_id": "696fc82b1da3b7398b5b18fc"
+          },
+          {
+            "combination": [
+              {
+                "option": "696fc45b1da3b7398b58977c",
+                "question": "696fc45b1da3b7398b589778",
+                "_id": "696fc83c1da3b7398b5b1c41"
+              },
+              {
+                "option": "696fc45b1da3b7398b589784",
+                "question": "696fc45b1da3b7398b589780",
+                "_id": "696fc83c1da3b7398b5b1c42"
+              }
+            ],
+            "createdAt": "2026-01-20T18:23:56.487Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "cold + changed colour = p2",
+            "version": "proxy",
+            "_id": "696fc83c1da3b7398b5b1c40"
+          },
+          {
+            "combination": [
+              {
+                "option": "696fc45b1da3b7398b5897a8",
+                "question": "696fc45b1da3b7398b5897a4",
+                "_id": "696fc84d1da3b7398b5b1f94"
+              },
+              {
+                "option": "696fc45b1da3b7398b589716",
+                "question": "696fc45b1da3b7398b589712",
+                "_id": "696fc84d1da3b7398b5b1f95"
+              }
+            ],
+            "createdAt": "2026-01-20T18:24:13.368Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "sickle cell + pain = p2",
+            "version": "proxy",
+            "_id": "696fc84d1da3b7398b5b1f93"
+          },
+          {
+            "combination": [
+              {
+                "option": "696fc45c1da3b7398b5897b0",
+                "question": "696fc45c1da3b7398b5897ac",
+                "_id": "696fc85c1da3b7398b5b22fd"
+              },
+              {
+                "option": "696fc45b1da3b7398b589796",
+                "question": "696fc45b1da3b7398b589792",
+                "_id": "696fc85c1da3b7398b5b22fe"
+              }
+            ],
+            "createdAt": "2026-01-20T18:24:28.844Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "rash + fever = p2",
+            "version": "proxy",
+            "_id": "696fc85c1da3b7398b5b22fc"
+          },
+          {
+            "combination": [
+              {
+                "option": "695e71dc214db579795c097a",
+                "question": "695e71dc214db579795c0978",
+                "_id": "69bd33983e8063b85c9ca62c"
+              },
+              {
+                "option": "695e6a67214db579795b97ed",
+                "question": "641aff169ef1c89da5bfb46d",
+                "_id": "69bd33983e8063b85c9ca62d"
+              }
+            ],
+            "createdAt": "2026-03-20T11:46:32.742Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "sickle cell + pain = p2",
+            "version": "paediatric",
+            "_id": "69bd33983e8063b85c9ca62b"
+          },
+          {
+            "combination": [
+              {
+                "option": "695e7262214db579795c0e29",
+                "question": "695e7262214db579795c0e27",
+                "_id": "69bd33b73e8063b85c9ca94d"
+              },
+              {
+                "option": "695e7197214db579795bfcd6",
+                "question": "695e7197214db579795bfcd4",
+                "_id": "69bd33b73e8063b85c9ca94e"
+              }
+            ],
+            "createdAt": "2026-03-20T11:47:03.451Z",
+            "isActive": true,
+            "isDeleted": false,
+            "overAllCode": "P2",
+            "title": "rash + fever = p2",
+            "version": "paediatric",
+            "_id": "69bd33b73e8063b85c9ca94c"
+          }
+        ],
+        "injuryOrIllness": "Illness",
+        "multiLanguageDiseaseName": [
+          {
+            "content": "Ankle Problem",
+            "language": "en",
+            "_id": "68d5566a296329ccda4114e9"
+          }
+        ],
+        "question": {
+          "description": "",
+          "multiLanguageDescription": [
+            {
+              "content": "هل آلام الكاحل ناتجة عن إصابة؟",
+              "language": "ar",
+              "_id": "652ce06b27fce369c4daf172"
+            },
+            {
+              "content": "Is your ankle problem due to an injury?",
+              "language": "en",
+              "_id": "68d5566a296329ccda4114f3"
+            }
+          ],
+          "multiLanguageDescriptionPaediatric": [
+            {
+              "content": "Is their ankle problem due to an injury?",
+              "language": "en",
+              "_id": "68d5566a296329ccda4114f0"
+            }
+          ],
+          "multiLanguageDescriptionProxy": [
+            {
+              "content": "Is their ankle problem due to an injury?",
+              "language": "en",
+              "_id": "68d5566a296329ccda4114f1"
+            }
+          ],
+          "options": [
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "Yes",
+              "pathway": "63d7829867e872cee310d44c",
+              "pathwayName": "Ankle Injury",
+              "version": "firstPerson",
+              "_id": "69bd170e3e8063b85c884019"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "No",
+              "pathway": "63eb7bd96c428fe123cd699f",
+              "pathwayName": "",
+              "version": "firstPerson",
+              "_id": "69bd170e3e8063b85c88401a"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "Yes",
+              "pathway": "63d7829867e872cee310d44c",
+              "pathwayName": "Ankle Injury",
+              "version": "proxy",
+              "_id": "69bd170e3e8063b85c88401b"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "No",
+              "pathway": "63eb7bd96c428fe123cd699f",
+              "pathwayName": "Ankle Problem",
+              "version": "proxy",
+              "_id": "69bd170e3e8063b85c88401c"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "Yes",
+              "pathway": "63d7829867e872cee310d44c",
+              "pathwayName": "Ankle Injury",
+              "version": "paediatric",
+              "_id": "69bd170e3e8063b85c88401d"
+            },
+            {
+              "isCurrentPathway": false,
+              "multiLanguageOptionDescription": [],
+              "optionDescription": "No",
+              "pathway": "63eb7bd96c428fe123cd699f",
+              "pathwayName": "Ankle Problem",
+              "version": "paediatric",
+              "_id": "69bd170e3e8063b85c88401e"
+            }
+          ]
+        },
+        "sexAtBirth": "General",
+        "snomedCode": 247373008,
+        "tags": [
+          "joint",
+          "joint problem"
+        ]
+      },
+      "record": [
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "Less than 24 hours ago",
+              "id": "68d52d89296329ccda402b94",
+              "_id": "6a3c072b9aa78a4853b67b23"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 148,
+          "questionDetails": {
+            "content": "When did the problem start?",
+            "id": "6670336fe43b70e83d2e4883",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 148,
+          "_id": "6a3c072b9aa78a4853b67b22"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "Left",
+              "id": "68d5344b296329ccda40306d",
+              "_id": "6a3c072b9aa78a4853b67b25"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 149,
+          "questionDetails": {
+            "content": "Which ankle has the problem?",
+            "id": "68d5344b296329ccda40306b",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 149,
+          "_id": "6a3c072b9aa78a4853b67b24"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d53469296329ccda4030b1",
+              "_id": "6a3c072b9aa78a4853b67b27"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 152,
+          "questionDetails": {
+            "content": "Is there pain?",
+            "id": "68d53469296329ccda4030ad",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 152,
+          "_id": "6a3c072b9aa78a4853b67b26"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d535ef296329ccda404bf6",
+              "_id": "6a3c072b9aa78a4853b67b29"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 153,
+          "questionDetails": {
+            "content": "Do you have something stuck in your ankle, foot or toes?",
+            "id": "68d535ef296329ccda404bf2",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 153,
+          "_id": "6a3c072b9aa78a4853b67b28"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d5361c296329ccda404c79",
+              "_id": "6a3c072b9aa78a4853b67b2b"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 154,
+          "questionDetails": {
+            "content": "Do you have a new limp (problem walking)?",
+            "id": "68d5361c296329ccda404c75",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 154,
+          "_id": "6a3c072b9aa78a4853b67b2a"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d53632296329ccda404d02",
+              "_id": "6a3c072b9aa78a4853b67b2d"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 155,
+          "questionDetails": {
+            "content": "Is there new weakness to the ankle?",
+            "id": "68d53632296329ccda404cfe",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 155,
+          "_id": "6a3c072b9aa78a4853b67b2c"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d5364b296329ccda404d99",
+              "_id": "6a3c072b9aa78a4853b67b2f"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 156,
+          "questionDetails": {
+            "content": "Have you lost sensation to your ankle?",
+            "id": "68d5364b296329ccda404d95",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 156,
+          "_id": "6a3c072b9aa78a4853b67b2e"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d53664296329ccda404e3e",
+              "_id": "6a3c072b9aa78a4853b67b31"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 157,
+          "questionDetails": {
+            "content": "Do you have swelling to your ankle?",
+            "id": "68d53664296329ccda404e3a",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 157,
+          "_id": "6a3c072b9aa78a4853b67b30"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d53679296329ccda404ef1",
+              "_id": "6a3c072b9aa78a4853b67b33"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 158,
+          "questionDetails": {
+            "content": "Do you have redness to your ankle?",
+            "id": "68d53679296329ccda404eed",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 158,
+          "_id": "6a3c072b9aa78a4853b67b32"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d536cd296329ccda404fb2",
+              "_id": "6a3c072b9aa78a4853b67b35"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 161,
+          "questionDetails": {
+            "content": "Do you have a plaster cast, brace or splint on your ankle?",
+            "id": "68d536cd296329ccda404fae",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 161,
+          "_id": "6a3c072b9aa78a4853b67b34"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d53765296329ccda405242",
+              "_id": "6a3c072b9aa78a4853b67b37"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 162,
+          "questionDetails": {
+            "content": "Is your ankle warm or hot to touch?",
+            "id": "68d53765296329ccda40523e",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 162,
+          "_id": "6a3c072b9aa78a4853b67b36"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d53796296329ccda4056d8",
+              "_id": "6a3c072b9aa78a4853b67b39"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 163,
+          "questionDetails": {
+            "content": "Is your ankle cold to touch?",
+            "id": "68d53796296329ccda4056d4",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 163,
+          "_id": "6a3c072b9aa78a4853b67b38"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d537aa296329ccda4057e7",
+              "_id": "6a3c072b9aa78a4853b67b3b"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 165,
+          "questionDetails": {
+            "content": "Has your ankle, foot or toes changed colour (pale, blue, purple, or black)? ",
+            "id": "68d537aa296329ccda4057e3",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 165,
+          "_id": "6a3c072b9aa78a4853b67b3a"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d537e4296329ccda405a23",
+              "_id": "6a3c072b9aa78a4853b67b3d"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 166,
+          "questionDetails": {
+            "content": "Do you have a fever (temperature more than 38°C or 100°F)?",
+            "id": "68d537e4296329ccda405a1f",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 166,
+          "_id": "6a3c072b9aa78a4853b67b3c"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d5380d296329ccda405b56",
+              "_id": "6a3c072b9aa78a4853b67b3f"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 167,
+          "questionDetails": {
+            "content": "Have you vomited (been sick)?",
+            "id": "68d5380d296329ccda405b52",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 167,
+          "_id": "6a3c072b9aa78a4853b67b3e"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69667d8b71cede6067766663",
+              "_id": "6a3c072b9aa78a4853b67b41"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 168,
+          "questionDetails": {
+            "content": "Do you have sickle cell disease?",
+            "id": "68d5381e296329ccda405c93",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 168,
+          "_id": "6a3c072b9aa78a4853b67b40"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "68d5383c296329ccda405dde",
+              "_id": "6a3c072b9aa78a4853b67b43"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 172,
+          "questionDetails": {
+            "content": "Do you have a new rash to your body?",
+            "id": "68d5383c296329ccda405dda",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 172,
+          "_id": "6a3c072b9aa78a4853b67b42"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "69667e4771cede6067768999",
+              "_id": "6a3c072b9aa78a4853b67b45"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 180,
+          "questionDetails": {
+            "content": "Have you had surgery within the last 6 weeks?",
+            "id": "68d538f5296329ccda406358",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 180,
+          "_id": "6a3c072b9aa78a4853b67b44"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "696680aa71cede6067769707",
+              "_id": "6a3c072b9aa78a4853b67b47"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 182,
+          "questionDetails": {
+            "content": "Have you taken any medication?",
+            "id": "696680aa71cede6067769703",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 182,
+          "_id": "6a3c072b9aa78a4853b67b46"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "696680cd71cede6067769c15",
+              "_id": "6a3c072b9aa78a4853b67b49"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 184,
+          "questionDetails": {
+            "content": "Do you take any regular medication?",
+            "id": "696680cd71cede6067769c11",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 184,
+          "_id": "6a3c072b9aa78a4853b67b48"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "6966814271cede606776a16f",
+              "_id": "6a3c072b9aa78a4853b67b4b"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 193,
+          "questionDetails": {
+            "content": "Do you think you are at risk of domestic abuse?",
+            "id": "6966814271cede606776a16b",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 193,
+          "_id": "6a3c072b9aa78a4853b67b4a"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "696a40a78ce23556feb18941",
+              "_id": "6a3c072b9aa78a4853b67b4d"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 194,
+          "questionDetails": {
+            "content": "Do you feel safe at home?",
+            "id": "696a40a78ce23556feb1893d",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 194,
+          "_id": "6a3c072b9aa78a4853b67b4c"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "Social Services",
+              "id": "696a40f78ce23556feb1a6c4",
+              "_id": "6a3c072b9aa78a4853b67b4f"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": 196,
+          "questionDetails": {
+            "content": "Do you have any support from the following?",
+            "id": "696a40f78ce23556feb1a6c2",
+            "questionType": "multiOption"
+          },
+          "questionNumber": 196,
+          "_id": "6a3c072b9aa78a4853b67b4e"
+        },
+        {
+          "answers": [
+            {
+              "code": "P5",
+              "content": "No",
+              "id": "696a413a8ce23556feb1adb7",
+              "_id": "6a3c072b9aa78a4853b67b51"
+            }
+          ],
+          "code": "P5",
+          "nextQuestionNumber": -1,
+          "questionDetails": {
+            "content": "Is there anything else you wish to tell us?",
+            "id": "696a413a8ce23556feb1adb3",
+            "questionType": "singleOption"
+          },
+          "questionNumber": 24,
+          "_id": "6a3c072b9aa78a4853b67b50"
+        }
+      ],
+      "version": "firstPerson"
+    },
+    "ecdsPathway": [
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "White irish",
+            "id": "69a029ef767ec0a21c8c8004",
+            "_id": "6a3c068f9aa78a4853b67afc"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 2,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Please tell us your ethnicity ? ",
+          "id": "69a029ef767ec0a21c8c8002",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67afb"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a02a2b767ec0a21c8c81f8",
+            "_id": "6a3c068f9aa78a4853b67afe"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 4,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Are you deaf or hard of hearing?",
+          "id": "69a02a2b767ec0a21c8c81f4",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67afd"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "English",
+            "id": "69a02c00767ec0a21c8c8a9a",
+            "_id": "6a3c068f9aa78a4853b67b00"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 5,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Which is your native spoken language?",
+          "id": "69a02c00767ec0a21c8c8a98",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67aff"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "Yes, an interpreter is required ",
+            "id": "69a02d79767ec0a21c8cb274",
+            "_id": "6a3c068f9aa78a4853b67b02"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 6,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Do you require an interpreter ? ",
+          "id": "69a02d79767ec0a21c8cb272",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b01"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "English",
+            "id": "69a02f3e767ec0a21c8cbf45",
+            "_id": "6a3c068f9aa78a4853b67b04"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 7,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Which interpreter language would you need to help you today? ",
+          "id": "69a02f3e767ec0a21c8cbf43",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b03"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "House/Flat",
+            "id": "69a03013767ec0a21c8cc610",
+            "_id": "6a3c068f9aa78a4853b67b06"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 8,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Please select your accommodation status from the list below ?",
+          "id": "69a03013767ec0a21c8cc60e",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b05"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a058c03ae0dc11b14f65ef",
+            "_id": "6a3c068f9aa78a4853b67b08"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 9,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Have you been to this Emergency Department in the last 7 days for the same problem you have today?",
+          "id": "69a058c03ae0dc11b14f65ed",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b07"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "Own transport / walked in",
+            "id": "69a059b03ae0dc11b14f7544",
+            "_id": "6a3c068f9aa78a4853b67b0a"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 10,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "How did you travel here today ?",
+          "id": "69a059b03ae0dc11b14f7542",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b09"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a05bd63ae0dc11b14f7c92",
+            "_id": "6a3c068f9aa78a4853b67b0c"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 12,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Has anyone told you to come here?",
+          "id": "69a05bd63ae0dc11b14f7c8e",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b0b"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a05cff3ae0dc11b14f88e5",
+            "_id": "6a3c068f9aa78a4853b67b0e"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 13,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "Have you lived out of uk from the past 12 months at all ?",
+          "id": "69a05cff3ae0dc11b14f88e1",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b0d"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "No",
+            "id": "69a05ea13ae0dc11b14fad54",
+            "_id": "6a3c068f9aa78a4853b67b10"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": 14,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [
+            {
+              "option": "Yes",
+              "optionId": "69a05ea13ae0dc11b14fad52",
+              "question": "Are you a military veiteran ?",
+              "questionId": "69a05ea13ae0dc11b14fad50",
+              "_id": "69ce287ec51dba7ec5a6f7fc"
+            }
+          ],
+          "order": 3,
+          "section": "key_safety",
+          "show": true
+        },
+        "questionDetails": {
+          "content": "Are you a military veiteran ?",
+          "id": "69a05ea13ae0dc11b14fad50",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b0f"
+      },
+      {
+        "answers": [
+          {
+            "code": "P5",
+            "content": "An illness",
+            "id": "69a05f233ae0dc11b14fb142",
+            "_id": "6a3c068f9aa78a4853b67b13"
+          }
+        ],
+        "integrations": [],
+        "nextQuestionNumber": -1,
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "questionDetails": {
+          "content": "You are here because of ?",
+          "id": "69a05f233ae0dc11b14fb140",
+          "questionType": "singleOption"
+        },
+        "_id": "6a3c068f9aa78a4853b67b12"
+      }
+    ],
+    "isolation": [
+      {
+        "option": "false",
+        "optionId": "69663040cf4549bf9e6643bd",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Are you having immunotherapy or are you immunosuppressed?",
+        "questionId": "69663040cf4549bf9e6643b9",
+        "_id": "6a3c068f9aa78a4853b67ae8"
+      },
+      {
+        "option": "false",
+        "optionId": "69f9e4aeaaaa4c797c4e6b4c",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Are you having radiotherapy?",
+        "questionId": "69662ff4cf4549bf9e66439f",
+        "_id": "6a3c068f9aa78a4853b67ae9"
+      },
+      {
+        "option": "false",
+        "optionId": "6966301dcf4549bf9e6643b0",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Have you had any cancer treatment, such as chemotherapy, in the last 6 weeks?",
+        "questionId": "6966301dcf4549bf9e6643ac",
+        "_id": "6a3c068f9aa78a4853b67aea"
+      }
+    ],
+    "nhsUser": null,
+    "nhsUserFlagsCPIS": null,
+    "nhsUserFlagsNRAF": null,
+    "pdfBase64": "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bWFnZUldCi9FeHRHU3RhdGUgPDwKL0dzMSA5IDAgUgovR3MyIDEzIDAgUgo+PgovWE9iamVjdCA8PAovSTEgMTAgMCBSCj4+Ci9Gb250IDw8Ci9GMSAxMSAwIFIKL0YyIDEyIDAgUgo+PgovQ29sb3JTcGFjZSA8PAo+Pgo+PgplbmRvYmoKMTYgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAxIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUuMjgwMDI5IDg0MS44OTAwMTVdCi9Db250ZW50cyAxNCAwIFIKL1Jlc291cmNlcyAxNSAwIFIKL1VzZXJVbml0IDEKPj4KZW5kb2JqCjE1IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRXh0R1N0YXRlIDw8Ci9HczEgOSAwIFIKPj4KL0ZvbnQgPDwKL0YxIDExIDAgUgovRjIgMTIgMCBSCj4+Ci9Db2xvclNwYWNlIDw8Cj4+Cj4+CmVuZG9iagoxOSAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDU5NS4yODAwMjkgODQxLjg5MDAxNV0KL0NvbnRlbnRzIDE3IDAgUgovUmVzb3VyY2VzIDE4IDAgUgovVXNlclVuaXQgMQo+PgplbmRvYmoKMTggMCBvYmoKPDwKL1Byb2NTZXQgWy9QREYgL1RleHQgL0ltYWdlQiAvSW1hZ2VDIC9JbWFnZUldCi9FeHRHU3RhdGUgPDwKL0dzMSA5IDAgUgo+PgovRm9udCA8PAovRjEgMTEgMCBSCi9GMiAxMiAwIFIKPj4KL0NvbG9yU3BhY2UgPDwKPj4KPj4KZW5kb2JqCjIxIDAgb2JqCihyZWFjdC1wZGYpCmVuZG9iagoyMiAwIG9iagoocmVhY3QtcGRmKQplbmRvYmoKMjMgMCBvYmoKKEQ6MjAyNjA2MjQxNjM0NTNaKQplbmRvYmoKMjAgMCBvYmoKPDwKL1Byb2R1Y2VyIDIxIDAgUgovQ3JlYXRvciAyMiAwIFIKL0NyZWF0aW9uRGF0ZSAyMyAwIFIKPj4KZW5kb2JqCjExIDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9CYXNlRm9udCAv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GTl6zOZEN0bunZESazoPmQvpOhn5dKqjziLWRMepsOnMJ1TL8+pbKTX4qIyFiWZJ4UNQJ0HgIYU88XGzqhCW7CVZirhxc+fcTEA11YfMi2PcvJx7jLVQRl/1HPnU29tKyVpqP/Zl+Mek8afs7Mvi0MZCY+HOWBigpvg8XljEWHglLFyxs0cCPuZfTX8USVUvpNfxUP3S5pY2HO4dh0lqno65YQyHMxz2FXuPFyY2DsE7WDN1qDpgjjWbkatDpq/4Gyoc65oiPBSjlPSEk4Yg+mi11oyWu6dlTpbFY7RcMvEc+qiO6eq0xqlvZKVmNyobN7N40OPGymBGQCPgbgjIGGoWj1VUMwJuu6kXRrS6Y7RiRjdbIFGxOatTfjvzwUw5P1qMrTsXZ6tl2TY9MWRrghk+v/36dsPytB1rZFpdmnbsmvkXuc4QJS0suCKrzB4vA9JWSBvRiy5Tu6P6bHVx0eHo8+KjI2x1xdIoomYcZv+FKxwbeV9R8XzG2fkqO6qHSlhx9Ei11/Msw3wIpZTtpXNQxHPC/watvdws2XoWq2kR3J6v0xK5xtf/CV+/QD2dP/4FI7HlWwplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCAyNAowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDM4NzQgMDAwMDAgbiAKMDAwMDAwMzk0NSAwMDAwMCBuIAowMDAwMDAzNzg3IDAwMDAwIG4gCjAwMDAwMDM3NjYgMDAwMDAgbiAKMDAwMDAwMzk5MiAwMDAwMCBuIAowMDAwMDA2NTg4IDAwMDAwIG4gCjAwMDAwMDI2NTAgMDAwMDAgbiAKMDAwMDAwMjUyMCAwMDAwMCBuIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNTkgMDAwMDAgbiAKMDAwMDAwMzU2NSAwMDAwMCBuIAowMDAwMDAzNjYzIDAwMDAwIG4gCjAwMDAwMDI0NzUgMDAwMDAgbiAKMDAwMDAxMTE2NiAwMDAwMCBuIAowMDAwMDAyOTY4IDAwMDAwIG4gCjAwMDAwMDI4MzUgMDAwMDAgbiAKMDAwMDAwNDAzNSAwMDAwMCBuIAowMDAwMDAzMjQ5IDAwMDAwIG4gCjAwMDAwMDMxMTYgMDAwMDAgbiAKMDAwMDAwMzQ4OSAwMDAwMCBuIAowMDAwMDAzMzk3IDAwMDAwIG4gCjAwMDAwMDM0MjUgMDAwMDAgbiAKMDAwMDAwMzQ1MyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDI0Ci9Sb290IDMgMCBSCi9JbmZvIDIwIDAgUgovSUQgWzwzOTRlYWYzOTdkZjM3MDc3YzdiZjVkYTAwYTg3ZTM5YT4gPDM5NGVhZjM5N2RmMzcwNzdjN2JmNWRhMDBhODdlMzlhPl0KPj4Kc3RhcnR4cmVmCjEzMDU3CiUlRU9GCg==",
+    "publicHealth": [
+      {
+        "option": "false",
+        "optionId": "661fcb48824e957ac060e38d",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have a generalised rash?",
+        "questionId": "661fcb48824e957ac060e389",
+        "_id": "6a3c068f9aa78a4853b67aef"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcb7b824e957ac060e408",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Have you had diarrhoea?",
+        "questionId": "661fcb7b824e957ac060e404",
+        "_id": "6a3c068f9aa78a4853b67af0"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcbf2824e957ac060e599",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Have you recently tested positive for Covid 19?",
+        "questionId": "661fcbf2824e957ac060e595",
+        "_id": "6a3c068f9aa78a4853b67af1"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcac2824e957ac060e357",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have shortness of breath?",
+        "questionId": "661fcac1824e957ac060e353",
+        "_id": "6a3c068f9aa78a4853b67af2"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcbab824e957ac060e497",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have conjunctivitis?",
+        "questionId": "661fcbab824e957ac060e493",
+        "_id": "6a3c068f9aa78a4853b67af3"
+      },
+      {
+        "option": "false",
+        "optionId": "661fcb93824e957ac060e44d",
+        "pdf": {
+          "applyAllConditions": true,
+          "conditions": [],
+          "order": 0,
+          "section": null,
+          "show": false
+        },
+        "question": "Do you have nasal discharge?",
+        "questionId": "661fcb93824e957ac060e449",
+        "_id": "6a3c068f9aa78a4853b67af4"
+      }
+    ],
+    "routing": {
+      "redirections": [],
+      "department": {
+        "_id": "6a0b05326abf3cb4e1fa3d7d",
+        "departmentCode": "ED",
+        "departmentName": "Emergency Department",
+        "description": ""
+      },
+      "message": "Please proceed to the reception desk for further assistance."
+    },
+    "user": {
+      "_id": "6a3c066b9aa78a4853b67ad5",
+      "alerts": [],
+      "completion": {
+        "incompleteAt": null,
+        "incompleteReason": "",
+        "isIncomplete": false,
+        "lastScreen": null
+      },
+      "data": [
+        {
+          "answer": "Reuben",
+          "id": "field-1768558936355",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 2,
+            "section": "pds",
+            "show": true
+          },
+          "question": "First Name",
+          "type": "text"
+        },
+        {
+          "answer": "Hughes",
+          "id": "field-1768558936507",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 1,
+            "section": "pds",
+            "show": true
+          },
+          "question": "Last Name ",
+          "type": "text"
+        },
+        {
+          "answer": "1994-08-14",
+          "id": "field-1768558971274",
+          "integrations": [],
+          "key": "dob",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 3,
+            "section": "pds",
+            "show": true
+          },
+          "question": "Date of Birth",
+          "type": "date"
+        },
+        {
+          "answer": "Female",
+          "id": "field-1768558990442",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Gender",
+          "type": "select"
+        },
+        {
+          "answer": "PZ2 1NG",
+          "id": "field-1768559028939",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Postcode",
+          "type": "text"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559118986",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "",
+          "type": "radio"
+        },
+        {
+          "answer": "+447107722302",
+          "id": "field-1768559146530",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Phone number",
+          "type": "tel"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559162171",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "",
+          "type": "radio"
+        },
+        {
+          "answer": "Male",
+          "id": "field-1768559276073",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "How do you identify yourself ?",
+          "type": "radio"
+        },
+        {
+          "answer": "No",
+          "id": "field-1768559447474",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Has anyone come with you today?",
+          "type": "radio"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559922928",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "First Name",
+          "type": "text"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559932864",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Last Name ",
+          "type": "text"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559953678",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Phone number",
+          "type": "tel"
+        },
+        {
+          "answer": "",
+          "id": "field-1768559965670",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "What is their relationship to you?",
+          "type": "select"
+        },
+        {
+          "answer": "",
+          "id": "c-field-1768560046710",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Please specify Their relation wih you",
+          "type": "textarea"
+        },
+        {
+          "answer": "",
+          "id": "field-1768560088126",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Is This person your emergency contact ?",
+          "type": "radio"
+        },
+        {
+          "answer": "Reuben",
+          "id": "field-1768560256789",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "First Name",
+          "type": "text"
+        },
+        {
+          "answer": "Hughes",
+          "id": "field-1768560264949",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Last Name ",
+          "type": "text"
+        },
+        {
+          "answer": "+447107722302",
+          "id": "field-1768560274854",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Phone Number",
+          "type": "tel"
+        },
+        {
+          "answer": "Father",
+          "id": "field-1768560290413",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "What is their relation to you ?",
+          "type": "select"
+        },
+        {
+          "answer": "",
+          "id": "c-field-1768560353430",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 0,
+            "section": null,
+            "show": false
+          },
+          "question": "Please specify their relation to you ",
+          "type": "textarea"
+        },
+        {
+          "answer": "",
+          "id": "field-1768560388517",
+          "integrations": [],
+          "key": "",
+          "nullable": false,
+          "pdf": {
+            "applyAllConditions": true,
+            "conditions": [],
+            "order": 4,
+            "section": "pds",
+            "show": true
+          },
+          "question": "",
+          "type": "radio"
+        }
+      ],
+      "endTimestamp": "2026-06-24T16:34:51.164Z",
+      "hospitalId": {
+        "_id": "6968ea67fc51ef709107c6d6",
+        "code": 797283,
+        "name": "Pen Hospital Testing",
+        "odsCode": null
+      },
+      "pValue": "P5",
+      "startTimestamp": "2026-06-24T16:31:39.000Z",
+      "version": "firstPerson"
+    }
+  },
+  "summary": "OPTO Health"
+}

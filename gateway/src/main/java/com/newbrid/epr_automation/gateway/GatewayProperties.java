@@ -11,12 +11,14 @@ public class GatewayProperties {
     private final Run run = new Run();
     private final Audit audit = new Audit();
     private final Document document = new Document();
+    private final DocumentViewer documentViewer = new DocumentViewer();
 
     public Inbound getInbound() { return inbound; }
     public ControlPlane getControlPlane() { return controlPlane; }
     public Run getRun() { return run; }
     public Audit getAudit() { return audit; }
     public Document getDocument() { return document; }
+    public DocumentViewer getDocumentViewer() { return documentViewer; }
 
     /** The gateway's own front door. */
     public static class Inbound {
@@ -48,6 +50,16 @@ public class GatewayProperties {
         public void setUrl(String v) { this.url = v; }
         public String getToken() { return token; }
         public void setToken(String v) { this.token = v; }
+        public int getRequestTimeoutMs() { return requestTimeoutMs; }
+        public void setRequestTimeoutMs(int v) { this.requestTimeoutMs = v; }
+    }
+
+    public static class DocumentViewer {
+        private String url = "http://localhost:8084";
+        private String organisationId = "ORG_ID";
+        private int requestTimeoutMs = 10_000;
+        public String getUrl() { return url; }
+        public void setUrl(String v) { this.url = v; }
         public int getRequestTimeoutMs() { return requestTimeoutMs; }
         public void setRequestTimeoutMs(int v) { this.requestTimeoutMs = v; }
     }

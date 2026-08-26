@@ -82,6 +82,15 @@ public class GatewayAuditService {
         repo.save(e);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void documentCreated(String correlationId, String clientRequestId, String documentReference, long elapsedMs){
+        GatewayAuditEntity e = new GatewayAuditEntity(
+                correlationId, clientRequestId, null, "DOCUMENT_CREATED");
+        e.setElapsedMs(elapsedMs);
+        e.setDetail(truncate("documentReference=" + documentReference));
+        repo.save(e);
+    }
+
     /** The control plane accepted the transformed request and created a run. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void dispatched(String correlationId, String clientRequestId, String botId,

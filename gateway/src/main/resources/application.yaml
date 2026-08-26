@@ -85,7 +85,8 @@ systmone:
       root: ${GATEWAY_DOCUMENT_ROOT:./gateway-documents}
       # Checked on the decoded bytes, not the base64, because that is the number that goes to disk.
       max-bytes: ${GATEWAY_DOCUMENT_MAX_BYTES:15728640}
-
+    documentviewer:
+      organisationId: ${DOCUMENT_VIEWER_ORGID:TEST_ORG}
 management:
   endpoints:
     web:

@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optohealth.co.uk/schemas/answer-digital-presentation-request.json",
+  "title": "Answer Digital — POST /api/v1/presentation request body",
+  "description": "Exact payload OPTO Health sends to Answer Digital's presentation endpoint. Derived from feedData() in answer-digital.service.js and the Mongoose models read there (.lean() projections + populate). ObjectIds serialise to 24-char hex strings, Dates to ISO-8601, Mongoose adds _id to array sub-documents.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["externalValue", "summary"],
+  "properties": {
+    "summary": { "const": "OPTO Health" },
+    "externalValue": { "$ref": "#/$defs/presentation" }
+  },
+  "$defs": {
+    "objectId": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" },
+    "nullableDateTime": { "type": ["string", "null"], "format": "date-time" },
+
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clinicalPath", "ecdsPathway", "isolation", "publicHealth",
+        "nhsUser", "nhsUserFlagsCPIS", "nhsUserFlagsNRAF", "pdfBase64", "user"
+      ],
+      "properties": {
+        "clinicalPath": { "oneOf": [{ "$ref": "#/$defs/clinicalPath" }, { "type": "null" }] },
+        "ecdsPathway": { "type": "array", "items": { "$ref": "#/$defs/ecdsRecordItem" } },
+        "isolation": { "type": "array", "items": { "$ref": "#/$defs/screeningItem" } },
+        "publicHealth": { "type": "array", "items": { "$ref": "#/$defs/screeningItem" } },
+        "nhsUser": { "description": "Mongoose Mixed (NHS PDS demographics) or null", "default": null },
+        "nhsUserFlagsCPIS": { "description": "Mongoose Mixed (CPIS flags) or null", "default": null },
+        "nhsUserFlagsNRAF": { "description": "Mongoose Mixed (NRAF flags) or null", "default": null },
+        "pdfBase64": { "type": "string", "contentEncoding": "base64", "description": "Base64 of the triage-pass PDF; \"\" if generation produced no file" },
+        "routing": { "$ref": "#/$defs/routing", "description": "Omitted from JSON when user.routing is undefined" },
+        "user": { "$ref": "#/$defs/user" }
+      }
+    },
+
+    "clinicalPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "disease": { "oneOf": [{ "$ref": "#/$defs/disease" }, { "type": "null" }] },
+        "dynamicUserId": { "$ref": "#/$defs/objectId" },
+        "version": { "type": "string" },
+        "record": { "type": "array", "items": { "$ref": "#/$defs/clinicalRecordItem" } }
+      }
+    },
+
+    "clinicalRecordItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "answer": { "type": "string" },
+        "answers": { "type": "array", "items": { "$ref": "#/$defs/answerOption" } },
+        "code": { "type": "string", "default": "P0" },
+        "nextQuestionNumber": { "type": "number" },
+        "question": { "type": "string" },
+        "questionDetails": { "$ref": "#/$defs/questionDetails" },
+        "questionId": { "type": "string" },
+        "questionNumber": { "type": "number" },
+        "selectedOptionId": { "type": "string" }
+      }
+    },
+
+    "ecdsRecordItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "answers": { "type": "array", "items": { "$ref": "#/$defs/answerOption" } },
+        "integrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "platform"],
+            "properties": {
+              "_id": { "$ref": "#/$defs/objectId" },
+              "key": { "type": "string" },
+              "platform": { "type": "string" }
+            }
+          }
+        },
+        "nextQuestionNumber": { "type": "number" },
+        "pdf": { "$ref": "#/$defs/pdfBlock" },
+        "questionDetails": { "$ref": "#/$defs/questionDetails" },
+        "questionNumber": { "type": "number" }
+      }
+    },
+
+    "screeningItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "option": { "type": "string" },
+        "optionId": { "type": "string" },
+        "pdf": { "$ref": "#/$defs/pdfBlock" },
+        "question": { "type": "string" },
+        "questionId": { "type": "string" }
+      }
+    },
+
+    "answerOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "code": { "type": "string" },
+        "content": { "type": "string" },
+        "id": { "type": "string" }
+      }
+    },
+
+    "questionDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "content": { "type": "string" },
+        "id": { "type": "string" },
+        "questionType": { "type": "string" }
+      }
+    },
+
+    "pdfBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "applyAllConditions": { "type": "boolean", "default": true },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["option", "optionId", "question", "questionId"],
+            "properties": {
+              "_id": { "$ref": "#/$defs/objectId" },
+              "option": { "type": "string" },
+              "optionId": { "type": "string" },
+              "question": { "type": "string" },
+              "questionId": { "type": "string" }
+            }
+          }
+        },
+        "order": { "type": "number", "default": 0 },
+        "section": { "type": ["string", "null"], "default": null },
+        "show": { "type": "boolean", "default": false }
+      }
+    },
+
+    "dataItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-screen patient answer record (externalValue.user.data[]). Modelled from ad-output samples (8 sessions, 176 items); was previously Mongoose Mixed (items: true). Every sampled item carries all of: answer, id, integrations, key, nullable, pdf, question, type.",
+      "properties": {
+        "answer": { "type": "string", "description": "User's answer; \"\" when unanswered" },
+        "id": { "type": "string", "description": "Client-generated field id; observed format \"field-<epoch-ms>\"" },
+        "integrations": {
+          "type": "array",
+          "description": "Empty in all sampled items; element shape modelled by analogy to ecdsRecordItem.integrations",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "platform"],
+            "properties": {
+              "_id": { "$ref": "#/$defs/objectId" },
+              "key": { "type": "string" },
+              "platform": { "type": "string" }
+            }
+          }
+        },
+        "key": { "type": "string" },
+        "nullable": { "type": "boolean" },
+        "pdf": { "$ref": "#/$defs/pdfBlock" },
+        "question": { "type": "string" },
+        "type": { "type": "string", "description": "Input-control type; observed values: text, date, select, radio, tel, textarea (kept as a free string — the value set is not provably closed from these samples)" }
+      }
+    },
+
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "department": { "oneOf": [{ "$ref": "#/$defs/department" }, { "type": "null" }] },
+        "message": { "type": "string" },
+        "redirections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": { "$ref": "#/$defs/objectId" },
+              "department": { "$ref": "#/$defs/objectId" },
+              "isHandedOver": { "type": "boolean", "default": false },
+              "notes": { "type": "string" },
+              "previousDepartment": { "$ref": "#/$defs/objectId" },
+              "referrer": { "$ref": "#/$defs/objectId" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+
+    "department": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Populated via populate('routing.department') with select { departmentCode, departmentName, description }",
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "departmentCode": { "type": "string" },
+        "departmentName": { "type": "string" },
+        "description": { "type": "string", "default": "" }
+      }
+    },
+
+    "hospital": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Populated via populate('hospitalId') with select { code, name, odsCode }",
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "code": { "type": "number" },
+        "name": { "type": "string" },
+        "odsCode": { "type": ["string", "null"], "default": null }
+      }
+    },
+
+    "user": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "DynamicUser with select { alerts, completion, data, endTimestamp, hospitalId, nhs, pValue, startTimestamp, version } (routing extracted to the top level)",
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "alerts": { "type": "array", "items": true, "default": [] },
+        "completion": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "incompleteAt": { "$ref": "#/$defs/nullableDateTime" },
+            "incompleteReason": { "type": "string", "default": "User left the triage" },
+            "isIncomplete": { "type": "boolean", "default": true },
+            "lastScreen": { "type": ["string", "null"], "default": null }
+          }
+        },
+        "data": { "type": "array", "items": { "$ref": "#/$defs/dataItem" }, "description": "Per-screen patient answers (was Mongoose Mixed; shape now modelled — see dataItem)" },
+        "endTimestamp": { "$ref": "#/$defs/nullableDateTime" },
+        "hospitalId": { "oneOf": [{ "$ref": "#/$defs/hospital" }, { "type": "null" }] },
+        "nhs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpis": { "description": "Mixed or null", "default": null },
+            "nraf": { "description": "Mixed or null", "default": null },
+            "status": { "type": "string", "enum": ["unsuccessful", "successful", "unavailable"], "default": "unavailable" },
+            "user": { "description": "Mixed or null", "default": null }
+          }
+        },
+        "pValue": { "type": ["string", "null"], "default": null },
+        "startTimestamp": { "$ref": "#/$defs/nullableDateTime" },
+        "version": { "type": "string", "enum": ["firstPerson", "paediatric", "proxy"] }
+      }
+    },
+
+    "disease": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Populated via populate('disease') with select { ageCombination, combination, injuryOrIllness, multiLanguageDiseaseName, question, sexAtBirth, snomedCode, tags }",
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "injuryOrIllness": { "type": "string", "enum": ["Injury", "Illness", "General"] },
+        "sexAtBirth": { "type": "string", "enum": ["Male", "Female", "Other", "General"] },
+        "snomedCode": { "type": "number" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "multiLanguageDiseaseName": { "type": "array", "items": { "$ref": "#/$defs/multiLanguageText" } },
+        "combination": { "type": "array", "items": { "$ref": "#/$defs/combinationGroup" } },
+        "ageCombination": { "type": "array", "items": { "$ref": "#/$defs/ageCombinationGroup" } },
+        "question": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "description": { "type": "string" },
+            "multiLanguageDescription": { "type": "array", "items": { "$ref": "#/$defs/multiLanguageText" } },
+            "multiLanguageDescriptionPaediatric": { "type": "array", "items": { "$ref": "#/$defs/multiLanguageText" } },
+            "multiLanguageDescriptionProxy": { "type": "array", "items": { "$ref": "#/$defs/multiLanguageText" } },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "_id": { "$ref": "#/$defs/objectId" },
+                  "isCurrentPathway": { "type": "boolean", "default": false },
+                  "multiLanguageOptionDescription": { "type": "array", "items": { "$ref": "#/$defs/multiLanguageText" } },
+                  "optionDescription": { "type": "string" },
+                  "pathway": { "$ref": "#/$defs/objectId" },
+                  "pathwayName": { "type": "string" },
+                  "version": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "combinationGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "combination": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": { "$ref": "#/$defs/objectId" },
+              "option": { "type": "string" },
+              "question": { "$ref": "#/$defs/objectId" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean", "default": true },
+        "isDeleted": { "type": "boolean", "default": false },
+        "overAllCode": { "type": "string" },
+        "title": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+
+    "ageCombinationGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "ageRange": { "type": "array", "items": true },
+        "combination": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "_id": { "$ref": "#/$defs/objectId" },
+              "option": { "type": "array", "items": { "type": "string" } },
+              "question": { "$ref": "#/$defs/objectId" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean", "default": true },
+        "isDeleted": { "type": "boolean", "default": false },
+        "isInfant": { "type": "boolean", "default": false },
+        "overAllCode": { "type": "string" },
+        "title": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+
+    "multiLanguageText": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_id": { "$ref": "#/$defs/objectId" },
+        "content": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,925 @@
+openapi: 3.1.0
+
+info:
+  title: Answer Digital — Presentation API (as called by OPTO Health)
+  version: 1.0.0
+  summary: The presentation feed OPTO Health pushes to Answer Digital.
+  description: |
+    OpenAPI description of the **`POST /api/v1/presentation`** endpoint that OPTO Health's
+    ED backend calls on Answer Digital.
+
+    The request body is generated from `answer_digital-presentation.schema.json`
+    (JSON Schema draft 2020-12), which was itself derived from `feedData()` in
+    `answer-digital.service.js` and the Mongoose models read there
+    (`.lean()` projections + `populate`). ObjectIds serialise to 24-char hex
+    strings, Dates to ISO-8601, and Mongoose adds `_id` to array sub-documents.
+
+    Source call site: `answer-digital.service.js` → `answer-digital.https-client.js`.
+
+    **Authentication is mutual TLS (mTLS).** The client presents a certificate/key
+    and validates the server against a pinned CA (all sourced from AWS Secrets
+    Manager, `rejectUnauthorized: true`). There is no bearer token or API key.
+
+    > Note: the **request** body is derived from OPTO Health's source JSON Schema
+    > (the client/sender side). The **responses** (`SuccessOutcome` / `ErrorOutcome`
+    > and their status codes) are taken verbatim from Answer Digital's published
+    > contract, `opto-interfaces/api/opto.yaml` ("Opto Streaming Output API").
+
+servers:
+  - url: "{answerDigitalBaseUrl}"
+    description: Answer Digital base URL (env/secret `ANSWER_DIGITAL_BASE_URL`, per-environment).
+    variables:
+      answerDigitalBaseUrl:
+        default: https://answer-digital.example
+        description: >-
+          Resolved at runtime from AWS Secrets Manager
+          (`AWS_KMS_ANSWER_DIGITAL_SECRET_NAME` → `ANSWER_DIGITAL_BASE_URL`).
+
+# mTLS applies to every operation.
+security:
+  - mutualTLS: []
+
+paths:
+  /api/v1/presentation:
+    post:
+      operationId: postPresentation
+      summary: Submit a completed triage presentation to Answer Digital.
+      description: >-
+        Sends the full triage "presentation" payload for a single patient session
+        (clinical pathway, ECDS pathway, isolation & public-health screening, NHS
+        demographics/flags, routing, and the Base64 triage-pass PDF).
+      security:
+        - mutualTLS: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationRequest"
+      responses:
+        "200":
+          description: Presentation recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOutcome"
+              examples:
+                success:
+                  summary: Patient registered and presentation recorded
+                  value:
+                    success: true
+                    mrn: R9423847
+        "400":
+          description: >
+            Malformed request. The body is not valid JSON or the Content-Type
+            header is not application/json.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorOutcome"
+              examples:
+                invalid_json:
+                  summary: Body is not parseable JSON
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_JSON
+                      message: Request body could not be parsed as JSON
+        "409":
+          description: >
+            A presentation with the same user._id and routing has already been
+            processed. Duplicate submissions are rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorOutcome"
+              examples:
+                duplicate:
+                  summary: Presentation already received
+                  value:
+                    success: false
+                    error:
+                      code: DUPLICATE_PRESENTATION
+                      message: Presentation {id} with has already been recorded for this routing
+        "422":
+          description: >
+            Payload is well-formed JSON but fails business validation.
+            The error code identifies the specific rule that was violated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorOutcome"
+              examples:
+                missing_field:
+                  summary: Required top-level field absent
+                  value:
+                    success: false
+                    error:
+                      code: MISSING_REQUIRED_FIELD
+                      message: Required field {field} is not present
+                invalid_nhs_number:
+                  summary: NHS number fails Modulus 11 check
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_NHS_NUMBER
+                      message: NHS number {nhs number} does not pass the Modulus 11 check
+                invalid_nhs_number_format:
+                  summary: NHS number is in incorrect format
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_NHS_NUMBER
+                      message: NHS number {nhs number} is not in the correct format
+                invalid_hospital:
+                  summary: Hospital identifier not recognised
+                  value:
+                    success: false
+                    error:
+                      code: UNKNOWN_HOSPITAL
+                      message: Hospital {identifier} is not configured
+                invalid_dob:
+                  summary: Date of birth is in the future
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_DATE_OF_BIRTH
+                      message: Date of birth is in the future
+                invalid_dob_format:
+                  summary: Date of birth is invalid format or in invalid date
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_DATE_OF_BIRTH_FORMAT
+                      message: Date of birth is in the future
+                invalid_postcode:
+                  summary: Postcode is in invalid format
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_POSTCODE
+                      message: Postcode is in invalid format
+                invalid_name:
+                  summary: Patient name is invalid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PATIENT_NAME
+                      message: Patient name is invalid
+                invalid_ec_name:
+                  summary: Emergency contact name is invalid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_EC_NAME
+                      message: Emergency contact name is invalid
+                invalid_enum:
+                  summary: Provided value does not match expected values
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ENUM
+                      message: Provided value in {field} does not match expected values
+                invalid_allergy:
+                  summary: Allergy is invalid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ALLERGY
+                      message: Allergy is invalid
+                invalid_file:
+                  summary: Attached file is invalid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_FILE
+                      message: The file embedded in the request is invalid
+                invalid_file_format:
+                  summary: Attached file is not in expected format
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_FILE
+                      message: The file embedded in the request is not in expected format
+                invalid_condition:
+                  summary: Presenting complaint is not valid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PRESENTING_COMPLAINT
+                      message: Presenting complaint is not valid
+                invalid_phone:
+                  summary: Patient phone number is not valid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_PHONE
+                      message: Patient phone number is not valid
+                invalid_address:
+                  summary: Patient address is not valid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ADDRESS
+                      message: Patient address is not valid
+                invalid_routing:
+                  summary: Routing is not valid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ROUTING
+                      message: Routing is not valid
+                invalid_id:
+                  summary: User ID is not valid
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_ID
+                      message: User ID is not valid
+        "500":
+          description: Unexpected internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorOutcome"
+              examples:
+                internal_error:
+                  summary: Unhandled exception
+                  value:
+                    success: false
+                    error:
+                      code: INTERNAL_ERROR
+                      message: An unexpected error occurred
+        "502":
+          description: >
+            An upstream dependency returned an unexpected error.
+            The error code identifies which system failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorOutcome"
+              examples:
+                epr_hl7_failure:
+                  summary: EPR HL7 interface rejected the ADT message
+                  value:
+                    success: false
+                    error:
+                      code: EPR_HL7_ERROR
+                      message: EPR message interface returned error {error}
+                rpa_failure:
+                  summary: EPR integration raised an error
+                  value:
+                    success: false
+                    error:
+                      code: RPA_ERROR
+                      message: EPR integration returned error {error}
+                filestore_error:
+                  summary: Error persisting document to filestore
+                  value:
+                    success: false
+                    error:
+                      code: FILESTORE_ERROR
+                      message: Filestore returned error {error}
+
+components:
+  securitySchemes:
+    mutualTLS:
+      type: mutualTLS
+      description: >-
+        Mutual TLS. The client presents a certificate + private key and pins the
+        server CA (loaded from AWS Secrets Manager: `ANSWER_DIGITAL_CERT`,
+        `ANSWER_DIGITAL_KEY`, `ANSWER_DIGITAL_CA`).
+
+  schemas:
+    PresentationRequest:
+      title: Answer Digital — POST /api/v1/presentation request body
+      description: Exact payload OPTO Health sends to Answer Digital's presentation endpoint.
+      type: object
+      additionalProperties: false
+      required:
+        - externalValue
+        - summary
+      properties:
+        summary:
+          const: OPTO Health
+        externalValue:
+          $ref: "#/components/schemas/presentation"
+
+    SuccessOutcome:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        mrn:
+          type: string
+          description: Medical Record Number for the patient the presentation has been recorded against
+          example: R9423847
+
+    ErrorOutcome:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              description: Human-readable description of the error
+              example: 'user._id is required'
+
+    objectId:
+      type: string
+      pattern: "^[a-fA-F0-9]{24}$"
+
+    nullableDateTime:
+      type:
+        - string
+        - "null"
+      format: date-time
+
+    presentation:
+      type: object
+      additionalProperties: false
+      required:
+        - clinicalPath
+        - ecdsPathway
+        - isolation
+        - publicHealth
+        - nhsUser
+        - nhsUserFlagsCPIS
+        - nhsUserFlagsNRAF
+        - pdfBase64
+        - user
+      properties:
+        clinicalPath:
+          oneOf:
+            - $ref: "#/components/schemas/clinicalPath"
+            - type: "null"
+        ecdsPathway:
+          type: array
+          items:
+            $ref: "#/components/schemas/ecdsRecordItem"
+        isolation:
+          type: array
+          items:
+            $ref: "#/components/schemas/screeningItem"
+        publicHealth:
+          type: array
+          items:
+            $ref: "#/components/schemas/screeningItem"
+        nhsUser:
+          description: Mongoose Mixed (NHS PDS demographics) or null
+          default: null
+        nhsUserFlagsCPIS:
+          description: Mongoose Mixed (CPIS flags) or null
+          default: null
+        nhsUserFlagsNRAF:
+          description: Mongoose Mixed (NRAF flags) or null
+          default: null
+        pdfBase64:
+          type: string
+          contentEncoding: base64
+          description: 'Base64 of the triage-pass PDF; "" if generation produced no file'
+        routing:
+          description: Omitted from JSON when user.routing is undefined
+          $ref: "#/components/schemas/routing"
+        user:
+          $ref: "#/components/schemas/user"
+
+    clinicalPath:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        disease:
+          oneOf:
+            - $ref: "#/components/schemas/disease"
+            - type: "null"
+        dynamicUserId:
+          $ref: "#/components/schemas/objectId"
+        version:
+          type: string
+        record:
+          type: array
+          items:
+            $ref: "#/components/schemas/clinicalRecordItem"
+
+    clinicalRecordItem:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        answer:
+          type: string
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/answerOption"
+        code:
+          type: string
+          default: P0
+        nextQuestionNumber:
+          type: number
+        question:
+          type: string
+        questionDetails:
+          $ref: "#/components/schemas/questionDetails"
+        questionId:
+          type: string
+        questionNumber:
+          type: number
+        selectedOptionId:
+          type: string
+
+    ecdsRecordItem:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/answerOption"
+        integrations:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - key
+              - platform
+            properties:
+              _id:
+                $ref: "#/components/schemas/objectId"
+              key:
+                type: string
+              platform:
+                type: string
+        nextQuestionNumber:
+          type: number
+        pdf:
+          $ref: "#/components/schemas/pdfBlock"
+        questionDetails:
+          $ref: "#/components/schemas/questionDetails"
+        questionNumber:
+          type: number
+
+    screeningItem:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        option:
+          type: string
+        optionId:
+          type: string
+        pdf:
+          $ref: "#/components/schemas/pdfBlock"
+        question:
+          type: string
+        questionId:
+          type: string
+
+    answerOption:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        code:
+          type: string
+        content:
+          type: string
+        id:
+          type: string
+
+    questionDetails:
+      type: object
+      additionalProperties: false
+      properties:
+        content:
+          type: string
+        id:
+          type: string
+        questionType:
+          type: string
+
+    pdfBlock:
+      type: object
+      additionalProperties: false
+      properties:
+        applyAllConditions:
+          type: boolean
+          default: true
+        conditions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - option
+              - optionId
+              - question
+              - questionId
+            properties:
+              _id:
+                $ref: "#/components/schemas/objectId"
+              option:
+                type: string
+              optionId:
+                type: string
+              question:
+                type: string
+              questionId:
+                type: string
+        order:
+          type: number
+          default: 0
+        section:
+          type:
+            - string
+            - "null"
+          default: null
+        show:
+          type: boolean
+          default: false
+
+    dataItem:
+      type: object
+      additionalProperties: false
+      description: >-
+        Per-screen patient answer record (externalValue.user.data[]). Modelled
+        from ad-output samples (8 sessions, 176 items); was previously Mongoose
+        Mixed (items: true). Every sampled item carries all of: answer, id,
+        integrations, key, nullable, pdf, question, type.
+      properties:
+        answer:
+          type: string
+          description: 'User''s answer; "" when unanswered'
+        id:
+          type: string
+          description: 'Client-generated field id; observed format "field-<epoch-ms>"'
+        integrations:
+          type: array
+          description: >-
+            Empty in all sampled items; element shape modelled by analogy to
+            ecdsRecordItem.integrations
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - key
+              - platform
+            properties:
+              _id:
+                $ref: "#/components/schemas/objectId"
+              key:
+                type: string
+              platform:
+                type: string
+        key:
+          type: string
+        nullable:
+          type: boolean
+        pdf:
+          $ref: "#/components/schemas/pdfBlock"
+        question:
+          type: string
+        type:
+          type: string
+          description: >-
+            Input-control type; observed values: text, date, select, radio, tel,
+            textarea (kept as a free string — the value set is not provably closed
+            from these samples)
+
+    routing:
+      type: object
+      additionalProperties: false
+      properties:
+        department:
+          oneOf:
+            - $ref: "#/components/schemas/department"
+            - type: "null"
+        message:
+          type: string
+        redirections:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              _id:
+                $ref: "#/components/schemas/objectId"
+              department:
+                $ref: "#/components/schemas/objectId"
+              isHandedOver:
+                type: boolean
+                default: false
+              notes:
+                type: string
+              previousDepartment:
+                $ref: "#/components/schemas/objectId"
+              referrer:
+                $ref: "#/components/schemas/objectId"
+              timestamp:
+                type: string
+                format: date-time
+
+    department:
+      type: object
+      additionalProperties: false
+      description: >-
+        Populated via populate('routing.department') with select
+        { departmentCode, departmentName, description }
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        departmentCode:
+          type: string
+        departmentName:
+          type: string
+        description:
+          type: string
+          default: ""
+
+    hospital:
+      type: object
+      additionalProperties: false
+      description: "Populated via populate('hospitalId') with select { code, name, odsCode }"
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        code:
+          type: number
+        name:
+          type: string
+        odsCode:
+          type:
+            - string
+            - "null"
+          default: null
+
+    user:
+      type: object
+      additionalProperties: false
+      description: >-
+        DynamicUser with select { alerts, completion, data, endTimestamp,
+        hospitalId, nhs, pValue, startTimestamp, version }
+        (routing extracted to the top level)
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        alerts:
+          type: array
+          items: true
+          default: []
+        completion:
+          type: object
+          additionalProperties: false
+          properties:
+            incompleteAt:
+              $ref: "#/components/schemas/nullableDateTime"
+            incompleteReason:
+              type: string
+              default: User left the triage
+            isIncomplete:
+              type: boolean
+              default: true
+            lastScreen:
+              type:
+                - string
+                - "null"
+              default: null
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/dataItem"
+          description: Per-screen patient answers (was Mongoose Mixed; shape now modelled — see dataItem)
+        endTimestamp:
+          $ref: "#/components/schemas/nullableDateTime"
+        hospitalId:
+          oneOf:
+            - $ref: "#/components/schemas/hospital"
+            - type: "null"
+        nhs:
+          type: object
+          additionalProperties: false
+          properties:
+            cpis:
+              description: Mixed or null
+              default: null
+            nraf:
+              description: Mixed or null
+              default: null
+            status:
+              type: string
+              enum:
+                - unsuccessful
+                - successful
+                - unavailable
+              default: unavailable
+            user:
+              description: Mixed or null
+              default: null
+        pValue:
+          type:
+            - string
+            - "null"
+          default: null
+        startTimestamp:
+          $ref: "#/components/schemas/nullableDateTime"
+        version:
+          type: string
+          enum:
+            - firstPerson
+            - paediatric
+            - proxy
+
+    disease:
+      type: object
+      additionalProperties: false
+      description: >-
+        Populated via populate('disease') with select { ageCombination,
+        combination, injuryOrIllness, multiLanguageDiseaseName, question,
+        sexAtBirth, snomedCode, tags }
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        injuryOrIllness:
+          type: string
+          enum:
+            - Injury
+            - Illness
+            - General
+        sexAtBirth:
+          type: string
+          enum:
+            - Male
+            - Female
+            - Other
+            - General
+        snomedCode:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        multiLanguageDiseaseName:
+          type: array
+          items:
+            $ref: "#/components/schemas/multiLanguageText"
+        combination:
+          type: array
+          items:
+            $ref: "#/components/schemas/combinationGroup"
+        ageCombination:
+          type: array
+          items:
+            $ref: "#/components/schemas/ageCombinationGroup"
+        question:
+          type: object
+          additionalProperties: false
+          properties:
+            description:
+              type: string
+            multiLanguageDescription:
+              type: array
+              items:
+                $ref: "#/components/schemas/multiLanguageText"
+            multiLanguageDescriptionPaediatric:
+              type: array
+              items:
+                $ref: "#/components/schemas/multiLanguageText"
+            multiLanguageDescriptionProxy:
+              type: array
+              items:
+                $ref: "#/components/schemas/multiLanguageText"
+            options:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  _id:
+                    $ref: "#/components/schemas/objectId"
+                  isCurrentPathway:
+                    type: boolean
+                    default: false
+                  multiLanguageOptionDescription:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/multiLanguageText"
+                  optionDescription:
+                    type: string
+                  pathway:
+                    $ref: "#/components/schemas/objectId"
+                  pathwayName:
+                    type: string
+                  version:
+                    type: string
+
+    combinationGroup:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        combination:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              _id:
+                $ref: "#/components/schemas/objectId"
+              option:
+                type: string
+              question:
+                $ref: "#/components/schemas/objectId"
+        createdAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+          default: true
+        isDeleted:
+          type: boolean
+          default: false
+        overAllCode:
+          type: string
+        title:
+          type: string
+        version:
+          type: string
+
+    ageCombinationGroup:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        ageRange:
+          type: array
+          items: true
+        combination:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              _id:
+                $ref: "#/components/schemas/objectId"
+              option:
+                type: array
+                items:
+                  type: string
+              question:
+                $ref: "#/components/schemas/objectId"
+        createdAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+          default: true
+        isDeleted:
+          type: boolean
+          default: false
+        isInfant:
+          type: boolean
+          default: false
+        overAllCode:
+          type: string
+        title:
+          type: string
+        version:
+          type: string
+
+    multiLanguageText:
+      type: object
+      additionalProperties: false
+      properties:
+        _id:
+          $ref: "#/components/schemas/objectId"
+        content:
+          type: string
+        language:
+          type: string

@@ -71,6 +71,7 @@ public class RunGatewayRoute extends RouteBuilder {
     static final String ROUTE_AWAIT = "gateway-await";
     static final String ROUTE_POLL = "gateway-poll";
     static final String ROUTE_STORE_DOCUMENT = "gateway-store-document";
+    static final String ROUTE_CREATE_DOCUMENT = "gateway-create-document";
 
     /** Why the most recent read of the run failed, if it did. Reported if the wait then expires. */
     private static final String LAST_POLL_ERROR = "GwLastPollError";
@@ -108,8 +109,31 @@ public class RunGatewayRoute extends RouteBuilder {
 
         submitRoute();
         storeDocumentRoute();
+        createDocumentRoute();
         dispatchRoute();
         awaitRoutes();
+    }
+
+    private void createDocumentRoute() {
+
+        String endpoint = properties.getDocumentViewer().getUrl();
+
+        from("direct:" + ROUTE_CREATE_DOCUMENT)
+                .routeId(ROUTE_CREATE_DOCUMENT)
+                .marshal().json(JsonLibrary.Jackson)
+                .setHeader(Exchange.HTTP_METHOD, constant("POST"))
+                .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
+                .setHeader("organisationId", constant("{{systmone.gateway.documentviewer.organisationId}}"))
+                .setHeader("nhsNumber").jsonpath("")
+                .setHeader("postcode").jsonpath("")
+                .setHeader("familyName").jsonpath("")
+                .setHeader("givenName").jsonpath("")
+                .setHeader("dob").jsonpath("")
+                .setBody(simple("{\"nhsNumber\":\"${header.nhsNumber}\",\"postcode\":\"${header.postcode}\"," +
+                        "\"familyName\":\"${header.familyName}\",\"givenName\":\"${header.givenName}\",\"dob\":\"${header.dob}\"," +
+                        "\"documentReference\":\"${header.documentReference}\",\"organisationId\":\"${header.organisationId}\""))
+                .to(endpoint)
+                .unmarshal().json(JsonLibrary.Jackson, DispatchResponse.class);
     }
 
     // ------------------------------------------------------------------ the pipeline
@@ -127,10 +151,7 @@ public class RunGatewayRoute extends RouteBuilder {
                 .process(this::validateBeyondConstraints)
                 // Stored before the run is dispatched, because the run is told where the file is
                 // and cannot be told about a file that does not exist yet.
-                .choice()
-                    .when(this::hasDocument)
-                        .to("direct:" + ROUTE_STORE_DOCUMENT)
-                .end()
+                .to("direct:" + ROUTE_STORE_DOCUMENT)
                 .process(this::transform)
                 .to("direct:" + ROUTE_DISPATCH)
                 .to("direct:" + ROUTE_AWAIT)
@@ -324,6 +345,19 @@ public class RunGatewayRoute extends RouteBuilder {
         exchange.getMessage().setBody(submission);
     }
 
+    /** Audit the document creation and restore the submission as the body for the transform step. */
+    private void afterDocumentCreated(Exchange exchange) {
+        StoredDocument document = exchange.getProperty(STORED_DOCUMENT, StoredDocument.class);
+        RunSubmission submission =
+                exchange.getProperty(GatewayExchange.SUBMISSION, RunSubmission.class);
+
+        audit.documentCreated(exchange.getProperty(GatewayExchange.CORRELATION_ID, String.class),
+                submission.requestId(), submission.bot(), submission.user().id(),
+                document.fileName(), document.path().toString(), document.bytes(),
+                document.sha256(), elapsedMs(exchange));
+
+        exchange.getMessage().setBody(submission);
+    }
     /**
      * The transform step. A processor rather than {@code .bean()} because the transform needs the
      * stored document as well as the submission, and only the exchange knows about both.
