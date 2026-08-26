@@ -1,0 +1,18 @@
+{
+  "name": "systmone-pds-review-frontend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "NHS.UK frontend assets for the PDS match review application. Driven by Maven via frontend-maven-plugin — see pom.xml and docs/requirements.md section 3.10.",
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run build:css && npm run build:js && npm run build:assets",
+    "build:css": "sass --load-path=node_modules --style=compressed --no-source-map src/main/frontend/application.scss target/frontend/stylesheets/application.min.css",
+    "build:js": "copyfiles --flat node_modules/nhsuk-frontend/dist/nhsuk/nhsuk-frontend.min.js target/frontend/javascripts",
+    "build:assets": "copyfiles --up 4 \"node_modules/nhsuk-frontend/dist/nhsuk/assets/**/*\" target/frontend"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "nhsuk-frontend": "^10.0.0",
+    "sass": "^1.83.0"
+  }
+}

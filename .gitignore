@@ -5,6 +5,8 @@ worker-screenshots/
 # correspondence, and the default store is inside the working tree.
 gateway/gateway-documents/
 gateway/target/
+# Frontend dependencies for pds-review, restored by `npm ci` during the Maven build.
+node_modules/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

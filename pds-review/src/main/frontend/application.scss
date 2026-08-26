@@ -1,0 +1,21 @@
+// The application's single stylesheet.
+//
+// Everything the reviewer sees comes from the NHS.UK frontend (FR-UI-01). This file exists so
+// that the two things the library cannot supply have somewhere to live with the design system's
+// own variables in scope: the side-by-side candidate comparison of FR-PDS-07, and whatever the
+// worklist needs beyond a standard table.
+//
+// Compiled by `npm run build:css`, which Maven drives through frontend-maven-plugin. The output
+// lands in target/frontend/stylesheets and is served from this application, never from a CDN
+// (FR-UI-03).
+
+@forward "nhsuk-frontend/dist/nhsuk";
+
+// ---------------------------------------------------------------------------------------------
+// Local extensions
+//
+// Keep this section small, and keep every rule here traceable to a requirement. A local style is
+// a component the design system has not tested for us, so each one earns its own accessibility
+// check (FR-UI-02) — which is the cost that makes "use the components as published" the default
+// rather than the aspiration.
+// ---------------------------------------------------------------------------------------------

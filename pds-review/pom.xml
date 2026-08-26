@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!--
+	  A standalone sub-project, deliberately not a module of the root reactor — the same call as
+	  gateway/, for the same reasons. It shares no code with the control plane and no database
+	  entities: it reaches the control plane through a Camel route on the gateway, over the same
+	  REST surface any other client would use.
+
+	  It also shares no code with the gateway, including the Presentation DTO. This application
+	  keeps a presentation as the JSON it arrived as (see FR-INT-04 in docs/requirements.md) and
+	  binds only the handful of fields a reviewer needs, so a change to OPTO Health's models
+	  cannot break the review queue.
+
+	  Built and run from this directory:
+	    cd pds-review
+	    ..\mvnw.cmd spring-boot:run
+	-->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.0</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>com.newbrid.epr-automation</groupId>
+	<artifactId>systmone-pds-review</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>PDS match review</name>
+	<description>
+		Clinical worklist for presentations the calling application could not match to NHS PDS.
+		A reviewer authenticated with NHS CIS2 searches PDS and the Organisation Data Service,
+		records a match decision, and the decision is posted back to the RPA control plane
+		through a Camel route on the gateway.
+	</description>
+
+	<properties>
+		<java.version>25</java.version>
+
+		<!-- The NHS.UK frontend is an npm package compiled from Sass, so the Maven build drives
+		     a Node toolchain to produce this application's stylesheet and copy the library's
+		     JavaScript and assets (FR-UI-01). Node is pinned like any other dependency: an
+		     unpinned toolchain is a build that can differ between two machines on the same
+		     commit. frontend-maven-plugin downloads it into target/ and caches the archive in
+		     ~/.m2, so a clean build unpacks rather than re-downloads.
+
+		     Node 24 (current LTS), and not lower than 22.12: the Sass CLI `require()`s
+		     chokidar, which is now ESM-only, and `require()` of an ES module is only permitted
+		     from 22.12 onwards. On 22.11 the stylesheet build fails with ERR_REQUIRE_ESM. -->
+		<frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+		<node.version>v24.16.0</node.version>
+
+		<!-- -Dfrontend.skip=true builds the Java without Node or the npm registry, for an
+		     offline or air-gapped build. The jar it produces has no stylesheet, so it is for
+		     compiling and testing server-side code, never for producing a release. -->
+		<frontend.skip>false</frontend.skip>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<!-- Server-rendered reviewer UI, matching the control plane rather than introducing a
+		     second front-end toolchain for one internal clinical worklist. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.thymeleaf.extras</groupId>
+			<artifactId>thymeleaf-extras-springsecurity6</artifactId>
+		</dependency>
+		<!--
+		  The templates render NHS.UK frontend components (§3.10 of docs/requirements.md). Its
+		  CSS and JavaScript are self-hosted from src/main/resources/static and version-pinned,
+		  never loaded from a CDN: a clinical worklist must not fail to render because an NHS
+		  network blocked egress, and nobody outside this deployment should be able to change
+		  what a clinician sees.
+
+		  They are built by frontend-maven-plugin below, from package.json — so an upgrade is a
+		  version bump in one file, and the design system's Sass variables are in scope for the
+		  few styles the library cannot supply (src/main/frontend/application.scss).
+		-->
+		<!-- NHS CIS2 is an OpenID Connect provider, so reviewer sign-in is an OAuth2/OIDC
+		     authorization-code login (NFR-SEC-01, FR-AUTH-01). private_key_jwt client
+		     authentication needs the JOSE support, which the client starter does not pull in. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
+		</dependency>
+		<!-- The queue, the review state and the audit trail. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!-- Health and the Prometheus scrape endpoint, so this service appears in the same
+		     dashboards as the control plane, workers and gateway (NFR-OBS-03). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- Local runs without Postgres. Not for use against live data: the review queue holds
+		     patient-identifiable data and an in-memory store is neither retained nor encrypted. -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!--
+		  Deliberately absent for now: a FHIR client library (HAPI FHIR structures-r4 +
+		  hapi-fhir-client) for the PDS and ODS calls. Both are FHIR R4 read-only searches whose
+		  responses this application displays and forwards rather than reasons over, so
+		  RestClient + Jackson may well be enough and is several tens of megabytes lighter. That
+		  choice is listed as an early decision to validate — §6.1 of docs/requirements.md — and
+		  should be settled by a spike against the PDS sandbox, not by this pom.
+		-->
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-client-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<!--
+		  Two resource roots, because the frontend build writes its output into target/ rather
+		  than into the source tree. Nothing generated is committed, `mvn clean` really cleans,
+		  and there is no half-stale stylesheet in src/main/resources to confuse anyone.
+
+		  Declaring <resources> at all replaces Maven's default, so src/main/resources has to be
+		  listed explicitly — leaving it out silently drops application.yaml from the jar.
+		-->
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<resource>
+				<!-- Served by Spring Boot as /stylesheets/**, /javascripts/** and /assets/**,
+				     from this application rather than from a CDN (FR-UI-03). Written during
+				     generate-resources, which runs before this copy in process-resources. -->
+				<directory>${project.build.directory}/frontend</directory>
+				<targetPath>static</targetPath>
+			</resource>
+		</resources>
+
+		<plugins>
+			<plugin>
+				<groupId>com.github.eirslett</groupId>
+				<artifactId>frontend-maven-plugin</artifactId>
+				<version>${frontend-maven-plugin.version}</version>
+				<configuration>
+					<nodeVersion>${node.version}</nodeVersion>
+					<installDirectory>${project.build.directory}</installDirectory>
+					<skip>${frontend.skip}</skip>
+				</configuration>
+				<executions>
+					<execution>
+						<id>install-node-and-npm</id>
+						<goals>
+							<goal>install-node-and-npm</goal>
+						</goals>
+					</execution>
+					<execution>
+						<!-- `ci`, not `install`: it installs exactly what package-lock.json
+						     pins and fails if the lock and package.json disagree. `install`
+						     would quietly resolve a newer nhsuk-frontend and change what a
+						     clinician sees without anyone reviewing it (FR-UI-04). -->
+						<id>npm-ci</id>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<configuration>
+							<arguments>ci --no-audit --no-fund</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<!-- Compiles src/main/frontend/application.scss and copies the
+						     library's JavaScript and assets. See package.json. -->
+						<id>npm-build</id>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<configuration>
+							<arguments>run build</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

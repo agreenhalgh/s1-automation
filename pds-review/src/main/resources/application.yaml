@@ -1,0 +1,187 @@
+# PDS match review: the worklist for presentations the calling application could not match to
+# NHS PDS. A reviewer signs in with CIS2, searches PDS and ODS, records a match decision, and
+# the decision is posted back to the control plane through a Camel route on the gateway.
+#
+#   cd pds-review
+#   ..\mvnw.cmd spring-boot:run
+#
+# Requirements: docs/requirements.md in this directory.
+
+spring:
+  application:
+    name: systmone-pds-review
+
+  # This application's own schema, not one shared with the control plane or the gateway
+  # (NFR-CMP-01). It holds review items — including each presentation as the JSON it arrived as
+  # (FR-INT-04) — review sessions, searches, decisions, the post-back outbox and the audit
+  # trail. All of it is patient-identifiable and must be encrypted at rest in any real
+  # environment (NFR-SEC-02).
+  datasource:
+    url: ${PDS_REVIEW_JDBC_URL:jdbc:postgresql://localhost:5432/systmone_pds_review}
+    username: ${PDS_REVIEW_JDBC_USER:systmone}
+    password: ${PDS_REVIEW_JDBC_PASSWORD:systmone}
+  jpa:
+    hibernate:
+      # Same caveat as the control plane and the gateway: this creates and adds, never drops.
+      # A migration tool is production hardening for all three.
+      ddl-auto: update
+    open-in-view: false
+
+  security:
+    oauth2:
+      client:
+        # NHS CIS2 is an OIDC provider, so sign-in is an ordinary authorization-code login
+        # (FR-AUTH-01). Nothing here is a usable default: until a client is registered with
+        # NHS England per environment, the application has no way to authenticate anyone, which
+        # is the correct failure mode for a service that displays patient data.
+        #
+        # Client authentication should be private_key_jwt rather than a shared secret
+        # (FR-AUTH-02); the signing key belongs in a secrets manager, never in this file.
+        provider:
+          cis2:
+            issuer-uri: ${CIS2_ISSUER_URI:}
+        registration:
+          cis2:
+            client-id: ${CIS2_CLIENT_ID:}
+            client-secret: ${CIS2_CLIENT_SECRET:}
+            client-authentication-method: ${CIS2_CLIENT_AUTH_METHOD:private_key_jwt}
+            authorization-grant-type: authorization_code
+            # CIS2 exposes the national RBAC roles and the user's identity; the URID of the
+            # role the reviewer selects is what PDS requires as NHSD-Session-URID
+            # (FR-AUTH-04/05). Confirm the exact scope list at registration — Open Question 1.
+            scope: ${CIS2_SCOPES:openid,profile,nationalrbacaccess}
+
+server:
+  # 8080 control plane, 8081 capture tool, 8082 worker actuator, 8083 gateway, 8084 here.
+  port: ${PDS_REVIEW_PORT:8084}
+  servlet:
+    session:
+      # A signed-in session in a clinical area is an open patient record, so it closes quickly
+      # when nobody is using it (FR-AUTH-08).
+      timeout: ${PDS_REVIEW_SESSION_TIMEOUT:15m}
+      cookie:
+        http-only: true
+        secure: ${PDS_REVIEW_SECURE_COOKIE:true}
+        same-site: lax
+
+systmone:
+  pds-review:
+
+    auth:
+      # Which national RBAC activity code on the *selected* role grants what. Capability
+      # follows the selected role only, never the union of a user's roles — that is what keeps
+      # the separation of duties real for someone who holds both (FR-AUTH-07a). Configuration,
+      # so a national RBAC change is reviewed by information governance rather than released.
+      activity:
+        review: ${CIS2_ACTIVITY_REVIEW:B0830}
+        audit: ${CIS2_ACTIVITY_AUDIT:B0011}
+
+    intake:
+      # The gateway POSTs each unmatched presentation here (FR-INT-02a). The one route into
+      # this application that is not a CIS2 reviewer session, so it is authenticated as a
+      # service — and it accepts presentations only. There is no read path over patient data
+      # behind this credential (NFR-SEC-01a).
+      #
+      # Retry is the gateway's job, from its own durable store: this application answers
+      # accepted / already-held / rejected so the gateway knows whether to try again
+      # (FR-INT-02b). The gateway has no such route today — it is a change to gateway/.
+      path: ${PDS_REVIEW_INTAKE_PATH:/internal/v1/presentations}
+      token: ${PDS_REVIEW_INTAKE_TOKEN:changeit}
+
+    queue:
+      # The worklist ordering rule, as configuration rather than code, so changing how urgency
+      # is ranked is a reviewed change (FR-WL-05). Most urgent first; oldest first within a
+      # score.
+      triage-score-order: ${PDS_REVIEW_SCORE_ORDER:P0,P1,P2,P3,P4,P5}
+      # An item with no triage score is banded at the top, not the bottom: a missing score is an
+      # absence of evidence, not evidence of low urgency (FR-WL-04, NFR-SAFE-02).
+      unscored-band: ${PDS_REVIEW_UNSCORED_BAND:top}
+      # Waiting time runs from when the patient finished triage, falling back to when the
+      # presentation reached us (FR-WL-03).
+      wait-from: ${PDS_REVIEW_WAIT_FROM:triage-end}
+      refresh-interval: ${PDS_REVIEW_REFRESH_INTERVAL:30s}
+
+    review:
+      # An item is held by one reviewer at a time — two people matching the same patient
+      # independently is how one patient becomes two records (FR-REV-01). The lock is released
+      # if the reviewer walks away, so an abandoned tab cannot strand a patient (FR-REV-02).
+      lock-duration: ${PDS_REVIEW_LOCK_DURATION:20m}
+      lock-sweep-interval: ${PDS_REVIEW_LOCK_SWEEP:1m}
+
+    pds:
+      # PDS FHIR, user-restricted: every call is made on behalf of the signed-in reviewer and
+      # carries NHSD-Session-URID for the role they selected (FR-AUTH-05).
+      base-url: ${PDS_BASE_URL:}
+      # Bounded so a slow PDS cannot hold a reviewer's request thread indefinitely.
+      connect-timeout: ${PDS_CONNECT_TIMEOUT:5s}
+      read-timeout: ${PDS_READ_TIMEOUT:10s}
+      # PDS caps a search at 50 results and returns TOO_MANY_MATCHES rather than a truncated
+      # list beyond that (FR-PDS-09).
+      max-results: ${PDS_MAX_RESULTS:50}
+      # Client-side throttle. This application must not be able to exhaust the organisation's
+      # PDS quota and deny other services access (NFR-PERF-04).
+      requests-per-second: ${PDS_RATE_LIMIT:5}
+
+    ods:
+      # ODS FHIR, for finding a GP practice by name or place so the reviewer never has to know
+      # an ODS code (FR-ODS-02). Unauthenticated — no credential, no onboarding, no
+      # per-environment secret (FR-ODS-10). Timeouts, throttle and cache still apply: an API
+      # that asks nothing of us also promises nothing to us.
+      base-url: ${ODS_BASE_URL:}
+      connect-timeout: ${ODS_CONNECT_TIMEOUT:5s}
+      read-timeout: ${ODS_READ_TIMEOUT:10s}
+      # A GP practice is the organisation holding the Prescribing Cost Centre role. Searched as
+      # activeRoleCode, so a practice whose role has been retired does not surface as a current
+      # option (FR-ODS-04). Configuration, because the binding decision is the role — the
+      # number is only how ODS spells it.
+      gp-practice-role-code: ${ODS_GP_PRACTICE_ROLE_CODE:RO177}
+      practice-cache-ttl: ${ODS_PRACTICE_CACHE_TTL:24h}
+
+    post-back:
+      # The decision goes to a Camel route on the gateway, not to the control plane directly:
+      # one audited front door to the automation, and this application holds no control-plane
+      # credential (§4.5). The route does not exist yet — it is a change to gateway/.
+      url: ${PDS_REVIEW_POSTBACK_URL:http://localhost:8083/gateway/v1/presentation-decisions}
+      token: ${GATEWAY_TOKEN:changeit}
+      # A decision is written down before it is sent and retried until acknowledged, so no
+      # decision is lost to a brief gateway outage (FR-DEC-07, NFR-REL-01).
+      retry-interval: ${PDS_REVIEW_POSTBACK_RETRY:30s}
+      max-attempts: ${PDS_REVIEW_POSTBACK_MAX_ATTEMPTS:20}
+
+    mapping:
+      # How a patient's own answers in user.data[] become PDS search parameters. The most
+      # fragile thing in the application, and therefore versioned configuration with tests over
+      # the captured sample payloads rather than code (FR-PDS-03, §4.2, R1). The sender
+      # populates `key` for almost nothing, so `question` text is the usual handle — and a
+      # wording change upstream silently removes a required parameter unless FR-PDS-04 catches
+      # it.
+      #
+      # The postcode is normalised on the way out — upper-cased, whitespace and punctuation
+      # stripped, a single space re-inserted before the final three characters — because PDS
+      # treats postcode whitespace as significant and LS16AE does not match LS1 6AE
+      # (FR-PDS-05a). There is deliberately no switch for that: a raw postcode is a search that
+      # quietly fails to match. A value that will not parse as a UK postcode is not sent at all
+      # rather than padded into something plausible (FR-PDS-05b).
+      version: ${PDS_REVIEW_MAPPING_VERSION:1}
+      resource: ${PDS_REVIEW_MAPPING_RESOURCE:classpath:data-item-mapping.yaml}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: systmone-pds-review
+
+logging:
+  level:
+    root: INFO
+    com.newbrid.epr_automation.pdsreview: INFO
+  # Patient identifiers never go to a log (NFR-SEC-03). They belong in the audit trail, which is
+  # access-controlled for the purpose; a log file is not. Raising these to DEBUG in an
+  # environment with live data risks exactly that, because request URIs carry search parameters.
