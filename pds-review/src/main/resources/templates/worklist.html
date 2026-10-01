@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Patients awaiting review')}"></head>
+<body>
+<script th:replace="~{fragments/layout :: jsEnabled}"></script>
+<header th:replace="~{fragments/layout :: header}"></header>
+
+<div class="nhsuk-width-container">
+    <main class="nhsuk-main-wrapper" id="maincontent" role="main">
+
+        <div th:replace="~{fragments/layout :: flash}"></div>
+
+        <h1 class="nhsuk-heading-l">Patients awaiting review</h1>
+
+        <p class="nhsuk-body-s nhsuk-u-secondary-text-color">
+            Most urgent first, then longest waiting. Patients with no triage score are shown at the
+            top — a missing score is not evidence that somebody can wait.
+        </p>
+
+        <!--/* Filters. A GET form, so a filtered worklist is a shareable, bookmarkable URL and the
+               audit entry records exactly what the reviewer was shown (FR-WL-07, FR-WL-10). */-->
+        <details class="nhsuk-details" data-module="nhsuk-details">
+            <summary class="nhsuk-details__summary">
+                <span class="nhsuk-details__summary-text">Filter this list</span>
+            </summary>
+            <div class="nhsuk-details__text">
+                <form th:action="@{/worklist}" method="get">
+                    <div class="nhsuk-form-group">
+                        <label class="nhsuk-label" for="score">Triage score</label>
+                        <select class="nhsuk-select" id="score" name="score">
+                            <option value="">Any</option>
+                            <option th:each="s : ${scores}" th:value="${s}" th:text="${s}"
+                                    th:selected="${s == filterScore}">P0</option>
+                        </select>
+                    </div>
+                    <div class="nhsuk-form-group">
+                        <label class="nhsuk-label" for="reason">Why unmatched</label>
+                        <select class="nhsuk-select" id="reason" name="reason">
+                            <option value="">Any</option>
+                            <option th:each="r : ${reasons}" th:value="${r}" th:text="${r}"
+                                    th:selected="${r == filterReason}">Reason</option>
+                        </select>
+                    </div>
+                    <div class="nhsuk-form-group">
+                        <label class="nhsuk-label" for="department">Department code</label>
+                        <input class="nhsuk-input nhsuk-input--width-10" id="department"
+                               name="department" type="text" th:value="${filterDepartment}">
+                    </div>
+                    <button class="nhsuk-button nhsuk-button--secondary" data-module="nhsuk-button"
+                            type="submit">Apply filters</button>
+                </form>
+            </div>
+        </details>
+
+        <!--/*
+          The list, and the only part of this page a background refresh replaces (FR-WL-11). The
+          filters above and the script below are outside it on purpose: a refresh must not move a
+          reviewer's cursor out of a field they are typing in, or reset a filter they just set.
+        */-->
+        <div id="worklist-rows"
+             th:attr="data-rows-url=@{/worklist/rows(hospital=${filterHospital},
+                                                     department=${filterDepartment},
+                                                     score=${filterScore},
+                                                     reason=${filterReason},
+                                                     page=${queue.number})},
+                      data-refresh-seconds=${refreshSeconds},
+                      data-quiet-after-seconds=${quietAfterSeconds}">
+            <div th:replace="~{fragments/worklist-rows :: rows(${queue}, ${waited}, ${now}, ${signature})}"></div>
+        </div>
+
+        <p class="nhsuk-body-s nhsuk-u-secondary-text-color" id="worklist-refresh-state"
+           aria-live="polite">
+            <span id="worklist-refresh-live" hidden>
+                This list updates on its own while you are here.
+            </span>
+            <span id="worklist-refresh-paused" hidden>
+                Updating has paused because you have been away. Move the mouse or press a key to
+                start again.
+            </span>
+        </p>
+
+    </main>
+</div>
+
+<!--/*
+  Keeps the list current without the reviewer doing anything (FR-WL-09, FR-WL-11).
+
+  Progressive enhancement: with JavaScript off, none of this runs and the page is simply the
+  static list it was before (FR-UI-07). Nothing here is required to review a patient.
+
+  Two behaviours are requirements rather than polish:
+
+  * It sends the signature of what is on screen, and a 204 means nothing has changed — no swap,
+    and no audit row on the server (FR-WL-11a).
+  * It STOPS once the reviewer has been idle. A poll is request activity, so left running it
+    would hold the session open forever and defeat the idle timeout that exists because a
+    signed-in session in a clinical area is an open patient record (FR-WL-11b, FR-AUTH-08).
+*/-->
+<script th:inline="none">
+(function () {
+    var region = document.getElementById('worklist-rows');
+    if (!region || !window.fetch) {
+        return;
+    }
+
+    var intervalMs = Number(region.getAttribute('data-refresh-seconds')) * 1000;
+    var quietAfterMs = Number(region.getAttribute('data-quiet-after-seconds')) * 1000;
+    var rowsUrl = region.getAttribute('data-rows-url');
+    if (!intervalMs || !rowsUrl) {
+        return;
+    }
+
+    var liveNotice = document.getElementById('worklist-refresh-live');
+    var pausedNotice = document.getElementById('worklist-refresh-paused');
+    var lastInteraction = Date.now();
+    var timer = null;
+    var inFlight = false;
+
+    function signature() {
+        var marker = region.querySelector('[data-worklist-signature]');
+        return marker ? marker.getAttribute('data-worklist-signature') : '';
+    }
+
+    function show(live) {
+        if (liveNotice) { liveNotice.hidden = !live; }
+        if (pausedNotice) { pausedNotice.hidden = live; }
+    }
+
+    function stop() {
+        if (timer) { window.clearInterval(timer); timer = null; }
+        show(false);
+    }
+
+    function start() {
+        if (timer) { return; }
+        timer = window.setInterval(poll, intervalMs);
+        show(true);
+    }
+
+    function poll() {
+        // The reviewer has walked away: go quiet so their session can time out as it should.
+        if (Date.now() - lastInteraction > quietAfterMs) {
+            stop();
+            return;
+        }
+        if (inFlight || document.hidden) {
+            return;
+        }
+        inFlight = true;
+        var url = rowsUrl + (rowsUrl.indexOf('?') >= 0 ? '&' : '?')
+            + 'seen=' + encodeURIComponent(signature());
+
+        fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (response) {
+                // 204: unchanged, so there is deliberately nothing to do.
+                // Anything else non-OK — session gone, capability withdrawn — leaves the page
+                // exactly as it is rather than blanking a clinical list on a transient error.
+                return response.status === 200 ? response.text() : null;
+            })
+            .then(function (html) {
+                if (html) { region.innerHTML = html; }
+            })
+            .catch(function () { /* offline: keep what is on screen */ })
+            .then(function () { inFlight = false; });
+    }
+
+    ['pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin'].forEach(function (event) {
+        document.addEventListener(event, function () {
+            lastInteraction = Date.now();
+            start();
+        }, { passive: true });
+    });
+
+    start();
+}());
+</script>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

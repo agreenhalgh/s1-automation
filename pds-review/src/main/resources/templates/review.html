@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Review a patient')}"></head>
+<body>
+<script th:replace="~{fragments/layout :: jsEnabled}"></script>
+<header th:replace="~{fragments/layout :: header}"></header>
+
+<div class="nhsuk-width-container">
+    <main class="nhsuk-main-wrapper" id="maincontent" role="main">
+
+        <div th:replace="~{fragments/layout :: flash}"></div>
+        <div th:replace="~{fragments/layout :: errorSummary(
+                'This decision has not been recorded', ${decisionProblems})}"></div>
+
+        <h1 class="nhsuk-heading-l">
+            Review
+            <span class="nhsuk-caption-l" th:text="${view.item().statedName}">patient</span>
+        </h1>
+
+        <!--/* What a nil search result would mean here. Shown before anything else, because it
+               changes the weight of everything that follows (§2.2, FR-REV-03). */-->
+        <div class="nhsuk-warning-callout">
+            <h2 class="nhsuk-warning-callout__label"><span role="text">
+                <span class="nhsuk-u-visually-hidden">Important: </span>Why this patient needs review
+            </span></h2>
+            <p th:text="${view.unmatchedExplanation()}">Explanation</p>
+        </div>
+
+        <div th:if="${view.repeatPresentation()}" class="nhsuk-inset-text">
+            <span class="nhsuk-u-visually-hidden">Information: </span>
+            <p>This looks like a repeat presentation. Earlier decisions for the same stated name
+                and date of birth:</p>
+            <ul class="nhsuk-list nhsuk-list--bullet">
+                <li th:each="earlier : ${view.earlierDecisions()}">
+                    <span th:text="${earlier.decision}">DECISION</span>
+                    on <span th:text="${earlier.decidedAt}">date</span>
+                    <span th:if="${earlier.decisionNote != null}"
+                          th:text="'— ' + ${earlier.decisionNote}"></span>
+                </li>
+            </ul>
+        </div>
+
+        <!--/* ============ what the patient told us ============ */-->
+        <h2 class="nhsuk-heading-m">What the patient told us</h2>
+        <p class="nhsuk-body-s nhsuk-u-secondary-text-color">
+            Patient-stated and unverified. Somebody filled this in on a screen in a waiting room,
+            possibly on another person's behalf.
+        </p>
+
+        <dl class="nhsuk-summary-list">
+            <div class="nhsuk-summary-list__row" th:each="answer : ${view.answers()}">
+                <dt class="nhsuk-summary-list__key" th:text="${answer.question()}">Question</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${answer.answer()}">Answer</dd>
+            </div>
+        </dl>
+
+        <details class="nhsuk-details" data-module="nhsuk-details">
+            <summary class="nhsuk-details__summary">
+                <span class="nhsuk-details__summary-text">Triage context</span>
+            </summary>
+            <div class="nhsuk-details__text">
+                <p>Presenting complaint:
+                    <strong th:text="${view.presentation().presentingComplaint().orElse('not recorded')}">—</strong>
+                </p>
+                <p>Triage score:
+                    <strong th:text="${view.item().triageScore} ?: 'none recorded'">—</strong>
+                </p>
+                <p th:if="${view.presentation().hasPdf()}">
+                    <a class="nhsuk-link" th:href="@{'/review/' + ${view.item().id} + '/pdf'}"
+                       target="_blank" rel="noopener">
+                        Open the triage pass (PDF)
+                    </a>
+                    — this is bulk patient data, and opening it is recorded against you.
+                </p>
+            </div>
+        </details>
+
+        <!--/* ============ non-fuzzy search ============ */-->
+        <h2 class="nhsuk-heading-m">PDS search from these details</h2>
+
+        <div th:if="${!view.canSearchNonFuzzy()}" class="nhsuk-error-summary" role="alert" tabindex="-1">
+            <h3 class="nhsuk-error-summary__title">No search was run</h3>
+            <div class="nhsuk-error-summary__body">
+                <p>PDS needs a family name, a gender and a date of birth for this kind of search.
+                    These could not be taken from the patient's answers:</p>
+                <ul class="nhsuk-list nhsuk-error-summary__list">
+                    <li th:each="field : ${view.missingRequiredFields()}" th:text="${field}">field</li>
+                </ul>
+                <p>Nothing was sent — a search missing a required field answers a different
+                    question. Use the fuzzy search below, or record an outcome.</p>
+            </div>
+        </div>
+
+        <div th:each="note : ${view.derived().notes()}" class="nhsuk-inset-text">
+            <p th:text="${note.value}">A field could not be used</p>
+        </div>
+
+        <div th:replace="~{fragments/candidates :: candidates(${nonFuzzy}, 'Non-fuzzy, including previous names and addresses', ${view})}"></div>
+
+        <!--/* ============ GP practice ============ */-->
+        <h2 class="nhsuk-heading-m">Search by registered GP practice</h2>
+        <p class="nhsuk-body-s nhsuk-u-secondary-text-color">
+            Find the practice, then narrow the PDS search to it. The practice directory is a public
+            service — only the practice name, town or postcode area is sent to it, never the
+            patient's details.
+        </p>
+
+        <form th:action="@{'/review/' + ${view.item().id} + '/practices'}" method="post">
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="practiceName">Practice name</label>
+                <input class="nhsuk-input" id="practiceName" name="practiceName" type="text">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="practicePostcode">Postcode or postcode area</label>
+                <input class="nhsuk-input nhsuk-input--width-10" id="practicePostcode"
+                       name="practicePostcode" type="text">
+            </div>
+            <div class="nhsuk-checkboxes__item nhsuk-u-margin-bottom-3"
+                 th:if="${view.derived().postcode().usable()}">
+                <input class="nhsuk-checkboxes__input" id="nearPatient" name="nearPatient"
+                       type="checkbox" value="true">
+                <label class="nhsuk-label nhsuk-checkboxes__label" for="nearPatient">
+                    Near the patient's home
+                    (<span th:text="${view.derived().postcode().outwardCode()}">LS1</span> only)
+                </label>
+            </div>
+            <button class="nhsuk-button nhsuk-button--secondary" data-module="nhsuk-button"
+                    type="submit">Find practices</button>
+        </form>
+
+        <div th:if="${practices != null}">
+            <div th:if="${practices.failed()}" class="nhsuk-warning-callout">
+                <h3 class="nhsuk-warning-callout__label"><span role="text">Directory unavailable</span></h3>
+                <p th:text="${practices.problem()}">problem</p>
+                <p>You can still use the searches above and below.</p>
+            </div>
+            <table class="nhsuk-table" th:if="${!practices.failed() and !practices.practices().isEmpty()}">
+                <caption class="nhsuk-table__caption">Practices found</caption>
+                <thead class="nhsuk-table__head">
+                <tr><th scope="col">Practice</th><th scope="col">Address</th>
+                    <th scope="col">ODS code</th><th scope="col"></th></tr>
+                </thead>
+                <tbody class="nhsuk-table__body">
+                <tr class="nhsuk-table__row" th:each="practice : ${practices.practices()}">
+                    <td class="nhsuk-table__cell">
+                        <span th:text="${practice.name()}">Name</span>
+                        <span class="nhsuk-tag nhsuk-tag--grey" th:unless="${practice.active()}">closed</span>
+                    </td>
+                    <td class="nhsuk-table__cell" th:text="${practice.displayAddress()}">Address</td>
+                    <td class="nhsuk-table__cell" th:text="${practice.odsCode()}">A12345</td>
+                    <td class="nhsuk-table__cell">
+                        <form th:action="@{'/review/' + ${view.item().id} + '/search/practice'}"
+                              method="post">
+                            <input type="hidden" name="practiceOdsCode" th:value="${practice.odsCode()}">
+                            <input type="hidden" name="practiceName" th:value="${practice.name()}">
+                            <button class="nhsuk-button nhsuk-button--secondary nhsuk-u-margin-bottom-0"
+                                    data-module="nhsuk-button" type="submit">Search PDS here</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="nhsuk-body" th:if="${!practices.failed() and practices.practices().isEmpty()}">
+                No practices matched.
+            </p>
+        </div>
+
+        <div th:if="${byPractice != null}"
+             th:replace="~{fragments/candidates :: candidates(${byPractice}, 'Narrowed to ' + ${chosenPractice}, ${view})}"></div>
+
+        <!--/* ============ fuzzy ============ */-->
+        <h2 class="nhsuk-heading-m">Fuzzy search</h2>
+        <p class="nhsuk-body-s nhsuk-u-secondary-text-color">
+            Matches homophones and transposed names. Date of death and GP practice are not offered
+            here because PDS ignores both in a fuzzy search.
+        </p>
+
+        <form th:action="@{'/review/' + ${view.item().id} + '/search/fuzzy'}" method="post">
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="given">Given name</label>
+                <input class="nhsuk-input" id="given" name="given" type="text"
+                       th:value="${fuzzyForm != null} ? ${fuzzyForm.given()} : ${view.derived().givenName()}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="family">Family name</label>
+                <input class="nhsuk-input" id="family" name="family" type="text"
+                       th:value="${fuzzyForm != null} ? ${fuzzyForm.family()} : ${view.derived().familyName()}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="birthdate">Date of birth</label>
+                <div class="nhsuk-hint" id="birthdate-hint">
+                    yyyy-mm-dd. Prefix with ge or le for a range, for example ge1947-01-01
+                </div>
+                <input class="nhsuk-input nhsuk-input--width-10" id="birthdate" name="birthdate"
+                       type="text" aria-describedby="birthdate-hint"
+                       th:value="${fuzzyForm != null} ? ${fuzzyForm.birthdate()} : ${view.derived().birthdate()}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="gender">Gender</label>
+                <select class="nhsuk-select" id="gender" name="gender">
+                    <option value="">Not specified</option>
+                    <option value="female" th:selected="${view.derived().gender() == 'female'}">female</option>
+                    <option value="male" th:selected="${view.derived().gender() == 'male'}">male</option>
+                    <option value="other" th:selected="${view.derived().gender() == 'other'}">other</option>
+                    <option value="unknown" th:selected="${view.derived().gender() == 'unknown'}">unknown</option>
+                </select>
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="postcode">Postcode</label>
+                <div class="nhsuk-hint" id="postcode-hint">
+                    Spacing does not matter — it is normalised before it is sent
+                </div>
+                <input class="nhsuk-input nhsuk-input--width-10" id="postcode" name="postcode"
+                       type="text" aria-describedby="postcode-hint"
+                       th:value="${fuzzyForm != null} ? ${fuzzyForm.postcode()} : ${view.derived().submitted().get('postcode')}">
+            </div>
+            <button class="nhsuk-button nhsuk-button--secondary" data-module="nhsuk-button"
+                    type="submit">Run fuzzy search</button>
+        </form>
+
+        <div th:if="${fuzzy != null}"
+             th:replace="~{fragments/candidates :: candidates(${fuzzy}, 'Fuzzy — homophones and transposed names', ${view})}"></div>
+
+        <!--/* ============ decision ============ */-->
+        <h2 class="nhsuk-heading-m">Record what you have decided</h2>
+
+        <form th:action="@{'/review/' + ${view.item().id} + '/decision'}" method="post"
+              id="decision-form">
+            <div class="nhsuk-form-group">
+                <fieldset class="nhsuk-fieldset">
+                    <legend class="nhsuk-fieldset__legend nhsuk-fieldset__legend--s">
+                        This will register a patient
+                    </legend>
+                    <div class="nhsuk-radios">
+                        <div class="nhsuk-radios__item">
+                            <input class="nhsuk-radios__input" id="d-matched" name="decision"
+                                   type="radio" value="MATCHED">
+                            <label class="nhsuk-label nhsuk-radios__label" for="d-matched">
+                                This patient is one of the PDS candidates above
+                                <span class="nhsuk-hint nhsuk-radios__hint">
+                                    Select the candidate with the radio button beside it
+                                </span>
+                            </label>
+                        </div>
+                        <div class="nhsuk-radios__item">
+                            <input class="nhsuk-radios__input" id="d-notonpds" name="decision"
+                                   type="radio" value="ACCEPTED_NOT_ON_PDS">
+                            <label class="nhsuk-label nhsuk-radios__label" for="d-notonpds">
+                                Accept the details as given — the patient is not registered on PDS
+                            </label>
+                        </div>
+                        <div class="nhsuk-radios__item">
+                            <input class="nhsuk-radios__input" id="d-unavailable" name="decision"
+                                   type="radio" value="ACCEPTED_PATIENT_UNAVAILABLE">
+                            <label class="nhsuk-label nhsuk-radios__label" for="d-unavailable">
+                                Accept the details as given — the patient is not available to
+                                confirm them
+                            </label>
+                        </div>
+                    </div>
+
+                    <legend class="nhsuk-fieldset__legend nhsuk-fieldset__legend--s nhsuk-u-margin-top-5">
+                        This will close the item and register nobody
+                    </legend>
+                    <div class="nhsuk-radios">
+                        <div class="nhsuk-radios__item">
+                            <input class="nhsuk-radios__input" id="d-manual" name="decision"
+                                   type="radio" value="CLOSED_REGISTERED_MANUALLY">
+                            <label class="nhsuk-label nhsuk-radios__label" for="d-manual">
+                                Not necessary — the patient has already been registered on the EPR
+                                by hand
+                            </label>
+                        </div>
+                        <div class="nhsuk-radios__item">
+                            <input class="nhsuk-radios__input" id="d-notrequired" name="decision"
+                                   type="radio" value="CLOSED_NO_LONGER_REQUIRED">
+                            <label class="nhsuk-label nhsuk-radios__label" for="d-notrequired">
+                                Not necessary — the patient no longer requires registration
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="existingRecordId">
+                    If already registered by hand, where? (MRN or local identifier)
+                </label>
+                <div class="nhsuk-hint" id="existing-hint">
+                    An assertion that a patient is already on the EPR is only checkable if it says
+                    where. Leave blank if you do not know it.
+                </div>
+                <input class="nhsuk-input nhsuk-input--width-20" id="existingRecordId"
+                       name="existingRecordId" type="text" aria-describedby="existing-hint"
+                       th:value="${attemptedExistingRecordId}">
+            </div>
+
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="note">Reason</label>
+                <div class="nhsuk-hint" id="note-hint">
+                    Required when you are closing without registering anybody.
+                </div>
+                <textarea class="nhsuk-textarea" id="note" name="note" rows="3"
+                          aria-describedby="note-hint" th:text="${attemptedNote}"></textarea>
+            </div>
+
+            <div class="nhsuk-form-group">
+                <div class="nhsuk-checkboxes__item">
+                    <input class="nhsuk-checkboxes__input" id="confirmed" name="confirmed"
+                           type="checkbox" value="true">
+                    <label class="nhsuk-label nhsuk-checkboxes__label" for="confirmed">
+                        I understand what this will do — either a patient is registered on the EPR,
+                        or this item is closed and nobody is registered
+                    </label>
+                </div>
+            </div>
+
+            <button class="nhsuk-button" data-module="nhsuk-button" type="submit">
+                Record this decision
+            </button>
+        </form>
+
+        <!--/* ============ put it back ============ */-->
+        <h2 class="nhsuk-heading-m">Or put it back</h2>
+        <form th:action="@{'/review/' + ${view.item().id} + '/return'}" method="post">
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="reason">Why are you putting this back?</label>
+                <div class="nhsuk-hint" id="return-hint">
+                    The next reviewer sees this, so they do not repeat your work. The patient keeps
+                    their place in the queue.
+                </div>
+                <input class="nhsuk-input" id="reason" name="reason" type="text"
+                       aria-describedby="return-hint">
+            </div>
+            <button class="nhsuk-button nhsuk-button--secondary" data-module="nhsuk-button"
+                    type="submit">Return to the queue</button>
+        </form>
+
+        <!--/* ============ what has been done so far ============ */-->
+        <details class="nhsuk-details" data-module="nhsuk-details" th:if="${view.anySearchRun()}">
+            <summary class="nhsuk-details__summary">
+                <span class="nhsuk-details__summary-text">
+                    What has already been tried on this patient
+                </span>
+            </summary>
+            <div class="nhsuk-details__text">
+                <ol class="nhsuk-list nhsuk-list--number">
+                    <li th:each="search : ${view.searches()}">
+                        <strong th:text="${search.kind}">KIND</strong>
+                        — <span th:text="${search.outcome}">OUTCOME</span>,
+                        <span th:text="${search.resultCount}">0</span> result(s)
+                        <span class="nhsuk-hint nhsuk-u-font-size-14"
+                              th:text="${search.parameters}">params</span>
+                        <span class="nhsuk-hint nhsuk-u-font-size-14"
+                              th:if="${search.submittedPostcode != null}">
+                            postcode as given
+                            &quot;<span th:text="${search.submittedPostcode}"></span>&quot;,
+                            sent as
+                            &quot;<span th:text="${search.sentPostcode} ?: 'not sent'"></span>&quot;
+                        </span>
+                    </li>
+                </ol>
+                <ul class="nhsuk-list nhsuk-list--bullet" th:if="${!view.sessions().isEmpty()}">
+                    <li th:each="session : ${view.sessions()}">
+                        <span th:text="${session.reviewer}">who</span>,
+                        <span th:text="${session.startedAt}">when</span>
+                        <span th:if="${session.ending != null}"
+                              th:text="'— ' + ${session.ending} +
+                                       (${session.reason} != null ? ': ' + ${session.reason} : '')">
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </details>
+
+    </main>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

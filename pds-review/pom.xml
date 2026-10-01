@@ -63,6 +63,14 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<!-- Boot 4's starters are modular, so JSON support is no longer implied by the web
+		     starter. It is needed for more than request bodies here: a review item stores its
+		     presentation as the JSON it arrived as (FR-INT-04) and reads it with JsonNode, and
+		     the PDS and ODS clients parse FHIR bundles the same way. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jackson</artifactId>
+		</dependency>
 		<!-- Server-rendered reviewer UI, matching the control plane rather than introducing a
 		     second front-end toolchain for one internal clinical worklist. -->
 		<dependency>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!--/*
+  Shared page furniture, built from NHS.UK frontend components (FR-UI-01).
+
+  The header is configured for an INTERNAL, STAFF-FACING tool (FR-UI-05). This is not a public
+  nhs.uk service and must not present itself as one, so the service name says what it is and who
+  it is for. Confirm the logo and brand treatment with the organisation's brand owner before
+  release — Open Question 8.
+
+  Every asset below is served by this application (FR-UI-03). Nothing is loaded from a CDN: a
+  clinical worklist must not fail to render because a network blocked egress, and nobody outside
+  this deployment should be able to change what a clinician sees.
+*/-->
+
+<head th:fragment="head(pageTitle)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--/* A worklist of patient records has no business in a search index or a referrer header. */-->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="same-origin">
+    <title th:text="|${pageTitle} — PDS match review|">PDS match review</title>
+    <link rel="stylesheet" th:href="@{/stylesheets/application.min.css}">
+    <link rel="icon" th:href="@{/assets/images/favicon.ico}" sizes="48x48">
+    <link rel="icon" th:href="@{/assets/images/favicon.svg}" sizes="any" type="image/svg+xml">
+</head>
+
+<body>
+<!--/* The design system's own boilerplate: marks the page as JavaScript-enabled and as running
+       a supported browser. The interface works without it (FR-UI-07). */-->
+<script th:fragment="jsEnabled">
+    document.body.className += ' js-enabled'
+        + ('noModule' in HTMLScriptElement.prototype ? ' nhsuk-frontend-supported' : '');
+</script>
+
+<header th:fragment="header" class="nhsuk-header nhsuk-header--white" role="banner">
+    <div class="nhsuk-header__container">
+        <div class="nhsuk-header__service">
+            <a class="nhsuk-header__service-logo" th:href="@{/}">
+                <span class="nhsuk-header__service-name">PDS match review</span>
+            </a>
+        </div>
+        <div class="nhsuk-header__content">
+            <p class="nhsuk-u-font-size-16 nhsuk-u-margin-bottom-0"
+               th:if="${#authentication != null and #authentication.name != 'anonymousUser'}">
+                <span th:text="${#authentication.name}">reviewer</span>
+                <span th:if="${session != null}"> ·
+                    <a class="nhsuk-link" th:href="@{/roles}">change role</a>
+                </span>
+                ·
+                <form th:action="@{/logout}" method="post" class="nhsuk-u-display-inline">
+                    <button class="nhsuk-button nhsuk-button--reverse nhsuk-u-margin-bottom-0"
+                            data-module="nhsuk-button" type="submit">Sign out</button>
+                </form>
+            </p>
+        </div>
+    </div>
+</header>
+
+<footer th:fragment="footer" role="contentinfo">
+    <div class="nhsuk-footer-container">
+        <div class="nhsuk-width-container">
+            <div class="nhsuk-footer">
+                <p class="nhsuk-footer__copyright">
+                    Internal clinical tool. Everything you view, search and decide here is
+                    recorded against you.
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!--/*
+  The error summary, at the top of the page and linked to the fields at fault (FR-UI-06). This is
+  what turns a refused fuzzy combination or an underivable search parameter into something a
+  reviewer reads as a thing to fix, rather than as a failure to interpret.
+*/-->
+<div th:fragment="errorSummary(title, problems)"
+     th:if="${problems != null and !problems.isEmpty()}"
+     class="nhsuk-error-summary" role="alert" tabindex="-1">
+    <h2 class="nhsuk-error-summary__title" th:text="${title}">There is a problem</h2>
+    <div class="nhsuk-error-summary__body">
+        <ul class="nhsuk-list nhsuk-error-summary__list">
+            <li th:each="problem : ${problems}" th:text="${problem}">A problem</li>
+        </ul>
+    </div>
+</div>
+
+<div th:fragment="flash" th:if="${notice != null or problem != null}">
+    <div th:if="${notice != null}" class="nhsuk-inset-text">
+        <span class="nhsuk-u-visually-hidden">Information: </span>
+        <p th:text="${notice}">Done</p>
+    </div>
+    <div th:if="${problem != null}" class="nhsuk-warning-callout">
+        <h3 class="nhsuk-warning-callout__label"><span role="text">Important</span></h3>
+        <p th:text="${problem}">A problem</p>
+    </div>
+</div>
+
+<script th:fragment="scripts" type="module" th:src="@{/javascripts/nhsuk-frontend.min.js}"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  Renders nothing at all.
+
+  Paired with a 204 on the worklist refresh (FR-WL-11a): when the list has not changed there is
+  no markup to send and nothing for the client to swap. A view that writes zero bytes is how a
+  Spring MVC handler says that while still returning a view name, which keeps the changed and
+  unchanged paths the same shape and stops either accidentally rendering the other.
+*/-->
+<th:block th:fragment="nothing"></th:block>
+</body>
+</html>

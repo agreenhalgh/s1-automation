@@ -27,29 +27,26 @@ spring:
       ddl-auto: update
     open-in-view: false
 
-  security:
-    oauth2:
-      client:
-        # NHS CIS2 is an OIDC provider, so sign-in is an ordinary authorization-code login
-        # (FR-AUTH-01). Nothing here is a usable default: until a client is registered with
-        # NHS England per environment, the application has no way to authenticate anyone, which
-        # is the correct failure mode for a service that displays patient data.
-        #
-        # Client authentication should be private_key_jwt rather than a shared secret
-        # (FR-AUTH-02); the signing key belongs in a secrets manager, never in this file.
-        provider:
-          cis2:
-            issuer-uri: ${CIS2_ISSUER_URI:}
-        registration:
-          cis2:
-            client-id: ${CIS2_CLIENT_ID:}
-            client-secret: ${CIS2_CLIENT_SECRET:}
-            client-authentication-method: ${CIS2_CLIENT_AUTH_METHOD:private_key_jwt}
-            authorization-grant-type: authorization_code
-            # CIS2 exposes the national RBAC roles and the user's identity; the URID of the
-            # role the reviewer selects is what PDS requires as NHSD-Session-URID
-            # (FR-AUTH-04/05). Confirm the exact scope list at registration — Open Question 1.
-            scope: ${CIS2_SCOPES:openid,profile,nationalrbacaccess}
+  # NHS CIS2 is an OIDC provider, so reviewer sign-in is an ordinary authorization-code login
+  # (FR-AUTH-01). The registration is NOT declared here, on purpose: a half-filled one makes
+  # Spring Boot's OAuth2 auto-configuration fail at startup rather than back off, and there is no
+  # placeholder for a client id that is a sensible default anyway.
+  #
+  # Supply it per environment, in external configuration or environment variables:
+  #
+  #   spring.security.oauth2.client.provider.cis2.issuer-uri=<CIS2 issuer>
+  #   spring.security.oauth2.client.registration.cis2.client-id=<client id>
+  #   spring.security.oauth2.client.registration.cis2.client-authentication-method=private_key_jwt
+  #   spring.security.oauth2.client.registration.cis2.authorization-grant-type=authorization_code
+  #   spring.security.oauth2.client.registration.cis2.scope=openid,profile,nationalrbacaccess
+  #
+  # Prefer private_key_jwt over a shared secret (FR-AUTH-02); the signing key belongs in a
+  # secrets manager, never in a file like this one. Confirm the scope list at registration —
+  # Open Question 1.
+  #
+  # With no registration present, this application refuses to start unless
+  # systmone.pds-review.auth.require-cis2 is false, which is a development-only setting that
+  # cannot coexist with a live PDS. See ApplicationConfig.
 
 server:
   # 8080 control plane, 8081 capture tool, 8082 worker actuator, 8083 gateway, 8084 here.
@@ -72,6 +69,7 @@ systmone:
       # follows the selected role only, never the union of a user's roles — that is what keeps
       # the separation of duties real for someone who holds both (FR-AUTH-07a). Configuration,
       # so a national RBAC change is reviewed by information governance rather than released.
+      require-cis2: false
       activity:
         review: ${CIS2_ACTIVITY_REVIEW:B0830}
         audit: ${CIS2_ACTIVITY_AUDIT:B0011}
@@ -99,7 +97,13 @@ systmone:
       # Waiting time runs from when the patient finished triage, falling back to when the
       # presentation reached us (FR-WL-03).
       wait-from: ${PDS_REVIEW_WAIT_FROM:triage-end}
+      # How often an open worklist re-fetches itself, so an urgent arrival appears without
+      # anyone reloading (FR-WL-09, FR-WL-11).
       refresh-interval: ${PDS_REVIEW_REFRESH_INTERVAL:30s}
+      # And when it stops. Must stay comfortably below the session timeout above: a background
+      # poll is request activity, so without this a worklist left open on a ward PC would keep a
+      # session — and a screen full of patient names — alive indefinitely (FR-WL-11b, FR-AUTH-08).
+      refresh-quiet-after: ${PDS_REVIEW_REFRESH_QUIET_AFTER:5m}
 
     review:
       # An item is held by one reviewer at a time — two people matching the same patient

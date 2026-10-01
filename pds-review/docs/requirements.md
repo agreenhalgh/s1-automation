@@ -1,7 +1,7 @@
 # Requirements Specification — PDS Match Review
 
 **Project:** `com.newbrid.epr_automation.pdsreview` (`pds-review/`)
-**Document status:** Draft v0.6 — see §9.1 for what changed
+**Document status:** Draft v0.7 — see §9.1 for what changed
 **Date:** 2026-08-26
 **Owner:** EPR Automation Team
 **Parent specification:** [SystmOne RPA Framework](../../docs/requirements.md)
@@ -290,10 +290,11 @@ Requirements use **MoSCoW** priority: **M**ust / **S**hould / **C**ould / **W**o
 | FR-WL-06 | M        | The list **shall** exclude items already decided, and items currently locked by another reviewer **shall** be shown but not openable (FR-REV-01).                                                                                                                                                                             |
 | FR-WL-07 | S        | The list **should** be filterable by hospital, routing department, triage score, unmatched reason and waiting-time threshold, and **should** support paging with a stable order.                                                                                                                                              |
 | FR-WL-08 | S        | The list **should** show an ageing indicator against a configurable threshold per triage score, so an item about to breach is visible without arithmetic.                                                                                                                                                                     |
-| FR-WL-09 | S        | The list **should** refresh without a manual reload, at a configurable interval, so a reviewer watching an empty queue sees an urgent arrival.                                                                                                                                                                                |
+| FR-WL-09 | S        | The list **should** refresh without a manual reload, at a configurable interval, so a reviewer watching an empty queue sees an urgent arrival. The same polled fragment that satisfies FR-WL-11 satisfies this.                                                                                                                                                                                |
 | FR-WL-10 | M        | Opening the worklist **shall** be audited (FR-AUD-01), including the filter and ordering in force. What a reviewer was shown is part of what they decided from.                                                                                                                                                               |
-| FR-WL-11 | M        | The worklist user interface **shall** update to remove or add list items updated by other users without requiring action or refresh by the user                                                                                                                                                                               |
-| FR-WL-12 | M        | The worklist user interface **shall** remove items from the worklist as soon as they are selected by a user for review, avoiding multiple users reviewing the same case concurrently |                                                                                                                                         |
+| FR-WL-11 | M        | The worklist **shall** update to add and remove items changed by other reviewers, and to show an item newly taken for review, without the reviewer acting or reloading. Satisfied by polling a fragment of the list on the interval of FR-WL-09 — the two are one mechanism, not two. |
+| FR-WL-11a | M        | A background refresh that changes nothing **shall** leave the page untouched and **shall not** be audited. Recording a row every few seconds per reviewer would bury the disclosures the trail exists to answer for (FR-AUD-06); a refresh that discloses nothing new is not a disclosure. A refresh that *does* change the list **shall** be audited as such, distinguishably from opening the worklist (FR-WL-10). |
+| FR-WL-11b | M        | Background refreshing **shall not** keep an unattended session alive. Polling is request activity, so without this a worklist left open would never reach the idle timeout of FR-AUTH-08 — which exists because a signed-in session in a clinical area is an open patient record. Refreshing **shall** stop after a configurable period with no interaction from the reviewer, and resume when they return. |
 
 ### 3.4 The review session
 
@@ -636,6 +637,7 @@ Questions 1 and 2.
 |---------|--------------------|
 | Application | Spring Boot 4.1, Java 25, Spring Web MVC |
 | Reviewer UI | Thymeleaf + Spring Security, matching the control plane; **NHS.UK frontend** components (§3.10) |
+| Live worklist | The list is a Thymeleaf fragment served on its own path. A few lines of progressive-enhancement JavaScript re-fetch it on the configured interval, sending the signature of what is on screen; the server answers `204 No Content` when nothing has changed, so an idle queue costs one cheap query and no DOM churn. Polling stops while the reviewer is away, so an unattended page cannot hold a session open (FR-WL-11a/11b). With JavaScript off the list is simply static (FR-UI-07) |
 | Frontend build | `frontend-maven-plugin` installs a pinned Node into `target/`, runs `npm ci` against a committed `package-lock.json`, compiles `src/main/frontend/application.scss` and copies the library's JavaScript and assets. Output goes to `target/frontend`, mapped into the jar as `static/` — nothing generated is committed, and `mvn clean` really cleans. `-Dfrontend.skip=true` builds the Java alone, for an offline or air-gapped build |
 | AuthN/Z | CIS2 OIDC authorization-code login via `spring-boot-starter-security-oauth2-client`; `private_key_jwt` via `spring-security-oauth2-jose`; method/URL RBAC granted by the selected role's activity codes — `B0830` → REVIEWER, `B0011` → AUDITOR |
 | Intake | Authenticated service-to-service POST endpoint (Spring Web MVC), idempotent on the review item key, committing before it answers; the gateway retries from its own durable store |
@@ -700,65 +702,70 @@ is compiled into the Maven build by `frontend-maven-plugin` from `package.json`
 The application is accepted for release 1 when:
 
 1. A validated presentation carrying no PDS demographics, **POSTed by the
-   gateway**, is admitted to the queue exactly once; the same POST repeated
-   creates no second item and is answered as already-held; and a presentation
-   carrying PDS demographics is not admitted at all
-   (FR-INT-01/02/02a/02b/03/05).
+    gateway**, is admitted to the queue exactly once; the same POST repeated
+    creates no second item and is answered as already-held; and a presentation
+    carrying PDS demographics is not admitted at all
+    (FR-INT-01/02/02a/02b/03/05).
 2. Stopping this application, submitting a presentation to the gateway, and
-   restarting results in the presentation appearing in the queue with no manual
-   intervention and no failure returned to the sender (FR-INT-02b).
+    restarting results in the presentation appearing in the queue with no manual
+    intervention and no failure returned to the sender (FR-INT-02b).
 3. A reviewer signs in with **CIS2**, selects a national RBAC role, and cannot
-   reach any review screen without doing both (FR-AUTH-01/04). A role without
-   **`B0830`** is refused with an explanation of what is missing, not with a
-   downstream 403 (FR-AUTH-06).
+    reach any review screen without doing both (FR-AUTH-01/04). A role without
+    **`B0830`** is refused with an explanation of what is missing, not with a
+    downstream 403 (FR-AUTH-06).
 4. The worklist shows waiting items ordered by triage score then waiting time,
-   with unscored items banded at the top, and both keys visible on the row
-   (FR-WL-01/02/03/04).
-5. Opening an item locks it, runs a **non-fuzzy PDS search with `_history=true`**
-   built from the patient's own answers, and shows candidates with scores
-   side-by-side against the submitted details (FR-REV-01, FR-PDS-01/02/06/07).
-6. A postcode submitted as `ls16ae` is searched as `LS1 6AE`, and the audit entry
-   shows both the submitted and the sent value. A postcode submitted as `LS1` is
-   not sent at all, and is shown to the reviewer as unusable
-   (FR-PDS-05a/05b, FR-AUD-02).
-7. Where the required parameters cannot be derived, the reviewer is told which
-   ones and no partial search is issued (FR-PDS-04).
-8. The reviewer finds a GP practice through **ODS `GET /Organization`** —
-   unauthenticated, restricted to **Prescribing Cost Centre (`RO177`)** via
-   `activeRoleCode` — and runs a practice-scoped PDS search from it
-   (FR-ODS-01/02/03/04/10).
-9. The reviewer runs a **fuzzy** search with parameters they selected, and an
-   invalid combination is refused as a form error before PDS is called
-   (FR-FUZ-01/02/03). Reaching it **without** having run the GP practice search
-   is possible, and the audit shows the path actually taken (FR-REV-09/10).
-10. Selecting a candidate and confirming produces a `MATCHED` decision whose
+    with unscored items banded at the top, and both keys visible on the row
+    (FR-WL-01/02/03/04).
+5. With the worklist open and untouched, an item admitted by the gateway appears, and an item
+    another reviewer opens changes to "being reviewed" — both without the reviewer acting. A
+    refresh that changes nothing writes no audit row and does not disturb the page, and refreshing
+    stops once the reviewer has been away long enough that their session should be timing out
+    (FR-WL-09/11/11a/11b).
+6. Opening an item locks it, runs a **non-fuzzy PDS search with `_history=true`**
+    built from the patient's own answers, and shows candidates with scores
+    side-by-side against the submitted details (FR-REV-01, FR-PDS-01/02/06/07).
+7. A postcode submitted as `ls16ae` is searched as `LS1 6AE`, and the audit entry
+    shows both the submitted and the sent value. A postcode submitted as `LS1` is
+    not sent at all, and is shown to the reviewer as unusable
+    (FR-PDS-05a/05b, FR-AUD-02).
+8. Where the required parameters cannot be derived, the reviewer is told which
+    ones and no partial search is issued (FR-PDS-04).
+9. The reviewer finds a GP practice through **ODS `GET /Organization`** —
+    unauthenticated, restricted to **Prescribing Cost Centre (`RO177`)** via
+    `activeRoleCode` — and runs a practice-scoped PDS search from it
+    (FR-ODS-01/02/03/04/10).
+10. The reviewer runs a **fuzzy** search with parameters they selected, and an
+    invalid combination is refused as a form error before PDS is called
+    (FR-FUZ-01/02/03). Reaching it **without** having run the GP practice search
+    is possible, and the audit shows the path actually taken (FR-REV-09/10).
+11. Selecting a candidate and confirming produces a `MATCHED` decision whose
     post-back carries the presentation plus the matched NHS number, is
     acknowledged by the gateway route, and is not duplicated when retried
     (FR-DEC-01/04/05/06).
-11. Both accept-unmatched decisions are recorded and posted back as **distinct**
+12. Both accept-unmatched decisions are recorded and posted back as **distinct**
     reason codes (FR-DEC-01/02).
-12. Each **closing** decision — already registered on the EPR by hand, and
+13. Each **closing** decision — already registered on the EPR by hand, and
     registration no longer required — is refused without its note, and once given
     is recorded, leaves the worklist, is posted back under a **`CLOSED_`** reason
     code, and results in **no patient registration**. `CLOSED_REGISTERED_MANUALLY`
     captures where the manual registration landed. A payload carrying a reason
     code the route does not recognise is **rejected**, not registered
     (FR-DEC-01/01a/01b/01c/03/05a).
-13. An item is returned to the queue with a reason, keeps its priority, and shows
+14. An item is returned to the queue with a reason, keeps its priority, and shows
     the previous session's history to the next reviewer (FR-REV-04/05).
-14. Killing the gateway, recording a decision, and restarting it results in the
+15. Killing the gateway, recording a decision, and restarting it results in the
     decision being delivered exactly once with no reviewer action
     (FR-DEC-07, NFR-REL-01).
-15. A user whose selected role carries **`B0011`** can see every view, search and
+16. A user whose selected role carries **`B0011`** can see every view, search and
     decision from the run-through above — attributed to the reviewer and the role
     they had selected — can search it, cannot alter it, cannot open a review item,
     and their own access to the trail appears in it (FR-AUD-01…07). A user holding
     both `B0830` and `B0011` can exercise only the one they selected
     (FR-AUTH-07a).
-16. No patient identifier appears in any application log or metric label from the
+17. No patient identifier appears in any application log or metric label from the
     whole run-through, and no patient identifier appears in any ODS request
     (NFR-SEC-03, FR-ODS-11).
-17. Every reviewer screen is built from NHS.UK frontend components; each page
+18. Every reviewer screen is built from NHS.UK frontend components; each page
     loads with **no request to any host outside this application**; and the
     fuzzy-search form reports an invalid parameter combination through the design
     system's error summary, linked to the fields at fault
@@ -808,6 +815,7 @@ The application is accepted for release 1 when:
 | Which activity grants access to the audit trail? | **`B0011`** | FR-AUD-05, FR-AUTH-07/07a |
 | How is the patient's postcode handled? | **Normalised before search**; unnormalisable values not sent | FR-PDS-05a/05b, FR-AUD-02, R12 |
 | Can an item be closed without registering anybody? | **Yes — two closing outcomes**: already registered on the EPR by hand, and registration no longer required. Reported to the gateway, dispatching nothing | FR-DEC-01/01a/01b/01c/05a, §4.5, R13, R14 |
+| Does a locked item leave the worklist? | **No — it stays, marked as being reviewed** (FR-WL-06). The former FR-WL-12 asked for removal and was withdrawn: it contradicted FR-WL-06, and removal cannot prevent concurrent review anyway — the pessimistic lock of FR-REV-01 does that. Hiding an urgent patient a reviewer can see is being handled beats leaving them wondering where the row went | FR-WL-06, FR-REV-01, §9.1 |
 | Is the search order enforced? | **No — a default path the reviewer can depart from**; the path taken is recorded instead | FR-REV-09/10, FR-DEC-01d, FR-ODS-01 |
 | What is the interface built from? | **NHS.UK frontend** (`nhsuk-frontend`), self-hosted and version-pinned | §3.10, NFR-CMP-03, §6 |
 | How does it get into the build? | **`frontend-maven-plugin`** — pinned Node in `target/`, `npm ci`, Sass compiled to `target/frontend`, packaged as `static/` | §6, FR-UI-03/04, `pom.xml`, `package.json` |

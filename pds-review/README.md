@@ -5,10 +5,41 @@ match to NHS PDS**. A reviewer signs in with **NHS CIS2**, searches PDS and the 
 Service, and records a match decision — which is posted back to the RPA control plane through a
 Camel route on the gateway, to register the patient.
 
-**Status: specification only.** This sub-project currently contains its requirements, its build
-and a Spring Boot entry point. Nothing in §3 of the requirements is implemented yet.
+**Status: §3 of the requirements is built.** Intake, the worklist, the review session and its
+locking, all three searches, the five decisions, the post-back outbox and the audit trail are
+implemented and tested. What is *not* real yet is everything on the other side of a network
+boundary: no CIS2 client is registered, no PDS or ODS base URL is configured, and the gateway has
+neither of the two routes this depends on. Point it at a sandbox and those become configuration
+rather than code.
 
-📄 **[docs/requirements.md](docs/requirements.md)** — the specification.
+📄 **[docs/requirements.md](docs/requirements.md)** — the specification each class is written
+against. Requirement ids appear in the code, so any behaviour here can be traced back to the
+sentence that asked for it.
+
+## Try it
+
+```powershell
+cd pds-review
+..\mvnw.cmd clean verify                     # frontend + 98 tests
+..\mvnw.cmd spring-boot:run `
+  "-Dspring-boot.run.arguments=--systmone.pds-review.auth.require-cis2=false --spring.datasource.url=jdbc:h2:mem:dev --spring.jpa.hibernate.ddl-auto=create-drop"
+```
+
+Sign in at <http://localhost:8084> as `reviewer`, `auditor` or `both` (password same as the
+username) — three stand-ins for the three role shapes: one carrying `B0830`, one carrying `B0011`,
+and one holding both, who must still exercise one at a time. Then push a presentation in as the
+gateway would:
+
+```bash
+curl -X POST http://localhost:8084/internal/v1/presentations \
+  -H 'Content-Type: application/json' -H 'X-Gateway-Token: changeit' \
+  -H 'X-Correlation-Id: gw-1' \
+  --data-binary @src/test/resources/presentation-unmatched.json
+```
+
+It answers `201 ADMITTED`, and `200 ALREADY_HELD` if you send it again. The patient appears on the
+worklist. The application refuses to start this way in production, or with `require-cis2` left at
+its default — see `ApplicationConfig`.
 
 ## Why it exists
 

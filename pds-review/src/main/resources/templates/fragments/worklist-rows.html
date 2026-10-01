@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The worklist itself, split out so it can be re-fetched on its own (FR-WL-09, FR-WL-11).
+
+  Everything a background refresh needs to replace lives in here, and everything it must NOT
+  replace — the filters, the heading, the polling script's own state — stays in worklist.html.
+
+  The signature element is how the client tells the server what it is currently showing. On the
+  next poll the server compares it against the live list and answers 204 when they match, so an
+  idle queue costs one query and changes nothing on screen (FR-WL-11a).
+*/-->
+<div th:fragment="rows(queue, waited, now, signature)">
+
+    <span th:attr="data-worklist-signature=${signature}" hidden></span>
+
+    <p class="nhsuk-body" th:if="${queue.totalElements == 0}">
+        Nothing is waiting for review.
+    </p>
+
+    <table class="nhsuk-table" th:if="${queue.totalElements > 0}">
+        <caption class="nhsuk-table__caption">
+            <span th:text="${queue.totalElements}">0</span> waiting
+            — ordered by triage score, then by how long they have waited
+        </caption>
+        <thead class="nhsuk-table__head">
+        <tr>
+            <th scope="col">Patient (as stated)</th>
+            <th scope="col">Date of birth</th>
+            <th scope="col">Triage score</th>
+            <th scope="col">Waiting</th>
+            <th scope="col">Why unmatched</th>
+            <th scope="col">Where</th>
+            <th scope="col"><span class="nhsuk-u-visually-hidden">Action</span></th>
+        </tr>
+        </thead>
+        <tbody class="nhsuk-table__body">
+        <tr class="nhsuk-table__row" th:each="item : ${queue.content}">
+            <td class="nhsuk-table__cell">
+                <span th:text="${item.statedName}">Name</span>
+                <!--/* Held by somebody else: shown, and not openable (FR-WL-06). A reviewer
+                       seeing an urgent patient being handled is better served than one left
+                       wondering where the row went — which is why the former FR-WL-12, asking
+                       for removal, was withdrawn. */-->
+                <strong class="nhsuk-tag nhsuk-tag--grey"
+                        th:if="${item.state.name() == 'IN_REVIEW'}">being reviewed</strong>
+            </td>
+            <td class="nhsuk-table__cell" th:text="${item.statedDateOfBirth} ?: '—'">—</td>
+            <td class="nhsuk-table__cell">
+                <!--/* An unscored item is called out rather than left blank: it is at the top of
+                       the list and the reader needs to know why (FR-WL-04). */-->
+                <strong class="nhsuk-tag nhsuk-tag--red" th:if="${item.triageScore == null}">
+                    no score
+                </strong>
+                <span th:if="${item.triageScore != null}" th:text="${item.triageScore}">P3</span>
+            </td>
+            <td class="nhsuk-table__cell">
+                <span th:text="${waited.get(item.id)}">20m</span>
+                <span class="nhsuk-hint nhsuk-u-font-size-14"
+                      th:text="${item.waitBasis.name() == 'TRIAGE_END'}
+                               ? 'since triage ended' : 'since we were told'">basis</span>
+            </td>
+            <td class="nhsuk-table__cell" th:text="${item.unmatchedReason}">reason</td>
+            <td class="nhsuk-table__cell">
+                <span th:text="${item.departmentName} ?: (${item.departmentCode} ?: '—')">ED</span>
+            </td>
+            <td class="nhsuk-table__cell">
+                <a class="nhsuk-link" th:href="@{'/review/' + ${item.id}}"
+                   th:unless="${item.state.name() == 'IN_REVIEW'}">
+                    Review<span class="nhsuk-u-visually-hidden"
+                                th:text="' ' + ${item.statedName}"></span>
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <nav class="nhsuk-pagination" th:if="${queue.totalPages > 1}" role="navigation">
+        <ul class="nhsuk-list nhsuk-pagination__list">
+            <li class="nhsuk-pagination-item--previous" th:if="${!queue.first}">
+                <a class="nhsuk-pagination__link nhsuk-pagination__link--prev"
+                   th:href="@{/worklist(page=${queue.number - 1})}">
+                    <span class="nhsuk-pagination__title">Previous</span>
+                </a>
+            </li>
+            <li class="nhsuk-pagination-item--next" th:if="${!queue.last}">
+                <a class="nhsuk-pagination__link nhsuk-pagination__link--next"
+                   th:href="@{/worklist(page=${queue.number + 1})}">
+                    <span class="nhsuk-pagination__title">Next</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+</div>
+</body>
+</html>

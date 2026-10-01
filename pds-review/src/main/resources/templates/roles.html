@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Choose your role')}"></head>
+<body>
+<script th:replace="~{fragments/layout :: jsEnabled}"></script>
+<header th:replace="~{fragments/layout :: header}"></header>
+
+<div class="nhsuk-width-container">
+    <main class="nhsuk-main-wrapper" id="maincontent" role="main">
+
+        <div th:replace="~{fragments/layout :: errorSummary('There is a problem',
+                          ${problem != null} ? ${{problem}} : null)}"></div>
+
+        <h1 class="nhsuk-heading-l">Choose the role you are working under</h1>
+
+        <div class="nhsuk-inset-text">
+            <span class="nhsuk-u-visually-hidden">Information: </span>
+            <p>
+                Everything you do is recorded against the role you pick, and this role is sent to
+                PDS with every search. If you hold more than one, you work under one at a time —
+                come back here to switch.
+            </p>
+        </div>
+
+        <div th:if="${noRoles}" class="nhsuk-warning-callout">
+            <h2 class="nhsuk-warning-callout__label"><span role="text">
+                <span class="nhsuk-u-visually-hidden">Important: </span>No roles found
+            </span></h2>
+            <p>
+                Your CIS2 identity carries no national RBAC roles that this application can read.
+                You need a role holding activity
+                <strong th:text="${reviewActivity}">B0830</strong> to work the review queue, or
+                <strong th:text="${auditActivity}">B0011</strong> to read the audit trail. Your
+                Registration Authority grants these.
+            </p>
+        </div>
+
+        <form th:unless="${noRoles}" th:action="@{/roles}" method="post">
+            <div class="nhsuk-form-group">
+                <fieldset class="nhsuk-fieldset" aria-describedby="role-hint">
+                    <legend class="nhsuk-fieldset__legend nhsuk-fieldset__legend--m">
+                        Your roles
+                    </legend>
+                    <div class="nhsuk-hint" id="role-hint">
+                        The activities on each role decide what you can do here.
+                    </div>
+                    <div class="nhsuk-radios">
+                        <div class="nhsuk-radios__item" th:each="role, iter : ${roles}">
+                            <input class="nhsuk-radios__input" type="radio" name="urid"
+                                   th:id="${'role-' + iter.index}" th:value="${role.urid()}"
+                                   th:checked="${iter.first}">
+                            <label class="nhsuk-label nhsuk-radios__label"
+                                   th:for="${'role-' + iter.index}">
+                                <span th:text="${role.display()}">Role</span>
+                                <span class="nhsuk-hint nhsuk-radios__hint">
+                                    <span th:text="'URID ' + ${role.urid()}">URID</span> ·
+                                    <span th:if="${role.has(reviewActivity)}"
+                                          class="nhsuk-tag nhsuk-tag--green">can review</span>
+                                    <span th:if="${role.has(auditActivity)}"
+                                          class="nhsuk-tag nhsuk-tag--blue">can audit</span>
+                                    <span th:if="${!role.has(reviewActivity) and !role.has(auditActivity)}"
+                                          class="nhsuk-tag nhsuk-tag--grey">no access here</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <button class="nhsuk-button" data-module="nhsuk-button" type="submit">
+                Continue
+            </button>
+        </form>
+
+    </main>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

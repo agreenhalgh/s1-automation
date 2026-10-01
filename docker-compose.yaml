@@ -106,6 +106,12 @@ services:
       # Run history and the audit log are the record of what the bots did to real patient
       # records, so they outlive the container (FR-CP-02, NFR-SEC-02).
       - pg-data:/var/lib/postgresql/data
+      # POSTGRES_DB creates one database; the PDS match review application needs its own, kept
+      # separate because its store holds patient-identifiable data with its own retention policy
+      # and grants. Read-only, and note that the image runs these scripts only when the data
+      # directory is empty — on an existing pg-data volume the database must be created by hand.
+      # See docker/postgres-init/01-create-databases.sh.
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       # -U and -d matter: bare pg_isready checks the default 'postgres' database as the
       # current OS user and reports ready while ours is still being created on first boot.

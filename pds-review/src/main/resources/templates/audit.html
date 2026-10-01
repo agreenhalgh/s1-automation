@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Audit trail')}"></head>
+<body>
+<script th:replace="~{fragments/layout :: jsEnabled}"></script>
+<header th:replace="~{fragments/layout :: header}"></header>
+
+<div class="nhsuk-width-container">
+    <main class="nhsuk-main-wrapper" id="maincontent" role="main">
+
+        <h1 class="nhsuk-heading-l">Audit trail</h1>
+
+        <div class="nhsuk-inset-text">
+            <span class="nhsuk-u-visually-hidden">Information: </span>
+            <p>
+                Every view, search and decision, attributed to the person and the role they were
+                working under. Append-only — nothing here can be changed or removed from this
+                application. Your reading of it is recorded too.
+            </p>
+        </div>
+
+        <form th:action="@{/audit}" method="get">
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="actor">Who</label>
+                <input class="nhsuk-input" id="actor" name="actor" type="text"
+                       th:value="${filterActor}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="event">What</label>
+                <select class="nhsuk-select" id="event" name="event">
+                    <option value="">Anything</option>
+                    <option th:each="e : ${events}" th:value="${e}" th:text="${e}"
+                            th:selected="${e == filterEvent}">EVENT</option>
+                </select>
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="nhsNumber">NHS number</label>
+                <input class="nhsuk-input nhsuk-input--width-10" id="nhsNumber" name="nhsNumber"
+                       type="text" th:value="${filterNhsNumber}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="itemKey">Review item</label>
+                <input class="nhsuk-input nhsuk-input--width-20" id="itemKey" name="itemKey"
+                       type="text" th:value="${filterItemKey}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="from">From (yyyy-mm-dd)</label>
+                <input class="nhsuk-input nhsuk-input--width-10" id="from" name="from"
+                       type="text" th:value="${filterFrom}">
+            </div>
+            <div class="nhsuk-form-group">
+                <label class="nhsuk-label" for="to">To (yyyy-mm-dd)</label>
+                <input class="nhsuk-input nhsuk-input--width-10" id="to" name="to"
+                       type="text" th:value="${filterTo}">
+            </div>
+            <button class="nhsuk-button nhsuk-button--secondary" data-module="nhsuk-button"
+                    type="submit">Search the trail</button>
+        </form>
+
+        <table class="nhsuk-table">
+            <caption class="nhsuk-table__caption">
+                <span th:text="${entries.totalElements}">0</span> entries, newest first
+            </caption>
+            <thead class="nhsuk-table__head">
+            <tr>
+                <th scope="col">When</th>
+                <th scope="col">Who</th>
+                <th scope="col">Role</th>
+                <th scope="col">What</th>
+                <th scope="col">Patient / item</th>
+                <th scope="col">Detail</th>
+            </tr>
+            </thead>
+            <tbody class="nhsuk-table__body">
+            <tr class="nhsuk-table__row" th:each="entry : ${entries.content}">
+                <td class="nhsuk-table__cell" th:text="${entry.at}">when</td>
+                <td class="nhsuk-table__cell" th:text="${entry.actor}">who</td>
+                <td class="nhsuk-table__cell" th:text="${entry.actorRole} ?: '—'">role</td>
+                <td class="nhsuk-table__cell" th:text="${entry.event}">EVENT</td>
+                <td class="nhsuk-table__cell">
+                    <span th:if="${entry.nhsNumber != null}" th:text="${entry.nhsNumber}"></span>
+                    <span class="nhsuk-hint nhsuk-u-font-size-14"
+                          th:if="${entry.itemKey != null}" th:text="${entry.itemKey}"></span>
+                </td>
+                <td class="nhsuk-table__cell" th:text="${entry.detail}">detail</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <nav class="nhsuk-pagination" th:if="${entries.totalPages > 1}" role="navigation">
+            <ul class="nhsuk-list nhsuk-pagination__list">
+                <li class="nhsuk-pagination-item--previous" th:if="${!entries.first}">
+                    <a class="nhsuk-pagination__link nhsuk-pagination__link--prev"
+                       th:href="@{/audit(page=${entries.number - 1}, actor=${filterActor},
+                                          event=${filterEvent}, nhsNumber=${filterNhsNumber},
+                                          itemKey=${filterItemKey}, from=${filterFrom}, to=${filterTo})}">
+                        <span class="nhsuk-pagination__title">Previous</span>
+                    </a>
+                </li>
+                <li class="nhsuk-pagination-item--next" th:if="${!entries.last}">
+                    <a class="nhsuk-pagination__link nhsuk-pagination__link--next"
+                       th:href="@{/audit(page=${entries.number + 1}, actor=${filterActor},
+                                          event=${filterEvent}, nhsNumber=${filterNhsNumber},
+                                          itemKey=${filterItemKey}, from=${filterFrom}, to=${filterTo})}">
+                        <span class="nhsuk-pagination__title">Next</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+    </main>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>

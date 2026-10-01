@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  ============ candidate comparison ============
+  Field by field against what the patient told us, with differences marked (FR-PDS-07). A reviewer
+  should be comparing, not reading two lists and holding them in their head. The score is shown
+  with its meaning; nothing is ever pre-selected, at any score (NFR-SAFE-01).
+*/-->
+<div th:fragment="candidates(result, label, view)" th:if="${result != null}">
+    <h3 class="nhsuk-heading-s" th:text="${label}">Search</h3>
+
+    <div th:if="${result.outcome().name() == 'ERROR'}" class="nhsuk-warning-callout">
+        <h4 class="nhsuk-warning-callout__label"><span role="text">
+            <span class="nhsuk-u-visually-hidden">Important: </span>PDS did not answer
+        </span></h4>
+        <p th:text="${result.detail()}">detail</p>
+        <p><strong>This is not the same as "no matches".</strong> Nothing has been established
+            about whether this patient is on PDS.</p>
+    </div>
+
+    <div th:if="${result.outcome().name() == 'TOO_MANY'}" class="nhsuk-warning-callout">
+        <h4 class="nhsuk-warning-callout__label"><span role="text">Too many matches</span></h4>
+        <p th:text="${result.detail()}">detail</p>
+    </div>
+
+    <div th:if="${result.outcome().name() == 'NOT_ATTEMPTED'}" class="nhsuk-inset-text">
+        <p th:text="${result.detail()}">Not attempted</p>
+    </div>
+
+    <p class="nhsuk-body" th:if="${result.outcome().name() == 'NONE'}">
+        PDS answered, and matched nobody.
+    </p>
+
+    <table class="nhsuk-table" th:if="${result.outcome().name() == 'RESULTS'}">
+        <caption class="nhsuk-table__caption">
+            <span th:text="${result.count()}">0</span> candidate(s), strongest first.
+            A score of 1.0 is an exact match on what was searched — which is not the same as being
+            the right person.
+        </caption>
+        <thead class="nhsuk-table__head">
+        <tr>
+            <th scope="col">Select</th>
+            <th scope="col">Score</th>
+            <th scope="col">Name</th>
+            <th scope="col">Date of birth</th>
+            <th scope="col">Gender</th>
+            <th scope="col">Address</th>
+            <th scope="col">NHS number</th>
+        </tr>
+        </thead>
+        <tbody class="nhsuk-table__body">
+        <tr class="nhsuk-table__row" th:each="candidate, iter : ${result.candidates()}">
+            <td class="nhsuk-table__cell">
+                <div class="nhsuk-radios__item">
+                    <input class="nhsuk-radios__input" type="radio" name="nhsNumber"
+                           form="decision-form" th:id="${'c-' + iter.index}"
+                           th:value="${candidate.nhsNumber()}">
+                    <label class="nhsuk-label nhsuk-radios__label" th:for="${'c-' + iter.index}">
+                        <span class="nhsuk-u-visually-hidden">Select this candidate</span>
+                    </label>
+                </div>
+            </td>
+            <td class="nhsuk-table__cell">
+                <strong th:text="${candidate.score()}">1.0</strong>
+                <span class="nhsuk-tag nhsuk-tag--grey" th:if="${!candidate.exactScore()}">partial</span>
+            </td>
+            <td class="nhsuk-table__cell">
+                <span th:text="${candidate.displayName()}">Name</span>
+                <span class="nhsuk-tag nhsuk-tag--red" th:if="${candidate.deceased()}">deceased</span>
+            </td>
+            <td class="nhsuk-table__cell">
+                <span th:text="${candidate.birthDate()}">1947-10-13</span>
+                <span class="nhsuk-tag nhsuk-tag--orange"
+                      th:if="${view.derived().birthdate() != null
+                              and candidate.birthDate() != view.derived().birthdate()}">differs</span>
+            </td>
+            <td class="nhsuk-table__cell">
+                <span th:text="${candidate.gender()}">female</span>
+                <span class="nhsuk-tag nhsuk-tag--orange"
+                      th:if="${view.derived().gender() != null
+                              and candidate.gender() != view.derived().gender()}">differs</span>
+            </td>
+            <td class="nhsuk-table__cell">
+                <span th:text="${candidate.displayAddress()}">address</span>
+                <span class="nhsuk-tag nhsuk-tag--orange"
+                      th:if="${view.derived().postcode().usable()
+                              and candidate.postcode() != view.derived().postcode().normalised()}">differs</span>
+            </td>
+            <td class="nhsuk-table__cell" th:text="${candidate.nhsNumber()}">000 000 0000</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

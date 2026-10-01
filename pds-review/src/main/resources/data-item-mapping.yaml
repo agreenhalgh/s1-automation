@@ -1,0 +1,77 @@
+# How a patient's own answers become PDS search parameters (FR-PDS-03, §4.2).
+#
+# This file is the most fragile thing in the application, and that is why it is a versioned
+# resource rather than code. The sender populates the stable `key` for almost nothing — `dob`
+# alone, across all eight captured sample payloads — so free-text `question` wording set by
+# somebody else's form configuration is the usual handle. Rename "Surname" to "Family Name"
+# upstream and a required PDS parameter silently disappears.
+#
+# What stops that becoming a wrong candidate list is FR-PDS-04: if family, gender and birthdate
+# cannot all be derived, no search is issued and the reviewer is told which fields are missing.
+# Watch the rate of that happening — it is the early warning that this file has drifted (R1).
+#
+# `keys` are matched first, exactly and case-insensitively. `questions` are the fallback, compared
+# with case, surrounding whitespace, internal runs of spaces and a trailing ? or : ignored.
+
+version: 1
+
+fields:
+
+  family:
+    keys: [surname, family_name, last_name]
+    questions:
+      - Last Name
+      - Surname
+      - Family Name
+
+  given:
+    keys: [first_name, given_name, forename]
+    questions:
+      - First Name
+      - Given Name
+      - Forename
+
+  gender:
+    keys: [sex, gender, sex_at_birth]
+    questions:
+      - Sex
+      - Gender
+      - Sex at birth
+      - What is your sex
+
+  birthdate:
+    keys: [dob, date_of_birth, birthdate]
+    questions:
+      - Date of Birth
+      - DOB
+      - Date of birth
+
+  postcode:
+    keys: [postcode, post_code, home_postcode]
+    questions:
+      - Postcode
+      - Post code
+      - Home Postcode
+      - What is your postcode
+
+  gpPractice:
+    keys: [gp_practice, gp, surgery]
+    questions:
+      - GP Practice
+      - GP Surgery
+      - Registered GP Practice
+      - Which GP practice are you registered with
+
+# The patient's answer to a sex or gender question, mapped onto the value set PDS accepts.
+# Anything not listed here is not sent: a value PDS does not recognise would be rejected, and
+# guessing which of male/female/other the reviewer meant is not this file's job.
+genderValues:
+  male: male
+  m: male
+  female: female
+  f: female
+  other: other
+  intersex: other
+  unknown: unknown
+  prefer not to say: unknown
+  not stated: unknown

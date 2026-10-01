@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!--/*
+  FR-AUTH-06: refuse with a plain account of what is missing and who can grant it, rather than a
+  bare 403. A reviewer whose role lacks the activity has a problem their Registration Authority
+  can fix in minutes, if they are told what it is.
+*/-->
+<head th:replace="~{fragments/layout :: head('Access refused')}"></head>
+<body>
+<script th:replace="~{fragments/layout :: jsEnabled}"></script>
+<header th:replace="~{fragments/layout :: header}"></header>
+
+<div class="nhsuk-width-container">
+    <main class="nhsuk-main-wrapper" id="maincontent" role="main">
+
+        <h1 class="nhsuk-heading-l">You cannot open that page under this role</h1>
+
+        <div class="nhsuk-warning-callout">
+            <h2 class="nhsuk-warning-callout__label"><span role="text">
+                <span class="nhsuk-u-visually-hidden">Important: </span>Missing activity
+            </span></h2>
+            <p>
+                The role you are working under does not carry activity
+                <strong th:text="${missingActivity}">B0830</strong>, which that page needs.
+            </p>
+            <p>
+                If you hold another role that does, switch to it. Otherwise your Registration
+                Authority grants the activity — this is not something this application can give
+                you.
+            </p>
+        </div>
+
+        <p class="nhsuk-body">
+            You are working under one role at a time on purpose. Reviewing patients and reading
+            the record of who reviewed them are kept apart, so holding both activities does not
+            mean exercising both at once.
+        </p>
+
+        <a class="nhsuk-button" data-module="nhsuk-button" th:href="@{/roles}">
+            Change role
+        </a>
+
+    </main>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:replace="~{fragments/layout :: scripts}"></script>
+</body>
+</html>
